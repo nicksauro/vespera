@@ -1,0 +1,146 @@
+# Mira→Beckett Spec — T001 Bar-Close Momentum WDO 5-min
+# =====================================================
+# Fase A (Research) output. Imutável após assinatura Mira.
+# Consumível por Beckett via: *run-cpcv --spec {this-file}.yaml
+# =====================================================
+
+feature_set_id: T001-bar-close-momentum-wdo-5min
+version: 0.1.0
+created_at: 2026-04-21T14:30:00-03:00  # BRT naive → aware aqui só por convenção YAML
+mira_signature: "dry-run-smoke-test-no-real-hash"
+thesis_ref: docs/research/thesis/T001-bar-close-momentum-wdo-5min.md
+dry_run: true  # smoke-test, não é spec para operação real
+
+# ----------------------------------------------------
+# UNIVERSE + TIMEFRAME
+# ----------------------------------------------------
+universe:
+  asset: WDOFUT
+  contract_mode: vigente  # rollover natural
+  session_filter: continuous  # exclui pré-abertura, leilão abertura, call fechamento
+  session_hours_brt: "09:30-17:55"
+  rollover_exclusion: "D-3 a D-1"  # exclui janela antes do vencimento
+
+timeframe:
+  bar_unit: minutes
+  bar_size: 5
+  source: aggregation_from_trades  # trades-only → OHLCV 5-min
+  timezone: BRT  # naive conforme MANIFEST R2
+
+# ----------------------------------------------------
+# FEATURE SET
+# ----------------------------------------------------
+feature_set:
+  - name: mom_3bar
+    formula: "sum(log_return[t-3:t])"
+    historical_availability: computable
+    live_only: false
+    source_owner: Mira
+    description: "Soma dos log-returns das 3 barras fechadas antes de t (não-antecipativa)"
+
+  - name: regime_vol_filter  # usado na Fase E como filtro
+    formula: "ATR(14) / close"
+    historical_availability: computable
+    live_only: false
+    source_owner: Nova
+
+# ----------------------------------------------------
+# LABEL
+# ----------------------------------------------------
+label:
+  type: regression_next_bar
+  target: "log(close[t+1] / close[t])"
+  horizon_bars: 1
+  horizon_minutes: 5
+
+# Opcional para Fase E (triple-barrier):
+label_alt:
+  type: triple-barrier
+  pt: 2.0  # take-profit = 2× ATR
+  sl: 1.0  # stop-loss = 1× ATR
+  timeout_bars: 3
+
+# ----------------------------------------------------
+# CV SCHEME (padrão squad — MANIFEST R6)
+# ----------------------------------------------------
+cv_scheme:
+  type: CPCV  # Combinatorial Purged CV (Lopez de Prado 2018)
+  n_groups: 10
+  k: 2
+  n_paths: 45  # C(10,2)
+  embargo_sessions: 1
+  purging: true  # remove observações cujas labels cruzam train/test
+
+# ----------------------------------------------------
+# METRICS REQUIRED
+# ----------------------------------------------------
+metrics_required:
+  primary:
+    - IC_spearman
+    - DSR  # Deflated Sharpe Ratio (Bailey-Lopez de Prado 2014)
+    - PBO  # Probability of Backtest Overfitting
+  secondary:
+    - sharpe_distribution_45paths
+    - sortino
+    - MAR
+    - max_drawdown
+    - hit_rate
+    - profit_factor
+    - ulcer_index
+
+# ----------------------------------------------------
+# STRESS-REGIME BREAKDOWN (obrigatório em Fase E)
+# ----------------------------------------------------
+stress_regimes:
+  - name: open_bias
+    window_brt: "09:30-10:00"
+  - name: close_bias
+    window_brt: "17:30-17:55"
+  - name: high_vol
+    filter: "ATR > P80"
+  - name: low_vol
+    filter: "ATR < P20"
+  - name: rollover_week
+    filter: "dias_para_vencimento <= 5"
+
+# ----------------------------------------------------
+# TRADING RULES (informativo, não binding para Fase E)
+# ----------------------------------------------------
+trading_rules:
+  threshold_long: "mom_3bar > P80(mom_3bar, rolling=252bars)"
+  threshold_short: "mom_3bar < P20"
+  holding_period_bars: 1  # reavalia a cada barra
+  regime_filter: "ATR not in extremes OR scaling down"
+
+# ----------------------------------------------------
+# COSTS (ownership: Nova atlas)
+# ----------------------------------------------------
+costs:
+  brokerage: "[TO-VERIFY via atlas Nova]"
+  exchange_fees: "via Nova atlas — emolumentos B3 vigentes"
+  tax_day_trade: "via Nova atlas — IR day-trade vigente"
+  slippage_model: "Beckett default — Roll spread + 1 tick worst-case se ordem a mercado"
+  latency_profile: "DMA2: p50=20ms, p95=60ms, p99=100ms, tail=500ms"
+
+# ----------------------------------------------------
+# KILL CRITERIA (ownership: Kira + Riven)
+# ----------------------------------------------------
+kill_criteria_ref: docs/research/thesis/T001-bar-close-momentum-wdo-5min.md#5-kill-criteria-ex-ante
+
+# ----------------------------------------------------
+# CAPACITY ESTIMATE (ownership: Tiago + Nova)
+# ----------------------------------------------------
+capacity:
+  max_contracts_per_entry: "[TO-COMPUTE pela Fase E — função de ADV WDO]"
+  estimated_participation_rate: "< 0.5% do volume médio 5-min"
+
+# ----------------------------------------------------
+# CONTRACT MULTIPLIER (ownership: Nova / glossário) — fix G005
+# ----------------------------------------------------
+# REGRA: spec YAML NÃO DUPLICA o valor. Apenas referencia single-source.
+# Beckett *run-cpcv deve ler o multiplier do glossário no momento da execução,
+# NUNCA do campo YAML. Isto garante que mudanças no glossário propagam sem
+# stale-data em specs versionadas.
+contract_multiplier_source_ref: "squads/quant-trading-squad/DOMAIN_GLOSSARY.md#wdo-mini-dólar-futuro"
+contract_multiplier_lookup_field: "Parte 1 — WDO > multiplier"
+contract_multiplier_as_of_spec: "R$10/ponto em 2026-04-21 (apenas para debug/reprodutibilidade; NÃO usar em cálculo)"

@@ -1,0 +1,164 @@
+# B3 Calendar — WDO Operation 2024-2027
+# ======================================
+# Owner: Nova (@market-microstructure) + humano (mantenedor anual)
+# Audit: Sable (coherence check anualmente — R14)
+# Uso: warmup/calendar_loader.py lê este arquivo no startup
+#
+# Fontes:
+# - copom_meetings: www.bcb.gov.br/controleinflacao/calendarioreunioes (público)
+# - br_holidays: B3 trading calendar + feriados nacionais
+# - wdo_expirations: regra B3 — 1º dia útil do mês de vencimento
+# - pre_long_weekends_br_with_us_open: computado (feriado BRA seg ou sex sem equivalente US)
+#
+# REGRA CANÔNICA:
+# - Todas datas em ISO YYYY-MM-DD, BRT (sem timezone explícito — naive R2)
+# - Datas "pós-Copom" = D+0 da reunião (dia inteiro excluído do sample training)
+# - Datas "pré-vencimento" = D-3, D-2, D-1 antes de wdo_expirations (rollover exclusion)
+# - Este arquivo é versionado; qualquer alteração passa por PR com review de Nova + Sable
+
+version: "2026-04-21"
+last_updated_brt: "2026-04-21T18:45:00"
+maintainer_human: "humano projeto algotrader"
+auditor: "Sable (@squad-auditor)"
+
+# ----------------------------------------------------
+# COPOM (Comitê de Política Monetária — BCB)
+# Datas oficiais divulgadas pelo BCB no calendário anual
+# ----------------------------------------------------
+copom_meetings:
+  # 2024
+  - "2024-01-31"
+  - "2024-03-20"
+  - "2024-05-08"
+  - "2024-06-19"
+  - "2024-07-31"
+  - "2024-09-18"
+  - "2024-11-06"
+  - "2024-12-11"
+  # 2025
+  - "2025-01-29"
+  - "2025-03-19"
+  - "2025-05-07"
+  - "2025-06-18"
+  - "2025-07-30"
+  - "2025-09-17"
+  - "2025-11-05"
+  - "2025-12-10"
+  # 2026 (calendário preliminar BCB; confirmar anualmente)
+  - "2026-01-28"
+  - "2026-03-18"
+  - "2026-05-06"
+  - "2026-06-17"
+  - "2026-07-29"
+  - "2026-09-16"
+  - "2026-11-04"
+  - "2026-12-09"
+
+# ----------------------------------------------------
+# FERIADOS NACIONAIS BRASIL (mercado B3 fechado)
+# Inclui: feriados federais + Sexta-Feira Santa + Corpus Christi
+# NÃO inclui feriados estaduais/municipais (B3 opera na maioria)
+# ----------------------------------------------------
+br_holidays:
+  # 2024
+  - "2024-01-01"  # Confraternização Universal
+  - "2024-02-12"  # Carnaval (segunda)
+  - "2024-02-13"  # Carnaval (terça)
+  - "2024-03-29"  # Sexta-Feira Santa
+  - "2024-04-21"  # Tiradentes
+  - "2024-05-01"  # Dia do Trabalho
+  - "2024-05-30"  # Corpus Christi
+  - "2024-09-07"  # Independência
+  - "2024-10-12"  # N. Sra. Aparecida
+  - "2024-11-02"  # Finados
+  - "2024-11-15"  # Proclamação da República
+  - "2024-11-20"  # Consciência Negra (feriado nacional desde 2024)
+  - "2024-12-25"  # Natal
+  # 2025
+  - "2025-01-01"
+  - "2025-03-03"  # Carnaval
+  - "2025-03-04"
+  - "2025-04-18"  # Sexta-Feira Santa
+  - "2025-04-21"
+  - "2025-05-01"
+  - "2025-06-19"  # Corpus Christi
+  - "2025-09-07"
+  - "2025-10-12"
+  - "2025-11-02"
+  - "2025-11-15"
+  - "2025-11-20"
+  - "2025-12-25"
+  # 2026
+  - "2026-01-01"
+  - "2026-02-16"  # Carnaval
+  - "2026-02-17"
+  - "2026-04-03"  # Sexta-Feira Santa
+  - "2026-04-21"
+  - "2026-05-01"
+  - "2026-06-04"  # Corpus Christi
+  - "2026-09-07"
+  - "2026-10-12"
+  - "2026-11-02"
+  - "2026-11-15"
+  - "2026-11-20"
+  - "2026-12-25"
+
+# ----------------------------------------------------
+# WDO EXPIRATIONS
+# Regra B3: vencimento = 1º dia útil do mês (próprio dia; D-3..D-1 exclui rollover)
+# ----------------------------------------------------
+wdo_expirations:
+  # 2024
+  - "2024-01-02"
+  - "2024-02-01"
+  - "2024-03-01"
+  - "2024-04-01"
+  - "2024-05-02"
+  - "2024-06-03"
+  - "2024-07-01"
+  - "2024-08-01"
+  - "2024-09-02"
+  - "2024-10-01"
+  - "2024-11-01"
+  - "2024-12-02"
+  # 2025
+  - "2025-01-02"
+  - "2025-02-03"
+  - "2025-03-03"
+  - "2025-04-01"
+  - "2025-05-02"
+  - "2025-06-02"
+  - "2025-07-01"
+  - "2025-08-01"
+  - "2025-09-01"
+  - "2025-10-01"
+  - "2025-11-03"
+  - "2025-12-01"
+  # 2026
+  - "2026-01-02"
+  - "2026-02-02"
+  - "2026-03-02"
+  - "2026-04-01"
+  - "2026-05-04"
+  - "2026-06-01"
+  - "2026-07-01"
+  - "2026-08-03"
+  - "2026-09-01"
+  - "2026-10-01"
+  - "2026-11-03"
+  - "2026-12-01"
+
+# ----------------------------------------------------
+# PRÉ-FERIADOS LONGOS BR COM EUA ABERTO
+# D-1 de feriado BRA que NÃO é feriado US → regime stress Nova
+# Usado para breakdown em stress_regimes da Fase E
+# ----------------------------------------------------
+pre_long_weekends_br_with_us_open:
+  # Carnaval pré-segunda (BRA fecha, US abre)
+  - "2024-02-09"  # sex antes do carnaval 2024
+  - "2025-02-28"  # sex antes do carnaval 2025
+  - "2026-02-13"  # sex antes do carnaval 2026
+  # Corpus Christi pré-quinta
+  - "2024-05-29"
+  - "2025-06-18"
+  - "2026-06-03"

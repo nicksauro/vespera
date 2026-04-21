@@ -1,0 +1,117 @@
+# Thesis Template — Quant Trading Squad (Fase A do Q-SDC)
+# Owner: Kira (@quant-researcher)
+# Uso: Kira preenche ao rodar *hypothesize. Produz docs/research/thesis/{id}-{slug}.md
+# a partir deste YAML via renderização (manual no dry-run; automatizar depois).
+# =========================================================================
+
+thesis:
+  id: "T{NNN}"                          # ex.: T002
+  slug: "{kebab-case-title}"
+  title: "{descritivo curto}"
+  type: "{microestrutura|ml|price-action|cointegracao|arbitragem|outro}"
+  created_at_brt: "YYYY-MM-DDTHH:MM:SS"  # BRT naive (R2)
+  owner: "Kira (@quant-researcher)"
+  status: "{draft|fase-a-done|fase-b-done|rejected|live}"
+
+# =========================================================================
+# DECISION FRAMEWORK 4Q — OBRIGATÓRIO E ESTRUTURADO (fix G001)
+# =========================================================================
+decision_framework_4q:
+  Q1_economic_rationale:
+    question: "Existe economic rationale? Quem perde dinheiro do outro lado? Que ineficiência estamos capturando?"
+    answer: "{yes|no}"
+    justification: "{1-3 frases — obrigatório mesmo se yes}"
+    decided_by: "Kira"
+    decided_at_brt: "YYYY-MM-DDTHH:MM:SS"
+
+  Q2_falsifiable:
+    question: "É falsificável? Consigo escrever H1 com métrica mensurável e p-value target?"
+    answer: "{yes|no}"
+    justification: "{1-3 frases — citar métrica + p-value proposto}"
+    decided_by: "Kira"
+    decided_at_brt: "YYYY-MM-DDTHH:MM:SS"
+
+  Q3_dataset_support:
+    question: "Dataset suporta? Trades-only é suficiente OU exige book (→ tese LIVE-ONLY)?"
+    answer: "{yes|no|live-only}"
+    justification: "{1-3 frases — citar features-chave e availability}"
+    decided_by: "Kira"
+    decided_at_brt: "YYYY-MM-DDTHH:MM:SS"
+
+  Q4_kill_criteria:
+    question: "Kill criteria definíveis ex-ante? Consigo escrever 'se X acontecer, paramos'?"
+    answer: "{yes|no}"
+    justification: "{1-3 frases — citar 2-4 critérios concretos}"
+    decided_by: "Kira"
+    decided_at_brt: "YYYY-MM-DDTHH:MM:SS"
+
+  gate_result: "{pass|fail}"              # pass = todos 4Q yes/live-only; fail = qualquer no
+
+# =========================================================================
+# HYPOTHESES (Popperian)
+# =========================================================================
+hypotheses:
+  H0_null: "{nula — o que significaria ausência de alpha}"
+  H1_alternative: "{alternativa — métrica + threshold + p-value}"
+  primary_metric: "{IC_spearman|hit_rate|Sharpe|profit_factor|outro}"
+  horizon_bars_or_minutes: "{valor + unidade}"
+  p_value_target: "{ex.: 0.01 pós-Bonferroni com N_trials=5}"
+  sample_size_min: 100                    # MANIFEST R6
+
+# =========================================================================
+# SPEC
+# =========================================================================
+spec:
+  universe: "{asset + session_filter}"
+  features_primary: ["{feature_name_1}", "{feature_name_2}"]
+  label_type: "{regression_next_bar|triple_barrier|binary|meta}"
+
+# =========================================================================
+# KILL CRITERIA EX-ANTE (desenvolver Q4)
+# =========================================================================
+kill_criteria:
+  - id: K1
+    trigger: "{ex.: DSR < 0 em CPCV}"
+    action: "descartar tese"
+    owner: "Kira"
+  - id: K2
+    trigger: "{ex.: PBO > 0.5 em CPCV}"
+    action: "descartar"
+    owner: "Mira"
+  - id: K3
+    trigger: "{ex.: IC fora de CI 95% em 2 meses paper}"
+    action: "desligar estratégia"
+    owner: "Kira + Riven"
+
+# =========================================================================
+# CONSULTAS (artefatos produzidos por cada agente — fix G003)
+# =========================================================================
+consultations:
+  mira_feature_eval:
+    artifact_ref: "docs/research/audits/{thesis_id}-mira-audit.md"
+    verdict: "{preliminary-ok|reject|needs-revision}"
+    signed_by: "Mira"
+    signed_at_brt: "YYYY-MM-DDTHH:MM:SS"
+
+  nova_microstructure_audit:
+    artifact_ref: "docs/research/audits/{thesis_id}-nova-audit.md"
+    verdict: "{audit-ok|reject|needs-revision}"
+    signed_by: "Nova"
+    signed_at_brt: "YYYY-MM-DDTHH:MM:SS"
+
+  nelo_availability:
+    artifact_ref: "docs/research/audits/{thesis_id}-nelo-audit.md"
+    availability_tag_per_feature:
+      feature_1: "{computable|live_only|partial}"
+    signed_by: "Nelo"
+    signed_at_brt: "YYYY-MM-DDTHH:MM:SS"
+
+# =========================================================================
+# GATE SIGNATURE — Fase A → Fase B handoff (fix G004)
+# =========================================================================
+gate_A_signature:
+  verdict: "{pass|fail}"
+  signed_by: "Kira"
+  signed_at_brt: "YYYY-MM-DDTHH:MM:SS"
+  mira_beckett_spec_ref: "docs/ml/specs/{thesis_id}-v{semver}.yaml"
+  mira_beckett_spec_hash: "{sha256 do arquivo YAML — fix G002 quando export-spec automatizar}"

@@ -1,0 +1,285 @@
+# Quant Story Development Cycle (Q-SDC) — Workflow
+# ---------------------------------------------------
+# Pipeline ponta-a-ponta de research quant → código em produção.
+# Inspirado no AIOX SDC (Story Development Cycle) mas adaptado para a
+# realidade do quant-trading-squad: validação estatística obrigatória
+# entre implementação e deploy, auditoria de coerência do squad, e
+# monopólio de execução do Tiago.
+#
+# Invariantes honrados:
+#   R1  spec → tag [WEB-CONFIRMED]/[TO-VERIFY]
+#   R2  timestamps BRT
+#   R3  monopólio Tiago em SendOrder
+#   R4  gateway Riven obrigatório
+#   R6  CPCV padrão decisório
+#   R7  trades-only histórico
+#   R8  paper-mode ≥ 5 sessões
+#   R9  reconciliação EOD
+#   R10 kill-switch 4 níveis
+#   R12 git push exclusivo Gage
+#   R13 story-driven para código
+#   R14 Quinn (código) × Sable (squad)
+
+id: quant-story-development-cycle
+name: Quant Story Development Cycle
+version: 1.0.0
+created_at: '2026-04-21'
+owner: '@aiox-master'
+
+description: |
+  Workflow canônico para transformar research quant em código operando live.
+  Distinto do AIOX SDC porque exige (a) aprovação científica via Kira+Mira
+  ANTES de virar story, (b) gate CPCV+DSR+PBO ANTES de QA gate, (c) paper-
+  mode ≥ 5 sessões ANTES de live, (d) aprovação humana explícita antes de
+  Gage fazer push to main.
+
+scope_in:
+  - Feature quantitativa nova (indicador, modelo, regra de sizing, custo model)
+  - Refactor de pipeline que afeta semântica estatística
+  - Mudança de parâmetro de risco (Riven decide, story implementa)
+  - Adição de novo ativo/instrumento
+
+scope_out:
+  - Bugfix cosmético (usa fast-track SDC AIOX padrão)
+  - Documentação apenas (usa pr direto via Gage com revisão Sable)
+  - Hotfix emergencial em live (protocolo separado, Riven+humano)
+
+# ============================================================
+# PHASES
+# ============================================================
+
+phases:
+  # --------------------------------------------
+  - id: A
+    name: Research
+    purpose: 'Nascer hipótese falsificável e verificar viabilidade antes de gastar engineering.'
+    gate_criteria:
+      - Economic rationale escrito em 1 parágrafo
+      - Hipótese formalizada (H0 + H1 + métrica + horizon)
+      - Dataset suporta? (trades-only restriction aplicada — R7)
+      - Kill criteria ex-ante
+    steps:
+      - step: A.1
+        actor: '@quant-researcher (Kira)'
+        command: '*hypothesize {topic}'
+        output: 'docs/research/thesis/{id}-{slug}.md'
+        blocking: true
+      - step: A.2
+        actor: '@ml-researcher (Mira)'
+        command: '*feature-eval + *leakage-audit'
+        input: 'thesis {id}'
+        output: 'preliminary eval + feature spec draft'
+        blocking: true
+      - step: A.3
+        actor: '@market-microstructure (Nova)'
+        command: '*audit-feature'
+        purpose: 'Validar que features fazem sentido microestrutural B3'
+        blocking: true
+      - step: A.4
+        actor: '@profitdll-specialist (Nelo)'
+        command: '*callback-spec'
+        purpose: 'Confirmar availability em live das features propostas'
+        blocking: true
+      - step: A.5
+        actor: '@ml-researcher (Mira)'
+        command: '*export-spec {feature-set-id}'
+        output: 'docs/ml/specs/{feature-set-id}-v{version}.yaml'
+        blocking: true
+
+  # --------------------------------------------
+  - id: B
+    name: Architecture & Epic
+    purpose: 'Decidir COMO o código vai se encaixar no sistema e criar epic.'
+    gate_criteria:
+      - Componentes afetados identificados (impact analysis)
+      - Tech stack decision documentada
+      - Data contracts definidos (Dara consultada se aplicável)
+    steps:
+      - step: B.1
+        actor: '@architect (Aria)'
+        command: 'design review do mira-beckett-spec.yaml'
+        purpose: 'Decidir estrutura de módulos, interfaces, integração com pipeline live'
+        consults: '@data-engineer (Dara) se afeta schema/parquet; @profitdll-specialist (Nelo) se afeta integração DLL'
+        output: 'docs/architecture/{feature}-design.md'
+        blocking: true
+      - step: B.2
+        actor: '@pm (Morgan)'
+        command: '*create-epic'
+        input: 'thesis + architecture design'
+        output: 'docs/prd/EPIC-{ID}.md'
+        blocking: true
+
+  # --------------------------------------------
+  - id: C
+    name: Story
+    purpose: 'Quebrar epic em story executável por @dev.'
+    gate_criteria:
+      - Acceptance criteria 100% rastreáveis ao PRD/thesis
+      - File List estimada
+      - Testing strategy definida (respeitando trades-only)
+      - 10-point checklist Pax passou
+    steps:
+      - step: C.1
+        actor: '@sm (River)'
+        command: '*draft {epicId}'
+        output: 'docs/stories/{epicNum}.{storyNum}.story.md'
+        blocking: true
+      - step: C.2
+        actor: '@po (Pax)'
+        command: '*validate-story-draft'
+        decision: 'GO (score ≥ 7) | NO-GO (fixes required)'
+        blocking: true
+
+  # --------------------------------------------
+  - id: D
+    name: Implementation
+    purpose: 'Escrever código que respeita contratos domain.'
+    gate_criteria:
+      - Feature implementada conforme AC da story
+      - Testes unitários + integração passam
+      - BRT preservado em todo path (R2)
+      - Feature availability honrada (R7)
+      - Timestamps nunca convertidos para UTC
+    steps:
+      - step: D.1
+        actor: '@data-engineer (Dara)'
+        command: 'schema/migration/feature-store setup'
+        condition: 'apenas se story afeta storage'
+        blocking: conditional
+      - step: D.2
+        actor: '@dev (Dex)'
+        command: '*develop-story'
+        consults:
+          - '@profitdll-specialist (Nelo) — dúvida sobre DLL signature/callback/rejection'
+          - '@market-microstructure (Nova) — dúvida sobre semântica de feed ou fase pregão'
+          - '@ml-researcher (Mira) — dúvida sobre feature/label/CV'
+          - '@backtester (Beckett) — dúvida sobre fill rules/latency model'
+        blocking: true
+      - step: D.3
+        actor: '@qa (Quinn)'
+        command: '*qa-gate'
+        checks: '7 checks AIOX (código, testes, lint, type, coverage, security, docs)'
+        decision: 'PASS | CONCERNS | FAIL | WAIVED'
+        loop_back_to: 'D.2 se FAIL (max 5 iterations)'
+        blocking: true
+
+  # --------------------------------------------
+  - id: E
+    name: Quant Validation Gate
+    purpose: 'Gate estatístico — código correto não basta, alpha precisa ser real.'
+    gate_criteria:
+      - CPCV completo executado (N=10-12, k=2, 45 paths, embargo=1 sessão)
+      - PBO < 0.5
+      - DSR > threshold squad (calibrado pós-primeiras sessões)
+      - Sharpe mediano across paths > benchmark
+      - Performance decomposta por regime
+      - Kill criteria definidos ex-ante e testados
+    steps:
+      - step: E.1
+        actor: '@backtester (Beckett)'
+        command: '*run-cpcv --spec {mira-beckett-spec.yaml}'
+        output: 'docs/backtests/{feature}-cpcv-{date}.md'
+        blocking: true
+      - step: E.2
+        actor: '@ml-researcher (Mira)'
+        command: '*deflate-sharpe + *overfit-diagnose'
+        blocking: true
+      - step: E.3
+        actor: '@quant-researcher (Kira)'
+        command: '*review {backtest-result}'
+        decision: 'APPROVED | APPROVED_WITH_CHANGES | REJECTED'
+        loop_back_to: 'A se REJECTED (tese precisa reformulação)'
+        blocking: true
+
+  # --------------------------------------------
+  - id: F
+    name: Risk & Paper-Mode
+    purpose: 'Sizing + kill + validação operacional em feed real (sem ordem real).'
+    gate_criteria:
+      - Sizing definido por Riven (quarter-Kelly teto — R10)
+      - Kill-switch configurado em 4 níveis
+      - Paper-mode ≥ 5 sessões sem falha lógica (R8)
+      - Reconciliação paper-mode = zero divergência
+    steps:
+      - step: F.1
+        actor: '@risk-manager (Riven)'
+        command: '*sizing + *kill-config'
+        blocking: true
+      - step: F.2
+        actor: '@execution-trader (Tiago)'
+        command: '*paper-mode --sessions 5'
+        reconciliation: 'EOD diária (R9) com prazo T=30min'
+        blocking: true
+
+  # --------------------------------------------
+  - id: G
+    name: Coherence Audit & Live Gate
+    purpose: 'Última verificação de coerência antes de capital real.'
+    gate_criteria:
+      - Nenhum finding 🔴 aberto no Sable audit
+      - Paper-mode métricas ≥ 0.7× backtest
+      - Humano assina approval explícito
+    steps:
+      - step: G.1
+        actor: '@squad-auditor (Sable)'
+        command: '*preblock-review live'
+        condition: 'apenas se MANIFEST/MATRIX/GLOSSARY ou agents foram alterados'
+        blocking: conditional
+      - step: G.2
+        actor: '@risk-manager (Riven) + humano'
+        command: 'live-approval'
+        blocking: true
+
+  # --------------------------------------------
+  - id: H
+    name: Push & Release
+    purpose: 'Deploy conforme AIOX constitution (Article II — Agent Authority).'
+    gate_criteria:
+      - Todos os gates anteriores OK
+      - Commit message referencia story ID
+    steps:
+      - step: H.1
+        actor: '@devops (Gage)'
+        command: '*push + *create-pr'
+        exclusivity: 'APENAS Gage executa git push / gh pr create (R12)'
+        blocking: true
+
+# ============================================================
+# ERROR PATHS & ESCALATION
+# ============================================================
+
+error_paths:
+  - trigger: 'Quinn FAIL em D.3'
+    action: 'Loop back para D.2 (max 5 iterations); se exceder → escalate @aiox-master'
+  - trigger: 'Kira REJECTED em E.3'
+    action: 'Loop back para A (tese precisa reformulação ou descarte)'
+  - trigger: 'Sable 🔴 em G.1'
+    action: 'Pipeline bloqueado até finding fechar; owner corrige, Sable re-audita'
+  - trigger: 'Paper-mode reconciliação falha em F.2'
+    action: 'HALT automático (R9); investigação antes de retomar'
+  - trigger: 'Kill-switch disparado em F.2 ou live'
+    action: 'Riven arma kill → Tiago unwind (R10, R11); post-mortem humano obrigatório'
+
+# ============================================================
+# ARTIFACTS (produzidos pelo workflow)
+# ============================================================
+
+artifacts_produced:
+  - docs/research/thesis/{id}-{slug}.md
+  - docs/ml/specs/{feature-set-id}-v{version}.yaml
+  - docs/architecture/{feature}-design.md
+  - docs/prd/EPIC-{ID}.md
+  - docs/stories/{epicNum}.{storyNum}.story.md
+  - docs/backtests/{feature}-cpcv-{date}.md
+  - docs/audits/AUDIT-{date}-{scope}.md (se Sable invocado)
+
+# ============================================================
+# OBSERVAÇÕES DE GOVERNANÇA
+# ============================================================
+
+governance_notes:
+  - Fase A NÃO usa AIOX SDC — é thesis-driven em docs/research/, não story-driven.
+  - Fase E (Quant Validation Gate) é o gate DISTINTIVO deste workflow. No AIOX SDC padrão, QA gate decide. Aqui QA gate (D.3) decide sobre CÓDIGO, e Quant Gate (E.3) decide sobre ALPHA. Ambos devem passar.
+  - Quinn (QA AIOX) e Sable (squad auditor) têm escopos distintos (R14). Quinn bloqueia merge por qualidade de código. Sable bloqueia por incoerência de squad. Ambos podem bloquear.
+  - Gage é SEMPRE última fase — qualquer `git push` fora deste workflow viola R12.
+  - Aprovação humana explícita em G.2 é mandatória para live (capital real). Sem humano, pipeline para em F.
