@@ -1,0 +1,26 @@
+# P4 — Peak WorkingSet during §13.1 Aug-2024 pilot build
+
+precondition_id: P4
+artefact_type: peak-ws-telemetry-copy
+source_file: .tmp/ws_peak.txt
+source_sha256: 55de16785298ce846fb164ef1b6532e4883817b85a4b32d33bcb33e67bcc7036
+source_origin: Dex @dev §13.1 pilot build telemetry (scripts/telemetry_workingset.py)
+captured_during_commit: 8c217bf (feat(build-cache): §13.1 streaming parquet writer for raw_trades pre-cache)
+
+# --- raw telemetry (byte-identical copy) ---
+child_rc=0
+peak_ws_bytes=221130752
+peak_ws_mib=210.89
+peak_ws_gib=0.2059
+samples=792
+elapsed_s=204.21
+
+# --- acceptance evaluation ---
+acceptance_threshold_bytes: 3758096384
+acceptance_threshold_gib: 3.5
+observed_bytes: 221130752
+observed_gib: 0.206
+margin_ratio: 16.99x under threshold
+status: PASS
+a1_acceptance_source: ADR-4 Amendment 20260424-1 §13.1 A1 (peak WS < 3.5 GiB for cache build)
+a2_acceptance_source: ADR-4 Amendment 20260424-1 §13.1 A2 (build ≤ 10 min); observed 204.21s = 3.40 min, margin 2.94x

@@ -34,8 +34,13 @@ class Fill:
 
 @dataclass(frozen=True)
 class BacktestCosts:
-    """Conservative defaults. Overridden Fase E from Nova atlas."""
+    """Conservative defaults. Overridden Fase E from Nova atlas.
 
+    Cost source: docs/backtest/nova-cost-atlas.yaml v1.0.0
+    Canonical — do not hardcode; load via engine-config.yaml
+    """
+
+    # DEFAULT — override via nova-cost-atlas.yaml v>=1.0.0; [TO-VERIFY] until wired in engine-config
     brokerage_per_contract_side_rs: float = 0.25
     exchange_fees_per_contract_side_rs: float = 0.35  # emolumentos B3 placeholder
     roll_spread_half_points: float = 0.5  # half of 1-tick Roll spread

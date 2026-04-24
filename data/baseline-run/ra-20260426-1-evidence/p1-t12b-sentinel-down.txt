@@ -1,0 +1,31 @@
+# P1 — T12b cache-only sentinel-DOWN GREEN (empirical Q1 closure)
+
+precondition_id: P1
+artefact_type: t12b-verdict-reference
+source: docs/qa/gates/RA-20260426-1-chain-gate.md §Check 2 (Test execution) + §P1-P5 Evidence Matrix row P1
+source_sha256: 2682bee8c8b0a7e483e3a98e65e83378635636f27cc514dc63b910d8fd8e21c8
+captured_at_brt: 2026-04-23 BRT (Quinn live replay during gate authoring)
+captured_at_utc: (gate doc ts authoritative)
+
+test_outcome:
+  test_path: tests/integration/test_adapter_parity_cache.py::test_T12b_cache_self_sufficient_sentinel_down
+  result: PASSED
+  t12a_result: SKIPPED (sentinel DOWN prerequisite)
+  t13_result: SKIPPED (canonical Aug-2024 absent — expected)
+  sentinel_state_during_test: STOPPED (docker stop sentinel-timescaledb)
+  sentinel_post_restore: "Up (3 seconds post-restore; health=healthy)"
+  end_to_end_duration_s: 9.94
+  pinned_snapshot_sha256: 2c167eb1e9b53ca4287138ebcbf9f7234496b0cbd78162de742f2039f3291a19
+  snapshot_manifest_sha256: 03b2ee8e029de9c29c8c4f601a94b370c2cac6e0db368a8ed6a685e8201ce94c
+  rows: 314060
+  window: 2024-03-04
+
+verdict: GREEN — empirical Q1 ("cache is self-sufficient under sentinel DOWN") closed.
+
+canonical_guard_verified: data/manifest.csv sha256 = 75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641 (byte-identical across Quinn's docker stop/start cycle)
+holdout_lock: VESPERA_UNLOCK_HOLDOUT unset throughout Quinn's replay session
+
+traceability:
+  ADR-4 §13.5 Q1 answered GREEN by T12b with sentinel container stopped
+  Quinn gate §Check 2 quotes "sentinel DOWN (replay): T12a SKIPPED + T12b PASSED + T13 SKIPPED"
+  ADR-4 Amendment 20260424-1 §13.1 A1-A5 acceptance matched; §13.2 A6-A9 matched

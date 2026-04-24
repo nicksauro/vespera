@@ -1,0 +1,1 @@
+2473bdcc4fe9ab08bf5ce35c36327175abdc0bf69acc303f7054281fcc4fe90a  data/cache/raw_trades/ticker=WDO/year=2024/month=08/wdo-2024-08.parquet

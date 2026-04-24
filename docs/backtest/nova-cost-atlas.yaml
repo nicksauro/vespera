@@ -1,0 +1,277 @@
+# Nova Cost Atlas — WDO (Mini Dólar Futuros) B3
+# =============================================================================
+# Owner:       Nova (@market-microstructure)  — autoridade única sobre custos B3
+# Source audit: Sable (@auditor) — valida cada [WEB-CONFIRMED] resolve em fonte acessível
+# Consumer:    Beckett (@backtester) — wire em engine-config.yaml para CPCV
+# Spec ref:    docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml §costs L192-199
+# Story:       docs/stories/T002.0e.story.md
+# =============================================================================
+# ARTICLE IV — NO INVENTION
+# Cada valor numérico abaixo tem fonte externa rastreável com tag [WEB-CONFIRMED YYYY-MM-DD]
+# ou [TO-VERIFY YYYY-MM-DD — <motivo>]. Sable rejeita se pegar número sem source.
+# =============================================================================
+# UNIDADES
+#  - currency: BRL (exceto onde notado)
+#  - numéricos com ponto decimal (nunca vírgula) — padrão YAML/JSON
+#  - "per_contract_one_way" = por contrato, por lado (entrada OU saída separadamente)
+#  - round-trip = compra + venda (cruza a jornada completa); one-way × 2
+# =============================================================================
+
+atlas_version: "1.0.0"
+# semver policy: TBD — formalized in EPIC-T002.0.2 (placeholder)
+
+effective_from_brt: "2024-12-10"        # data mais antiga confirmada para emolumentos vigentes (CM Capital)
+compiled_at_brt:   "2026-04-22T09:00:00-03:00"
+compiled_by:       "Nova (@market-microstructure)"
+source_audit:      "Sable (@auditor)"
+contract:          "WDO"                # Mini Dólar Futuros — não WDOFUT (sintético), não DOL (cheio)
+
+# =============================================================================
+# PRODUCT SPEC (referência para sanidade; single-source em DOMAIN_GLOSSARY)
+# =============================================================================
+product:
+  ticker: "WDO"
+  full_name: "Futuro Mini de Taxa de Câmbio de Reais por Dólar Comercial"
+  exchange: "B3 (código F no ProfitDLL — ex-BMF)"
+  contract_size_usd: 10000               # [WEB-CONFIRMED 2026-04-22] US$ 10.000 nocional — Clear/BTG confirmam
+  tick_size_points: 0.5                  # [WEB-CONFIRMED via glossário — Nova spec]
+  tick_value_brl: 5.00                   # 0.5 × R$10/ponto
+  contract_multiplier_brl_per_point: 10.00   # [WEB-CONFIRMED 2026-04-21] DOMAIN_GLOSSARY Parte 1
+
+# =============================================================================
+# SOURCES CATALOG — abrir URLs para Sable auditar
+# =============================================================================
+sources:
+  # --- EXCHANGE FEES (B3) ---
+  - id: B3-OFFICIAL-TARIFAS-USD
+    url: "https://www.b3.com.br/pt_br/produtos-e-servicos/tarifas/listados-a-vista-e-derivativos/moedas/tarifas-de-dolar-dos-estados-unidos/futuros-de-dolar/"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "exchange_fees"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "Página oficial B3 — tarifário contém fator contrato 0.25 e tarifa liquidação US$0.12; componente BRL detalhado não publicado diretamente (exige documento interno + cálculo via PDF Tarifacao_V1_PT)."
+
+  - id: B3-PDF-TARIFACAO
+    url: "https://www.b3.com.br/data/files/20/43/4B/6F/C5D597105FEE8597AC094EA8/Tarifacao_V1_PT.pdf"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "exchange_fees"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "Documento oficial B3 'Tarifação: Regras de Cálculo'. Acessível; formato FlateDecode dificulta extração textual automatizada mas é a fonte primária regulatória."
+
+  - id: CMCAPITAL-WDO-CUSTOS
+    url: "https://cmcapital.zendesk.com/hc/pt-br/articles/360042530014-Qual-o-custo-do-Mini-D%C3%B3lar-WDO-de-taxa-de-registro-e-emolumentos-da-Bolsa-B3-"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "exchange_fees"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "CM Capital help-center: R$ 0.80 taxa registro + R$ 0.43 emolumentos por contrato day trade em 2024-12-10. Corretora credenciada B3."
+
+  - id: MQL5-FORUM-WDO-CUSTOS
+    url: "https://www.mql5.com/pt/forum/321436"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "exchange_fees"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "Fórum de traders com breakdown ~R$ 0.96/mini-contrato e heurística ADV-based discounts. Fonte secundária cruzada."
+
+  # --- TAX DAY-TRADE ---
+  - id: RFB-IN-1585-LEGISWEB
+    url: "https://www.legisweb.com.br/legislacao/?id=302887"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "tax_day_trade"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "Instrução Normativa RFB nº 1.585/2015 (texto integral). Fonte legal primária para regime tributário de day trade em bolsas de mercadorias e futuros."
+
+  - id: PORTALTRIBUTARIO-ALIQUOTAS
+    url: "https://www.portaltributario.com.br/irpf/qual-e-a-aliquota-de-incidencia-do-ir-aplicavel-as-operacoes.htm"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "tax_day_trade"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "Alíquotas consolidadas: 20% IR day-trade + 1% IRRF fonte ('dedo-duro') vs 0.005% em operações comuns."
+
+  - id: NUINVEST-TRIBUTACAO
+    url: "https://www.nuinvest.com.br/tributacao-de-renda-variavel.html"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "tax_day_trade"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "Nu Invest confirma: IRRF 1% na fonte + IR 20% mensal. Recolhimento via DARF 8468, 3º dia útil subsequente ao decêndio."
+
+  # --- BROKERAGE (5 corretoras retail brasileiras) ---
+  - id: CLEAR-CORRETAGEM-ZERO
+    url: "https://corretora.clear.com.br/investimentos/minicontratos/"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "brokerage"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "Clear: 'corretagem é zero para todos os produtos' — minicontratos WDO inclusos. 1ª corretora retail com zero fee no segmento."
+
+  - id: RICO-CORRETAGEM
+    url: "https://riconnect.rico.com.vc/blog/minicontratos/"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "brokerage"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "Rico: R$ 0.00 com RLP ativo; R$ 0.45/contrato day trade sem RLP; R$ 0.75/contrato swing sem RLP (fonte: Nord Investimentos cross-reference 2024-08)."
+
+  - id: XP-CORRETAGEM
+    url: "https://atendimento.xpi.com.br/artigo/3360-qual-o-valor-da-corretagem"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "brokerage"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "XP: R$ 0.00 minicontratos com RLP aderido; R$ 1.00/contrato (+ taxa operacional 5.9%) sem RLP. Exige execução via plataforma eletrônica própria."
+
+  - id: BTG-DAYTRADE-ZERO
+    url: "https://www.seudinheiro.com/2020/patrocinado/btg/btg-pactual-digital-zera-corretagem-no-modulo-day-trade/"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "brokerage"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "BTG Pactual Digital: zero corretagem no módulo Day Trade (inclui mini Bovespa + mini Dólar). Fora do módulo: tabela regressiva R$ 4.50 → R$ 0.25 por ordem conforme volume mensal."
+
+  - id: NUINVEST-ZERO-IMPLIED
+    url: "https://www.nordinvestimentos.com.br/blog/taxas-de-corretagem-das-corretoras-hoje/"
+    accessed_at_brt: "2026-04-22"
+    fetched_for: "brokerage"
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    note: "Nord Investimentos (2024-08-08) compila: Clear, Nu Invest, Toro oferecem zero corretagem em minicontratos via plataforma eletrônica direta."
+
+# =============================================================================
+# COSTS
+# =============================================================================
+costs:
+
+  # ---------------------------------------------------------------------------
+  # BROKERAGE — corretagem PF retail
+  # ---------------------------------------------------------------------------
+  # Decisão do squad: adotar default conservador R$ 0.00/contrato/lado assumindo
+  # corretora zero-fee retail padrão (Clear/Rico-com-RLP/BTG-daytrade-module/
+  # Nu Invest/Toro). Documentado range caso squad mude para corretora com fee.
+  brokerage:
+    currency: BRL
+    per_contract_one_way: 0.00
+    per_contract_round_trip: 0.00
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    observed_range_brl_one_way:
+      min: 0.00       # Clear / Rico+RLP / XP+RLP / BTG day-trade module / Nu Invest
+      max: 1.00       # XP sem RLP (+ taxa operacional 5.9% sobre brokerage+emol+liq)
+    rationale: |
+      Squad opera via corretora retail com RLP/day-trade module. 5 fontes confirmam
+      zero corretagem em minicontratos WDO para day trade via plataforma eletrônica:
+      Clear, Rico (RLP ativo), XP (RLP aderido), BTG (Day Trade module), Nu Invest.
+      Sem RLP/fora-do-módulo: range R$ 0.45-1.00/contrato. Se squad migrar para
+      corretora com fee, atualizar em atlas v1.1.0.
+    sources_ids:
+      - CLEAR-CORRETAGEM-ZERO
+      - RICO-CORRETAGEM
+      - XP-CORRETAGEM
+      - BTG-DAYTRADE-ZERO
+      - NUINVEST-ZERO-IMPLIED
+    notes: |
+      Atenção operacional: RLP (Retail Liquidity Provider) tradeType=13 é condição
+      para zero fee em Rico/XP — implica que uma fração dos nossos trades será
+      cruzada sinteticamente sem passar pelo book público. Ver Nova RLP_GUIDE para
+      implicações de price discovery. Em live-mode, monitorar fração RLP via
+      tradeType=13 do TNewTradeCallback.
+
+  # ---------------------------------------------------------------------------
+  # EXCHANGE FEES — emolumentos B3 + taxa de registro + taxa de liquidação
+  # ---------------------------------------------------------------------------
+  exchange_fees:
+    currency: BRL
+    per_contract_one_way: 1.23             # sum(emolumentos + registro) day trade
+    per_contract_round_trip: 2.46
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    breakdown:
+      emolumentos_brl: 0.43
+      registro_brl: 0.80
+      liquidacao_brl: 0.00                 # [TO-VERIFY 2026-04-22] — B3 tarifa US$0.12 aparece em tabela de dólar mas componentização BRL para day-trade WDO não é publicamente detalhada; fontes retail listam só (emolumentos + registro). Assume incluída no total ou zero para day trade.
+    regime: "day_trade"                    # valores day-trade; swing seria ~1.6x maior (sem incentivo)
+    effective_from_brt: "2024-12-10"
+    notes: |
+      Triangulação cruzada: CM Capital documenta R$ 0.43 emolumentos + R$ 0.80 registro
+      por contrato day trade WDO em 2024-12-10. Fórum MQL5 reporta total ~R$ 0.96-1.27.
+      Nord Investimentos + modalmais mencionam ~R$ 1.20/contrato como referência geral.
+      Valores B3 variam conforme ADV (Average Daily Volume) do participante com
+      descontos escalonados — aqui usamos valor base sem desconto (conservador).
+      PIS/COFINS (9.25%) e ISS (2-5%) já embutidos no valor cobrado.
+      Swing trade (sem incentivo day-trade): ~1.6x maior — fora do escopo desta tese.
+    sources_ids:
+      - B3-OFFICIAL-TARIFAS-USD
+      - B3-PDF-TARIFACAO
+      - CMCAPITAL-WDO-CUSTOS
+      - MQL5-FORUM-WDO-CUSTOS
+
+  # ---------------------------------------------------------------------------
+  # TAX DAY-TRADE — IR pessoa física regime day-trade
+  # ---------------------------------------------------------------------------
+  tax_day_trade:
+    currency: BRL                          # unidade do ganho tributado
+    regime: "pessoa_fisica_day_trade_futuros"
+    ir_rate: 0.20                          # 20% sobre lucro líquido
+    irrf_daily_rate: 0.01                  # 1% retido na fonte ("dedo-duro")
+    tag: "[WEB-CONFIRMED 2026-04-22]"
+    legal_basis: "Instrução Normativa RFB nº 1.585/2015 (e atualizações)"
+    treatment_choice: "post_hoc_on_monthly_net_gain"
+    treatment_rationale: |
+      TRÊS opções de tratamento avaliadas:
+      (a) trade-a-trade: IMPOSSÍVEL — regime tributário PF brasileiro compensa perdas
+          intraday/intermês antes de apurar base de cálculo; aplicar trade-a-trade
+          superestima IR e não reproduz o fluxo real.
+      (b) diário sobre saldo líquido: REALISTA mas exige modelagem de compensação
+          cross-day (perdas de D carregam para D+N no mesmo mês) — implementação
+          custosa em CPCV; pouco valor marginal para GO/NO-GO da tese T002.
+      (c) post-hoc sobre agregado mensal de ganho líquido: APROXIMAÇÃO escolhida.
+          Aplicar 20% sobre ganho líquido mensal agregado (compensa perdas intraday
+          e intermês no mesmo mês calendário), +1% IRRF retido na fonte sobre
+          ganhos diários positivos. Subestima ligeiramente vs (b) em cenários de
+          carry de perda entre meses, mas mantém order-of-magnitude correto para
+          decisão GO/NO-GO.
+      Decisão Nova: adotar (c) em CPCV de T002 Fase E. Re-avaliar para produção
+      ao vivo quando Riven modelar cash-flow realista.
+    applies_to: "lucro líquido mensal do regime day-trade (compensa perdas intraday/intermês no mês calendário)"
+    compensation_rule: "perdas day-trade compensam ganhos day-trade futuros (mesmo mês ou subsequentes, dentro do regime day-trade PF); NÃO compensam com renda comum ou swing-trade."
+    darf_code: 8468                        # day trade em bolsas de mercadorias/futuros
+    darf_schedule: "até último dia útil do mês subsequente ao da apuração"
+    sources_ids:
+      - RFB-IN-1585-LEGISWEB
+      - PORTALTRIBUTARIO-ALIQUOTAS
+      - NUINVEST-TRIBUTACAO
+    notes: |
+      IR day-trade PF NÃO tem isenção de R$ 20k (isenção é apenas para ações em
+      operações comuns, não day-trade nem futuros). IRRF 1% é retido pela corretora
+      diretamente sobre resultado positivo do dia — compensável com IR 20% devido no
+      mês. Em CPCV, aplicar post-hoc: calcular ganho líquido mensal agregado × 0.20;
+      IRRF 1% pode ser ignorado em backtest (é compensável, não custo terminal).
+
+# =============================================================================
+# CONSUMER CONTRACT — como Beckett deve consumir
+# =============================================================================
+consumer_schema_hint: |
+  Beckett wire em engine-config.yaml:
+
+    costs_source: docs/backtest/nova-cost-atlas.yaml
+    atlas_version: "1.0.0"   # lock explícito; Beckett falha se atlas mudar versão sem revisão
+    costs_overrides:
+      # opcional — null means use atlas default
+      brokerage_per_contract_one_way_brl: null
+      exchange_fees_per_contract_one_way_brl: null
+      tax_treatment: "post_hoc_on_monthly_net_gain"
+
+  BacktestCosts no exec_backtest.py deve ler deste YAML, não hardcode.
+
+# =============================================================================
+# TO-VERIFY REGISTRY (Sable audit watchlist)
+# =============================================================================
+to_verify:
+  - field: "costs.exchange_fees.breakdown.liquidacao_brl"
+    value: 0.00
+    tag: "[TO-VERIFY 2026-04-22 — pendente]"
+    reason: "Tarifário B3 lista liquidação US$0.12 para futuros dólar mas não detalha componente BRL por contrato mini day-trade; fontes retail consolidam em 'emolumentos+registro' sem liquidação separada. Se B3 publicar breakdown detalhado, refinar aqui."
+    action: "Sable audit: tentar extrair do PDF Tarifacao_V1_PT ou contato help-desk B3."
+
+# =============================================================================
+# CHANGELOG
+# =============================================================================
+changelog:
+  - version: "1.0.0"
+    date_brt: "2026-04-22"
+    author: "Nova (@market-microstructure)"
+    changes:
+      - "Initial atlas — 3 cost sections populated with 5 [WEB-CONFIRMED 2026-04-22] tags"
+      - "9 external sources catalogued (2 B3 official, 3 tax law, 5 retail broker references)"
+      - "1 [TO-VERIFY] open item: liquidacao_brl breakdown for day-trade WDO"
+      - "tax treatment choice (c) post-hoc on monthly net gain, with rationale"

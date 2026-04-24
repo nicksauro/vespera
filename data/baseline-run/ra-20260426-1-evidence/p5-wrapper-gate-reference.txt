@@ -1,0 +1,20 @@
+# P5 — Wrapper --source/--cache-dir/--cache-manifest passthrough Quinn gate reference
+
+precondition_id: P5
+artefact_type: quinn-gate-reference
+gate_path: docs/qa/gates/RA-20260426-1-chain-gate.md
+gate_sha256: 2682bee8c8b0a7e483e3a98e65e83378635636f27cc514dc63b910d8fd8e21c8
+gate_sections_load_bearing: Check 1 (Requirements traceability, P5 row) + Check 5 (Contract consistency) + §P1-P5 Evidence Matrix row P5 + §INFO-04
+gate_verdict_overall: CONCERNS (now resolved via Dex commit 63a9a3a6 — see §CONCERNS-01 resolution)
+gate_verdict_for_p5: GREEN (all 5 new wrapper tests PASS; argparse mutex validated at parse time; forwarding conditional on operator intent per Article IV)
+
+wrapper_commit: 85664f7 (feat(wrapper): passthrough --source/--cache-dir/--cache-manifest (RA-20260426-1 P5))
+wrapper_surface_locations:
+  - scripts/run_materialize_with_ceiling.py L134-194 (flag surface + mutex)
+  - scripts/run_materialize_with_ceiling.py L238-243 (passthrough)
+wrapper_tests: tests/core/test_run_with_ceiling.py L586-681 (45/45 PASS including 3 dedicated mutex tests at L624/L644/L664)
+
+concerns_01_resolution_commit: 63a9a3a (test(build-cache): repoint monkeypatches to _stream_month_to_parquet (CONCERNS-01))
+concerns_01_resolution_verified: tests/unit/test_build_raw_trades_cache.py 11/11 PASS (per Dex post-fix verification)
+
+status: PASS — P5 closed under Quinn gate doc; CONCERNS-01 (blocking DRAFT→ISSUED per gate §Recommendation) cleared.
