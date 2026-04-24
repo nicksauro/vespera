@@ -679,3 +679,171 @@ def test_mutex_source_sentinel_rejects_cache_flags(
     with pytest.raises(SystemExit) as excinfo:
         wrapper.main(args)
     assert excinfo.value.code == 2
+
+
+# --- T002.4 / ADR-4 §14.5.2 B1 — child-side peak telemetry -----------------
+#
+# These tests verify the ADR-4 §14.5.2 B1 telemetry mechanism:
+#   AC-A: child emits TELEMETRY_CHILD_PEAK_EXIT on exit
+#   AC-B: parent wrapper records in CSV + JSON
+#   AC-C: psutil primary path exercised (ctypes fallback path is covered by
+#         hand-crafting a log line so the parser is unit-tested in isolation)
+#   AC-K(iii): missing-telemetry fallback does not crash
+#
+# The tests are scoped to the parsing + summary augmentation surface of
+# ``scripts/run_materialize_with_ceiling.py`` — the child-side emission
+# function is tested in ``tests/unit/test_materialize_child_peak_telemetry.py``.
+
+
+def test_child_peak_telemetry_emitted_on_normal_exit(
+    tmp_path: Path,
+) -> None:
+    """AC-A: the child's ``main()`` emits one TELEMETRY_CHILD_PEAK_EXIT line.
+
+    We invoke ``scripts/materialize_parquet.py`` as a real subprocess with
+    ``--dry-run`` (plan-only, no DB connect) and scan stdout for the
+    structured line. psutil 7.2.2 is the live primary path (AC-C psutil side).
+    """
+    import subprocess as _sp
+
+    scripts_dir = _REPO_ROOT / "scripts"
+    cmd = [
+        sys.executable,
+        str(scripts_dir / "materialize_parquet.py"),
+        "--start-date", "2024-08-01",
+        "--end-date", "2024-08-01",
+        "--ticker", "WDO",
+        "--dry-run",
+        "--no-manifest",
+        "--output-dir", str(tmp_path / "dry_out"),
+    ]
+    completed = _sp.run(cmd, capture_output=True, text=True, timeout=60)
+    # Dry-run returns 0 regardless of DB state.
+    assert completed.returncode == 0, (
+        f"child rc={completed.returncode}\n"
+        f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
+    )
+    # Peak-telemetry line must be on stdout exactly once.
+    peak_lines = [
+        ln for ln in completed.stdout.splitlines()
+        if ln.startswith("TELEMETRY_CHILD_PEAK_EXIT")
+    ]
+    assert len(peak_lines) == 1, (
+        f"expected exactly 1 TELEMETRY_CHILD_PEAK_EXIT line, "
+        f"got {len(peak_lines)}:\n{completed.stdout}"
+    )
+    # Parse and sanity-check the values.
+    wrapper = _load_wrapper()
+    payload = wrapper._parse_child_peak_line(peak_lines[0])
+    assert payload is not None
+    # AC-A: psutil primary path on Windows yields positive peak values.
+    assert payload["peak_commit_bytes_child_self_reported"] > 0
+    assert payload["peak_wset_bytes_child_self_reported"] > 0
+    assert payload["child_pid"] > 0
+    assert "child_peak_error" not in payload
+
+
+def test_wrapper_parses_and_surfaces_child_peak_in_summary(
+    tmp_path: Path,
+) -> None:
+    """AC-B: the parent wrapper parses the child's structured line from the
+    run log and merges the new fields into the summary JSON.
+
+    This isolates the parser + summary-augmentation surface so we can assert
+    the exact JSON layout (AC-I: additive, non-breaking to SUMMARY_JSON_FIELDS).
+    """
+    wrapper = _load_wrapper()
+    # Simulate a child run log — library would write it via subprocess.Popen
+    # redirection, but we only need its tail to contain the peak line.
+    run_id = "ac-b-surface"
+    log_path = tmp_path / f"{run_id}.log"
+    log_path.write_text(
+        "[dry-run] ticker=WDO window=2024-08-01..2024-08-01 months=1\n"
+        "[dry-run]   -> 2024-08 [2024-08-01 .. 2024-08-01] -> ...\n"
+        "TELEMETRY_CHILD_PEAK_EXIT commit=123456789 wset=98765432 "
+        "pid=12345 timestamp_brt=2026-04-24T10:20:30\n",
+        encoding="utf-8",
+    )
+    # Seed a minimal summary JSON matching SUMMARY_JSON_FIELDS so the
+    # augmentation function has something to merge into.
+    summary_path = tmp_path / f"{run_id}-summary.json"
+    base_summary = {k: 0 for k in SUMMARY_JSON_FIELDS}
+    base_summary["run_id"] = run_id
+    base_summary["start_ts"] = "2026-04-24T10:19:00"
+    base_summary["end_ts"] = "2026-04-24T10:20:30"
+    base_summary["ratio_commit_rss"] = None
+    summary_path.write_text(json.dumps(base_summary, indent=2) + "\n", encoding="utf-8")
+
+    peak_payload = wrapper._extract_child_peak_from_log(log_path)
+    assert peak_payload is not None
+    wrapper._augment_summary_with_child_peak(summary_path, peak_payload)
+
+    augmented = json.loads(summary_path.read_text(encoding="utf-8"))
+    # AC-I: existing SUMMARY_JSON_FIELDS keys all still present, untouched.
+    for field in SUMMARY_JSON_FIELDS:
+        assert field in augmented, f"missing summary field after augment: {field}"
+    # AC-B: new fields present with the exact values from the log line.
+    assert augmented["peak_commit_bytes_child_self_reported"] == 123_456_789
+    assert augmented["peak_wset_bytes_child_self_reported"] == 98_765_432
+    assert augmented["child_pid"] == 12345
+    assert augmented["child_peak_timestamp_brt"] == "2026-04-24T10:20:30"
+    assert augmented["child_peak_telemetry_missing"] is False
+
+
+def test_wrapper_handles_missing_child_peak_without_crash(
+    tmp_path: Path,
+) -> None:
+    """AC-K(iii): if the child never emits the structured line (e.g. crashed
+    before the ``finally`` ran), the wrapper MUST NOT crash. It records
+    ``child_peak_telemetry_missing=True`` in the summary JSON so downstream
+    consumers can distinguish "missing" from "zero"."""
+    wrapper = _load_wrapper()
+    run_id = "ac-k-missing"
+    log_path = tmp_path / f"{run_id}.log"
+    # Log contains normal output but NO TELEMETRY_CHILD_PEAK_EXIT line.
+    log_path.write_text(
+        "[materialize] some normal output\n"
+        "[materialize] more normal output\n"
+        "ERROR: simulated crash before finally ran\n",
+        encoding="utf-8",
+    )
+    summary_path = tmp_path / f"{run_id}-summary.json"
+    base_summary = {k: 0 for k in SUMMARY_JSON_FIELDS}
+    base_summary["run_id"] = run_id
+    base_summary["start_ts"] = "2026-04-24T11:00:00"
+    base_summary["end_ts"] = "2026-04-24T11:01:00"
+    base_summary["ratio_commit_rss"] = None
+    summary_path.write_text(json.dumps(base_summary, indent=2) + "\n", encoding="utf-8")
+
+    peak_payload = wrapper._extract_child_peak_from_log(log_path)
+    assert peak_payload is None
+    # Augmentation with None MUST still succeed (AC-K(iii)) and mark missing.
+    wrapper._augment_summary_with_child_peak(summary_path, peak_payload)
+    augmented = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert augmented["child_peak_telemetry_missing"] is True
+    # Must NOT invent peak values (AC-B non-breaking: missing means missing).
+    assert "peak_commit_bytes_child_self_reported" not in augmented
+    assert "peak_wset_bytes_child_self_reported" not in augmented
+
+
+def test_wrapper_parses_degraded_line_with_error_field(
+    tmp_path: Path,
+) -> None:
+    """AC-C (defensive): a ``TELEMETRY_CHILD_PEAK_EXIT`` line carrying an
+    ``error=<reason>`` suffix (psutil+ctypes both failed) is still parsed
+    — the wrapper preserves ``commit=0 wset=0`` plus the error message so
+    Quinn/Riven can audit the collection failure without the run aborting.
+    """
+    wrapper = _load_wrapper()
+    line = (
+        "TELEMETRY_CHILD_PEAK_EXIT commit=0 wset=0 pid=7777 "
+        "timestamp_brt=2026-04-24T12:00:00 "
+        "error=psutil_missing_peak_fields;ctypes_error:OSError:boom"
+    )
+    payload = wrapper._parse_child_peak_line(line)
+    assert payload is not None
+    assert payload["peak_commit_bytes_child_self_reported"] == 0
+    assert payload["peak_wset_bytes_child_self_reported"] == 0
+    assert payload["child_pid"] == 7777
+    assert "child_peak_error" in payload
+    assert "psutil_missing_peak_fields" in payload["child_peak_error"]

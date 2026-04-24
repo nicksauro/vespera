@@ -24,7 +24,9 @@ BASELINE MODE (Gage G09a only):
 from __future__ import annotations
 
 import argparse
+import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -38,6 +40,111 @@ from core.run_with_ceiling import run_with_ceiling  # noqa: E402
 
 MATERIALIZE_PY = _SCRIPTS_DIR / "materialize_parquet.py"
 DEFAULT_LOG_DIR = _REPO_ROOT / "data"
+
+# T002.4 / ADR-4 §14.5.2 B1 — child-side peak telemetry.
+#
+# The child (scripts/materialize_parquet.py) emits exactly one structured
+# line on its stdout at exit, of the form
+#
+#     TELEMETRY_CHILD_PEAK_EXIT commit=<int> wset=<int> pid=<int> \
+#         timestamp_brt=<iso> [error=<reason>]
+#
+# We parse that line from the child's captured run log (run_with_ceiling
+# redirects child stdout/stderr to ``{run_id}.log``). Parsing is done AFTER
+# run_with_ceiling returns — the library stays domain-agnostic (ADR-3), and
+# parent-side polling is untouched (AC-D: no R5 perturbation).
+_CHILD_PEAK_TAG = "TELEMETRY_CHILD_PEAK_EXIT"
+_CHILD_PEAK_LINE_RE = re.compile(
+    r"^" + _CHILD_PEAK_TAG +
+    r"\s+commit=(?P<commit>\d+)"
+    r"\s+wset=(?P<wset>\d+)"
+    r"\s+pid=(?P<pid>\d+)"
+    r"\s+timestamp_brt=(?P<ts>\S+)"
+    r"(?:\s+error=(?P<error>.+?))?\s*$"
+)
+
+
+def _parse_child_peak_line(line: str) -> dict[str, object] | None:
+    """Return a dict with the parsed fields, or ``None`` if the line does not
+    match the ``TELEMETRY_CHILD_PEAK_EXIT`` contract.
+    """
+    match = _CHILD_PEAK_LINE_RE.match(line.strip())
+    if not match:
+        return None
+    payload: dict[str, object] = {
+        "peak_commit_bytes_child_self_reported": int(match.group("commit")),
+        "peak_wset_bytes_child_self_reported": int(match.group("wset")),
+        "child_pid": int(match.group("pid")),
+        "child_peak_timestamp_brt": match.group("ts"),
+    }
+    err = match.group("error")
+    if err:
+        payload["child_peak_error"] = err
+    return payload
+
+
+def _extract_child_peak_from_log(
+    log_path: Path, *, tail_lines: int = 200,
+) -> dict[str, object] | None:
+    """Read the tail of ``log_path`` and return the parsed peak payload.
+
+    Returns ``None`` if the log is absent OR contains no matching line.
+    Scans the last ``tail_lines`` lines (child emits exactly one line at
+    exit — scanning the tail keeps the cost O(tail_lines) even for long
+    production runs).
+    """
+    if not log_path.exists():
+        return None
+    try:
+        with log_path.open("r", encoding="utf-8", errors="replace") as fh:
+            lines = fh.readlines()
+    except OSError:
+        return None
+    # Walk from the end so a multi-emission pathological case (shouldn't
+    # happen — child emits in a finally{} once) still picks the last one.
+    for line in reversed(lines[-tail_lines:]):
+        parsed = _parse_child_peak_line(line)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _augment_summary_with_child_peak(
+    summary_path: Path, peak_payload: dict[str, object] | None,
+) -> None:
+    """Merge ``peak_payload`` into the wrapper's summary JSON file.
+
+    Non-breaking per AC-I: the library's SUMMARY_JSON_FIELDS remain intact;
+    we only add NEW keys. If the summary JSON is missing or unparseable,
+    the function is a no-op (the library already logged the failure via
+    its own atomic-write contract).
+
+    When ``peak_payload`` is None we still record a
+    ``child_peak_telemetry_missing=True`` flag so downstream RA-20260428-1
+    can distinguish "child never emitted" from "child never ran".
+    """
+    if not summary_path.exists():
+        return
+    try:
+        data = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if peak_payload is None:
+        data["child_peak_telemetry_missing"] = True
+    else:
+        data.update(peak_payload)
+        data["child_peak_telemetry_missing"] = False
+    try:
+        # Atomic-ish rewrite: write to .tmp sibling then os.replace, mirroring
+        # core.telemetry_schema.write_summary. We don't reuse that helper
+        # because the augmented dict has EXTRA keys that would fail its
+        # strict SUMMARY_JSON_FIELDS validation.
+        tmp = summary_path.with_suffix(summary_path.suffix + ".tmp")
+        tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        import os as _os
+        _os.replace(tmp, summary_path)
+    except OSError:
+        return
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -260,6 +367,15 @@ def main(argv: list[str] | None = None) -> int:
         force_overwrite=ns.force,
     )
 
+    # T002.4 / ADR-4 §14.5.2 B1 — parse child-side peak telemetry from the
+    # run log and surface it both in the summary JSON (ADR-2 compatible
+    # extension, AC-B + AC-I) and in the halt report below. This is a
+    # post-process step: the library's parent-side polling contract (AC-D)
+    # is unchanged.
+    run_log_path = ns.log_dir / f"{ns.run_id}.log"
+    peak_payload = _extract_child_peak_from_log(run_log_path)
+    _augment_summary_with_child_peak(result.summary_json_path, peak_payload)
+
     # Print RunResult summary
     print()
     print("=== RunResult ===")
@@ -273,6 +389,30 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  peak_commit/ceiling: {frac:.3f}")
     print(f"  telemetry_csv     : {result.telemetry_csv_path}")
     print(f"  summary_json      : {result.summary_json_path}")
+
+    # T002.4 halt-report extension: surface child-side self-reported peaks.
+    if peak_payload is None:
+        print(
+            "  child_self_peak   : MISSING (TELEMETRY_CHILD_PEAK_EXIT line not "
+            "found in run log; RA-20260428-1 step-7 derivation must fall back "
+            "to parent-polled peak_commit with Nyquist caveat)."
+        )
+    else:
+        # Narrow from `object` (dict[str, object] is the declared payload type
+        # to keep the error-suffix path typeable) to `int` for human formatting.
+        ccp = int(peak_payload["peak_commit_bytes_child_self_reported"])  # type: ignore[call-overload]
+        cwp = int(peak_payload["peak_wset_bytes_child_self_reported"])  # type: ignore[call-overload]
+        err = peak_payload.get("child_peak_error")
+        if err:
+            print(
+                f"  child_self_peak   : DEGRADED commit={ccp} wset={cwp} "
+                f"(error={err})"
+            )
+        else:
+            print(
+                f"  child_self_peak   : commit={ccp} bytes ({_human_gib(ccp)}) "
+                f"wset={cwp} bytes ({_human_gib(cwp)})"
+            )
 
     return result.exit_code
 
