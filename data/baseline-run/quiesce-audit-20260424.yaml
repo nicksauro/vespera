@@ -1,0 +1,49 @@
+amendment_ref: RA-20260424-1
+run_id: baseline-aug-2024
+timestamps_brt:
+  quiesce_start: "2026-04-23T19:20:59.957817-03:00"
+  quiesce_mid: "2026-04-23T19:21:45.000000-03:00"  # post sleep 30s after docker stop + wsl shutdown
+  launch_start: null  # Phase 3 skipped — threshold not met
+  child_exit: null
+  restore_start: "2026-04-23T19:21:56.966678-03:00"
+  restore_complete: "2026-04-23T19:23:50.825584-03:00"
+services_stopped:
+  - sentinel-timescaledb
+  - vmmem  # via wsl --shutdown
+snapshots:
+  pre: data/baseline-run/quiesce-pre.json
+  mid: data/baseline-run/quiesce-mid.json
+  post: data/baseline-run/quiesce-post.json
+memory_thresholds:
+  mid_available_bytes: 9473794048  # 8.82 GiB
+  required_threshold_bytes: 15428752589  # 14.37 GiB
+  threshold_pass: false
+  shortfall_bytes: 5954958541  # 5.55 GiB short
+child:
+  pid: null  # never launched
+  exit_code: null
+  peak_commit: null
+  peak_rss: null
+  ratio_commit_rss: null
+  delta_pagefile: null
+  duration_s: null
+scratch_parquet:
+  path: null
+  sha256: null
+  canonical_match: null
+canonical_preserved:
+  manifest_sha_match: true
+  manifest_sha_observed: "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641"
+  aug_2024_parquet_sha_match: true
+  aug_2024_parquet_sha_observed: "bf7d42f5122710571c7c7e8050dfde6482874dfb31734b05d54c79ba0bb83ce0"
+sentinel_restore:
+  health_status: ready  # pg_isready returned "accepting connections" on iter 1
+  poll_iterations: 1
+  note: "Container has no Docker HEALTHCHECK configured (.State.Health=null). Used pg_isready as readiness probe per postgres-standard practice."
+outcome: QUIESCE_THRESHOLD_FAIL
+outcome_detail: |
+  Phase 2f gate failed: available memory post-quiesce was 9.47 GiB vs required 14.37 GiB threshold.
+  Shortfall of 5.55 GiB despite stopping sentinel-timescaledb and wsl --shutdown.
+  Phase 3 (launch) deterministically skipped per spec; Phase 5 (restore) executed unconditionally and passed.
+  Canonical artifacts (manifest + Aug-2024 parquet) remain byte-identical to pre-quiesce state.
+  No child process was ever spawned; no metrics to report for CEILING_BYTES calculation.
