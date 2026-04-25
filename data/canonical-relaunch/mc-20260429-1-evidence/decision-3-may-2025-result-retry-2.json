@@ -1,0 +1,120 @@
+{
+  "decision": "3 (Mai-2025 production invocation) — RETRY #2 under MC-20260429-1",
+  "retry_attempt_number": 2,
+  "retry_budget_remaining_post_this_attempt": "AMBIGUOUS — pending Riven custodial ruling on cosign-guard disposition class (see disposition_question below)",
+  "ruling_authorization": "docs/governance/mc-20260429-1-r4-halt-ruling.md (Riven custodial Ruling B — MC PRESERVED governs R4-class aborts; cosign-guard disposition NOT covered, see §3.3 exit-code taxonomy)",
+  "executed_at_utc": "2026-04-25T13:56:43Z",
+  "halted_at_utc": "2026-04-25T13:57:19Z",
+  "executed_by": "gage (@devops)",
+  "preflight_q1_top3_pid_status": {
+    "verdict": "PASS — top consumers were burst-killed by Orion at handoff time (OneDrive, SearchApp, NVIDIA Share, msrdc); +586 MiB margin pre-handoff."
+  },
+  "preflight_q2_psutil_probe": {
+    "available_bytes": 10191298560,
+    "available_gib": 9.49,
+    "required_bytes": 9473794048,
+    "required_gib": 8.82,
+    "margin_mib": 684.0,
+    "pass": true,
+    "verdict": "PASS — host quiesce held; even improved by ~98 MiB vs handoff snapshot."
+  },
+  "preflight_q3_manifest_invariant": {
+    "expected_sha256": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641",
+    "observed_sha256": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641",
+    "memory_budget_py_expected_sha256": "1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d",
+    "memory_budget_py_observed_sha256": "1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d",
+    "match": true,
+    "verdict": "PASS — both invariants byte-identical; no R15 breach."
+  },
+  "preflight_q4_sentinel_health": {
+    "container": "sentinel-timescaledb",
+    "running_status": "running",
+    "restart_count": 0,
+    "smoke_select_1": "PASS",
+    "verdict": "PASS — container UP, query plane responsive."
+  },
+  "preflight_q5_pre_may_manifest_snapshot": {
+    "executed": true,
+    "snapshot_path": "data/canonical-relaunch/mc-20260429-1-evidence/q5-pre-may-manifest-snapshot.txt",
+    "manifest_sha256_pre": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641",
+    "manifest_row_count_pre": 17,
+    "snapshot_timestamp_utc": "2026-04-25T13:56:43Z"
+  },
+  "command_planned": ".venv/Scripts/python scripts/run_materialize_with_ceiling.py --run-id may-2025 --start-date 2025-05-01 --end-date 2025-05-31 --ticker WDO --source sentinel --poll-seconds 30",
+  "command_invoked": true,
+  "wrapper_python_exit_code": 11,
+  "run_result_exit_code": 11,
+  "duration_seconds": 30,
+  "halt_stage": "CHILD-SIDE FAIL-CLOSED GUARD — _guard_canonical_write at materialize_parquet.py startup",
+  "halt_reason": "Child process invoked materialize_parquet.py which immediately ran the canonical-write guard (per docs/architecture/manifest-write-flag-spec.md §4 / T002.0a AC-5). The guard requires VESPERA_MANIFEST_COSIGN env var matching ^MC-\\d{8}-\\d+$ AND VESPERA_MANIFEST_EXPECTED_SHA256 (64-hex or CREATE) before any canonical manifest mutation. Neither env var was set in the wrapper invocation. Guard raised RuntimeError with message 'Refusing to write to canonical data/manifest.csv without VESPERA_MANIFEST_COSIGN=MC-YYYYMMDD-N'. Child exited 11 BEFORE any data load, parquet write, or manifest append occurred.",
+  "child_spawned": true,
+  "child_pid": 12028,
+  "child_self_peak": {
+    "commit_bytes": 15818752,
+    "commit_gib": 0.015,
+    "wset_bytes": 23191552,
+    "wset_gib": 0.022,
+    "telemetry_emit_line": "TELEMETRY_CHILD_PEAK_EXIT commit=15818752 wset=23191552 pid=12028 timestamp_brt=2026-04-25T10:56:49"
+  },
+  "wrapper_observed": {
+    "peak_commit_bytes": 405504,
+    "peak_rss_bytes": 1650688,
+    "tick_count": 1,
+    "duration_s": 30.6,
+    "ratio_commit_ceiling": 0.001,
+    "ceiling_gib": 0.574,
+    "interpretation": "Child exited so quickly that wrapper observed only the bare process startup commit (405504 bytes), well below the child's self-reported peak (15.8 MB). This is consistent with a pre-data-load fail-closed exit."
+  },
+  "outputs": {
+    "parquet_path_planned": "data/in_sample/year=2025/month=05/wdo-2025-05.parquet",
+    "parquet_created": false,
+    "parquet_dir_exists": false,
+    "parquet_sha256": null,
+    "row_count": null,
+    "manifest_post_sha256": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641",
+    "manifest_post_row_count": 17,
+    "manifest_drift": false,
+    "telemetry_csv": "data/may-2025-telemetry.csv",
+    "telemetry_csv_sha256": "c37922867d748a8949de6a1d83a9959f1e97bac43cfa1818243a997a0461331b",
+    "summary_json": "data/may-2025-summary.json",
+    "summary_json_sha256": "e1a7ebdfafe85c9ef3dad0f685c9f355cc10e759d41548bf9fe38bc3982d59fb",
+    "log_path": "data/may-2025.log",
+    "log_sha256": "1c0d7d2211a0b3fe0b8f82f98b8d58191dbf901af2951901c881ca299ef1f4c6"
+  },
+  "side_effects_assessment": "ZERO data-plane side-effects. Wrapper-side artifacts (telemetry CSV, summary JSON, run log) created — these document the failed invocation but do NOT mutate canonical data. Manifest sha256 byte-identical pre/post. memory_budget.py byte-identical. No parquet directory created for May 2025. State materially equivalent to retry-1 ABORT (manifest preserved), with the addition of failed-invocation evidence files.",
+  "memory_state_at_halt": {
+    "available_bytes": 10250391552,
+    "available_gib": 9.546,
+    "delta_vs_pre_invocation_gib": "+0.06 GiB (margin held throughout 30s child lifetime)"
+  },
+  "decision_6_executed": false,
+  "decision_6_status": "NOT_REACHED — child failure prevented validation step.",
+  "decision_4_executed": false,
+  "decision_4_status": "BLOCKED — contingent on Decision 3 SUCCESS.",
+  "rollback_required": false,
+  "rollback_executed": "NOT_APPLICABLE — zero data-plane side-effects to roll back.",
+
+  "disposition_question": {
+    "question": "Does this child exit 11 from a pre-data-load fail-closed guard (cosign env var missing) consume MC-20260429-1 retry budget, OR is it a pre-Decision-3 gate analogous to R4 / Decision 1 (MC PRESERVED)?",
+    "literal_reading_args": [
+      "Riven ruling §5.1: 'On retry exit ≥ 10 (child failure): MC-29-1 CONSUMED per literal Decision 3 fail criterion.' Exit 11 ≥ 10.",
+      "Ruling §3.3 exit-code taxonomy explicitly classifies '≥ 10 (child code)' as 'Decision attempted, failed during execution — disposition' (consumes), distinct from exit 1 (gate)."
+    ],
+    "intent_aligned_args": [
+      "The cosign guard is a child-side fail-closed PRE-WRITE gate at script startup, structurally analogous to R4/Decision-1 pre-invocation gates: it fires BEFORE any data work and BEFORE any canonical mutation could occur.",
+      "Zero data-plane side-effects: parquet not created, manifest byte-identical, no rows appended, no Decision-3 work product attempted.",
+      "Ruling §3.2 reasoning: 'The list of trip conditions ... was implicitly scoped to dispositions that occur AS A RESULT OF Decision 3 executing.' The cosign guard fired before Decision-3-class work began, just like R4.",
+      "Ruling §3.5 structural argument: 'If R4 firing consumed the MC, R4 would be a worse outcome than no R4 at all.' Same logic applies to the cosign guard — it fired correctly to prevent unsigned canonical mutation, exactly as designed; consuming MC for that would invert the gate's value-add.",
+      "Article IV (No Invention): the cosign guard is documented in docs/architecture/manifest-write-flag-spec.md as a fail-closed gate (§4 'guard_canonical_write'); its semantic is gate, not disposition."
+    ],
+    "operator_observation": "The handoff brief did NOT instruct setting VESPERA_MANIFEST_COSIGN or VESPERA_MANIFEST_EXPECTED_SHA256. This is either (a) an operator-error class (Gage should have known to set these — but the brief is silent on them) OR (b) a wrapper-design class (the wrapper could/should propagate the run's MC ID into the env automatically when invoked under MC authority). A separate question for Riven/Aria.",
+    "ruling_required_from": "Riven (@risk-manager, R10 custodial)",
+    "interim_position": "MC consumption status PENDING. Retry budget remaining is EITHER 2 (if Riven rules pre-write-guard = gate, MC PRESERVED) OR 1 (if Riven rules literal exit-≥10 = disposition, MC CONSUMED-ONE-SLOT — but note: 'consume MC irrevocably for Jun-2025 as well (no partial continuation)' L2498 implies a single retry consumes BOTH Decision 3 AND Decision 4 slots, not partial). Gage will not retry until ruling issued."
+  },
+
+  "verdict": "HALT-REPORT — child exit 11 from cosign-guard pre-write fail-closed; MC consumption disposition AMBIGUOUS pending Riven custodial ruling. Reporting to Orion (aiox-master) for escalation.",
+  "mc_consumption_assessment": "PENDING — see disposition_question above. Will be set to PRESERVED or CONSUMED-1-SLOT or CONSUMED-IRREVOCABLY based on Riven ruling.",
+  "retry_budget_status": "PAUSED pending ruling. If gate-class: 2 remaining. If disposition-class: per L2498 'no partial continuation' language, MC fully consumed (Decisions 3+4 both lost) — would require new MC.",
+  "next_step_for_orion": "Escalate to Riven (@risk-manager) with this evidence file. Request custodial ruling on whether child exit 11 from _guard_canonical_write (pre-data-load, pre-mutation, zero side-effects) is governed by ruling §3.3 exit-code disposition rule (CONSUMES) or by §3.2 'as a result of Decision 3 executing' scope rule (PRESERVED). Separately, Orion should clarify with Riven/Aria whether the wrapper is expected to auto-propagate VESPERA_MANIFEST_COSIGN under MC authority (handoff brief omitted this env var).",
+  "next_step_for_gage": "STAND BY. Will not retry under MC-29-1 until Riven ruling issued. If Riven rules PRESERVED: retry 3 with cosign env vars exported (VESPERA_MANIFEST_COSIGN=MC-20260429-1, VESPERA_MANIFEST_EXPECTED_SHA256=75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641). If Riven rules CONSUMED: a new MC-YYYYMMDD-N is required; this MC closes."
+}

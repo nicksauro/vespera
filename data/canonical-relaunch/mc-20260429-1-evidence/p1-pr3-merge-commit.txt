@@ -1,0 +1,50 @@
+MC-20260429-1 P1 Evidence — PR #3 Merge
+
+merge_method: squash
+merged_at_utc: 2026-04-24T22:41:13Z
+merged_by: gage (@devops, R12 devops monopoly)
+pr_url: https://github.com/nicksauro/vespera/pull/3
+pr_head_pre_merge: ee786f80e66058d55b29acef267ada2dcdd021ee
+main_head_pre_merge: e94239ac8377cb7c5f8d31aa76a2c124fddabb75
+main_head_post_merge: b97ac0370302755b204bc7b3e3cd8509e771c33a
+
+Quinn pre-merge gate ref: docs/qa/gates/R15-PR3-pre-merge-gate.md sha 7d0c3ac7eb152e9afa79d40fdc1491b6afef183af573af717066fd4a7220c3b3
+
+Post-merge invariants:
+- core/memory_budget.py sha256: 1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d (matches expected — byte-identical to r15/canonical-hardening, R1-1 preserved)
+- data/manifest.csv sha256: 75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641 (matches expected — byte-identical to r15/canonical-hardening, R15 preserved)
+- CEILING_BYTES on main: 615_861_044 (line: "CEILING_BYTES: int | None = 615_861_044")
+- data/manifest.csv tracked on main: 100644 blob 91142c4c709a20457d39ee86e0b6b125910d9875	data/manifest.csv (non-empty, tracked)
+
+3 deterministic checks (MC-29-1 L2482):
+1. git log origin/main --oneline -5:
+   b97ac03 chore(governance): R15 canonical invariant hardening [RA-28-1 Decision 7] (#3)
+   e94239a chore(T002.4): mark story Done post-merge [Story T002.4]
+   5a52ddd Merge pull request #2 from nicksauro/t002-refactor-next-run
+   68627a8 docs(T002.4): disclose bundled ADR-4 §10.3 + MWF-20260422-1 scope in commit 80805ac5 (FINDING-01 remediation)
+   80805ac feat(T002.4): child-side peak telemetry for CEILING_BYTES derivation [Story T002.4]
+   → HEAD references PR #3 and R15 ✓
+
+2. git cat-file -p origin/main:core/memory_budget.py | grep CEILING_BYTES:
+   CEILING_BYTES populated at step 7 of remediation plan (RA-20260428-1 Decision 3
+   # CEILING_BYTES — step-7 populated per RA-20260428-1 Decision 3 SUCCESS at 2026-04-24T18:45:45 BRT.
+   # Formula (ADR-1 v3 §Next-steps step 5): CEILING_BYTES = min(ceil(peak_pagefile_aug2024 × 1.3), CAP_ABSOLUTE).
+   CEILING_BYTES: int | None = 615_861_044
+           f"CEILING_BYTES is invalid on this host. "
+   → CEILING_BYTES = 615_861_044 confirmed ✓
+
+3. git ls-tree origin/main -- data/manifest.csv:
+   100644 blob 91142c4c709a20457d39ee86e0b6b125910d9875	data/manifest.csv
+   → non-empty, tracked ✓
+
+Merge convention rationale:
+- No .github/CODEOWNERS or PR templates found.
+- Repo history mixed (PR #1 squash, PR #2 merge commit). Per Orion default guidance, used --squash.
+- Branch r15/canonical-hardening preserved (--delete-branch=false) for audit trail.
+- Squash commit subject: "chore(governance): R15 canonical invariant hardening [RA-28-1 Decision 7] (#3)" — references PR #3 and R15.
+- No CI checks were configured/reported; mergeable=MERGEABLE, mergeStateStatus=CLEAN pre-merge.
+- Merge executed without --auto and without --no-verify.
+
+Verdict: PASS — R15 hardening landed on main; canonical invariants preserved byte-identical (both files match expected sha256 to the bit); MC-29-1 P1 workstream complete.
+
+Next step: Quinn audits this evidence (post-merge gate is informational; the pre-merge gate already PASS). Then Orion flips MC-29-1 Stage-2 ISSUED upon P1+P3 evidence both landed (#143).

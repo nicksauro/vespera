@@ -1,0 +1,145 @@
+{
+  "decision": "3 (Mai-2025 production invocation) — RETRY #3 under MC-20260429-1 — SUCCESS",
+  "retry_attempt_number": 3,
+  "retry_slot_consumed": "#4 of 5 (one-time-extended Decision-3 ceiling per Riven Ruling B-extended-2)",
+  "retry_budget_remaining_post_this_attempt": 1,
+  "ruling_authorization": "docs/governance/mc-20260429-1-r4-halt-ruling-extension-retry2.md (Riven custodial Ruling B-extended-2 — MC PRESERVED, Q6 cosign env vars added as binding precondition)",
+  "executed_at_utc": "2026-04-25T14:16:38Z",
+  "completed_at_utc": "2026-04-25T14:20:39Z",
+  "executed_by": "gage (@devops)",
+  "preflight_q1_top3_pid_status": {
+    "verdict": "PASS — informational baseline 215 processes; host quiesced state held from retry-2; no top-3 kill needed."
+  },
+  "preflight_q2_psutil_probe": {
+    "available_bytes_initial": 9663815680,
+    "available_gib_initial": 9.0,
+    "available_bytes_recheck": 9672515584,
+    "available_gib_recheck": 9.01,
+    "required_bytes": 9473794048,
+    "required_gib": 8.82,
+    "margin_mib_initial": 181.0,
+    "margin_mib_recheck": 190.0,
+    "pass": true,
+    "verdict": "PASS — margin TIGHT (+181 to +190 MiB) but above floor; trend stable and slightly improving across pre-flight."
+  },
+  "preflight_q3_manifest_invariant": {
+    "expected_manifest_sha256": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641",
+    "observed_manifest_sha256": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641",
+    "expected_memory_budget_py_sha256": "1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d",
+    "observed_memory_budget_py_sha256": "1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d",
+    "match": true,
+    "verdict": "PASS — both invariants byte-identical pre-invocation; no R15 breach."
+  },
+  "preflight_q4_sentinel_health": {
+    "container": "sentinel-timescaledb",
+    "running_status": "running",
+    "restart_count": 0,
+    "smoke_select_1": "PASS",
+    "verdict": "PASS — container UP, query plane responsive."
+  },
+  "preflight_q5_pre_may_manifest_snapshot": {
+    "executed": true,
+    "snapshot_path": "data/canonical-relaunch/mc-20260429-1-evidence/q5-pre-may-manifest-snapshot-retry-3.txt",
+    "manifest_sha256_pre": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641",
+    "manifest_row_count_pre": 17,
+    "snapshot_timestamp_utc": "2026-04-25T14:16:27Z"
+  },
+  "preflight_q6_cosign_env_vars": {
+    "vespera_manifest_cosign": "MC-20260429-1",
+    "vespera_manifest_expected_sha256": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641",
+    "exported_in_invocation_shell": true,
+    "verified_via_echo_pre_invoke": true,
+    "verdict": "PASS — Q6 binding precondition per Riven Ruling B-extended-2 §5.1 satisfied."
+  },
+  "command_invoked": ".venv/Scripts/python scripts/run_materialize_with_ceiling.py --run-id may-2025 --start-date 2025-05-01 --end-date 2025-05-31 --ticker WDO --source sentinel --poll-seconds 30 --force",
+  "wrapper_python_exit_code": 0,
+  "run_result_exit_code": 0,
+  "duration_seconds": 241,
+  "duration_seconds_summary_json": 240.6,
+  "cosign_banner_present_in_log": true,
+  "cosign_banner_line": "[manifest-mode] CANONICAL path=C:\\Users\\Pichau\\Desktop\\Algotrader\\data\\manifest.csv cosign=MC-20260429-1",
+  "cosign_banner_implication": "Post-banner exit 0 = SUCCESS in-Decision (per Riven §3.3 / Ruling B-extended-2 §5.1: post-banner exit ≥ 10 would have CONSUMED MC; exit 0 is clean Decision-3 success).",
+  "child_pid": 10392,
+  "child_self_peak": {
+    "commit_bytes": 13312385024,
+    "commit_gib": 12.398,
+    "wset_bytes": 12444581888,
+    "wset_gib": 11.590,
+    "telemetry_emit_line": "TELEMETRY_CHILD_PEAK_EXIT commit=13312385024 wset=12444581888 pid=10392 timestamp_brt=2026-04-25T11:20:36",
+    "child_peak_telemetry_missing": false
+  },
+  "wrapper_observed": {
+    "peak_commit_bytes": 815104,
+    "peak_rss_bytes": 3424256,
+    "tick_count": 8,
+    "duration_s": 240.6,
+    "ratio_commit_ceiling": 0.001,
+    "ceiling_gib": 0.574,
+    "interpretation": "Wrapper-side polling sees only its own process (the ceiling pass-through harness). Child telemetry is the authoritative R5 signal per ADR-4 §14.5.2 B1."
+  },
+  "r5_ceiling_check": {
+    "child_peak_commit_bytes": 13312385024,
+    "child_peak_commit_gib": 12.398,
+    "ceiling_default_gib": 12.5,
+    "ceiling_default_bytes": 13421772800,
+    "margin_under_ceiling_mib": 104.3,
+    "breached": false,
+    "verdict": "PASS — under ceiling but margin TIGHT (+104 MiB / 0.102 GiB). Note: child peak exceeded the wrapper-pass-through ceiling of 0.574 GiB (which is for wrapper itself, not the child) — this is expected. Authoritative R5 is the child self-reported peak vs the 12.5 GiB default ceiling per ADR-4 §14.5.2 B1."
+  },
+  "outputs": {
+    "parquet_path": "data/in_sample/year=2025/month=05/wdo-2025-05.parquet",
+    "parquet_created": true,
+    "parquet_sha256": "561f443c16f36d6d07c01868a3343caa1cd4363d1e1c6b41a9dc909256427875",
+    "parquet_size_bytes": 85966741,
+    "parquet_size_mib": 81.98,
+    "row_count": 17249667,
+    "parquet_columns": ["timestamp", "ticker", "price", "qty", "aggressor", "buy_agent", "sell_agent", "year", "month"],
+    "manifest_pre_sha256": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641",
+    "manifest_pre_row_count": 17,
+    "manifest_post_sha256": "b1f4c34c5aeb3ccca851a7725ae1c91d35dee98790c51959dc9e2ee369bc86d4",
+    "manifest_post_row_count": 18,
+    "manifest_drift": "AUTHORIZED — row 18 appended for May 2025 parquet under MC-20260429-1 cosign authority",
+    "manifest_row_18": "data/in_sample/year=2025/month=05/wdo-2025-05.parquet,17249667,561f443c16f36d6d07c01868a3343caa1cd4363d1e1c6b41a9dc909256427875,2025-05-02T09:00:53.407000,2025-05-30T18:29:59.617000,WDO,in_sample,2026-04-25T11:16:39",
+    "telemetry_csv": "data/may-2025-telemetry.csv",
+    "summary_json": "data/may-2025-summary.json",
+    "log_path": "data/may-2025.log"
+  },
+  "decision_6_executed": true,
+  "decision_6_verdict": "PASS — exit 0; cosign banner present; parquet exists with 17,249,667 rows; child telemetry emitted (TELEMETRY_CHILD_PEAK_EXIT line 6 of log); child peak under R5 ceiling (12.398 GiB < 12.5 GiB).",
+  "decision_4_executed": true,
+  "decision_4_verdict": "PASS — Custodial commit recorded in this evidence file + memory-budget.md §R10 Custodial — MC-20260429-1 — ISSUED STAGE 2 block updated.",
+  "decision_4_artifacts": {
+    "new_canonical_manifest_sha256": "b1f4c34c5aeb3ccca851a7725ae1c91d35dee98790c51959dc9e2ee369bc86d4",
+    "parquet_sha256": "561f443c16f36d6d07c01868a3343caa1cd4363d1e1c6b41a9dc909256427875",
+    "row_count": 17249667,
+    "peak_pagefile_bytes_authoritative": 13312385024,
+    "peak_pagefile_gib_authoritative": 12.398,
+    "authoritative_source": "child self-reported telemetry per ADR-4 §14.5.2 B1"
+  },
+  "post_commit_invariant_check": {
+    "memory_budget_py_sha256_post_d4": "1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d",
+    "memory_budget_py_unchanged": true,
+    "manifest_sha256_post_d4": "b1f4c34c5aeb3ccca851a7725ae1c91d35dee98790c51959dc9e2ee369bc86d4",
+    "manifest_drift_authorized": true,
+    "verdict": "PASS — D6-post invariant re-check confirms memory_budget.py unchanged (still 1d6ed8...87d). Manifest changed as authorized by cosign-guarded D4 commit."
+  },
+  "consumption_clock_state_post": "STARTED-CONSUMED-DECISION-3 — Decision 3 SUCCESS recorded; Decision 4 (Jun-2025) remains the next ONE-SHOT slot under same MC-29-1; consumption clock continues until Decision 8 SUCCESS or in-Decision HALT.",
+  "mc_consumption_assessment": "DECISION-3-CONSUMED-WITH-SUCCESS — MC-29-1 ONE-SHOT Decision 3 slot used productively (parquet + manifest row 17 committed). Decision 4 slot remains. Per Riven Ruling B-extended-2 §5.1: on retry-3 SUCCESS clock advances to Decision 4 normally with Q6 cosign env vars persistent (or re-exported per future invocation).",
+  "retry_budget_status_post": {
+    "decision_3_pre_decision_gate_slots_used": 4,
+    "decision_3_pre_decision_gate_ceiling_extended": 5,
+    "decision_3_pre_decision_gate_slots_remaining": 1,
+    "decision_4_r4_class_slots_used": 0,
+    "decision_4_r4_class_slots_remaining": 3,
+    "note": "Slots used on Decision 3: attempt-1 (R4), retry-1 (R4), retry-2 (cosign-guard), retry-3 (this SUCCESS — counts toward 5-extended ceiling per parent §5.1 accountability principle)."
+  },
+  "verdict": "SUCCESS — Decision 3 (Mai-2025 production invocation) executed cleanly under MC-20260429-1 retry-3 with all Q1-Q6 preconditions satisfied. Cosign-banner present, exit 0, parquet 17.25M rows committed, manifest row 18 appended (sha b1f4c3...86d4). R5 ceiling not breached. Memory_budget.py invariant preserved post-D4. Next: Decision 4 (Jun-2025) per Decision Matrix.",
+  "next_step": "Orion redispatches Gage for Decision 4 (Jun-2025) when scheduling permits. Q6 cosign env vars must be re-exported (or persisted in same shell) per Riven Ruling B-extended-2 §5.1 final paragraph. Sable G10 post-relaunch rehash (#81) is now unblocked.",
+  "evidence_paths": {
+    "this_file": "data/canonical-relaunch/mc-20260429-1-evidence/decision-3-may-2025-result-success.json",
+    "q5_snapshot": "data/canonical-relaunch/mc-20260429-1-evidence/q5-pre-may-manifest-snapshot-retry-3.txt",
+    "ruling_parent": "docs/governance/mc-20260429-1-r4-halt-ruling.md",
+    "ruling_extension": "docs/governance/mc-20260429-1-r4-halt-ruling-extension-retry2.md",
+    "checkpoint": "data/canonical-relaunch/mc-20260429-1-evidence/CHECKPOINT-RESUME-HERE.md"
+  }
+}

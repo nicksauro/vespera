@@ -1,0 +1,51 @@
+{
+  "decision": "3 (Mai-2025 production invocation)",
+  "executed_at_utc": "2026-04-24T22:46:49Z",
+  "halted_at_utc": "2026-04-24T22:47:14Z",
+  "executed_by": "gage (@devops)",
+  "command": ".venv/Scripts/python scripts/run_materialize_with_ceiling.py --run-id may-2025 --start-date 2025-05-01 --end-date 2025-05-31 --ticker WDO --source sentinel --poll-seconds 30",
+  "wrapper_python_exit_code": 0,
+  "run_result_exit_code": 1,
+  "duration_seconds": 0.276,
+  "halt_stage": "PRE-INVOCATION (R4 launch-time RAM availability gate)",
+  "halt_reason": "psutil.virtual_memory().available = 7150895104 bytes (6.66 GiB), required (CAP_ABSOLUTE + OS_HEADROOM) = 9473794048 bytes (8.82 GiB), shortfall = 2322898944 bytes (2.16 GiB). R4 gate refused launch per ADR-1 v3 Riven Co-sign v3 R4/E6.",
+  "child_spawned": false,
+  "child_self_peak": null,
+  "wrapper_peak_observed": {
+    "commit_bytes": 0,
+    "rss_bytes": 0,
+    "tick_count": 0
+  },
+  "ceiling_bytes_loaded": "NOT_REACHED (wrapper aborted before instantiating budget)",
+  "kill_tripped": false,
+  "outputs": {
+    "parquet_path": "data/in_sample/year=2025/month=05/wdo-2025-05.parquet",
+    "parquet_created": false,
+    "parquet_sha256": null,
+    "parquet_rows": null,
+    "manifest_post_sha256": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641 (UNCHANGED)",
+    "manifest_row_count_post": 17,
+    "telemetry_csv": "NOT_CREATED (wrapper aborted before child launch)",
+    "summary_json": "NOT_CREATED (wrapper aborted before child launch)",
+    "log_path": "NOT_CREATED"
+  },
+  "side_effects": "NONE — manifest sha256 byte-identical to pre-Mai snapshot, no parquet in data/in_sample/year=2025/month=05/, no telemetry/log/summary files created.",
+  "memory_state_at_halt": {
+    "available_bytes": 7153455104,
+    "available_gib": 6.662,
+    "total_gib": 15.966,
+    "percent_used": 58.3,
+    "top_consumers_per_wrapper_log": [
+      {"process": "chrome.exe", "pid": 5440, "wset_mb": 263.3},
+      {"process": "msedgewebview2.exe", "pid": 13448, "wset_mb": 193.7},
+      {"process": "chrome.exe", "pid": 14372, "wset_mb": 118.9}
+    ]
+  },
+  "verdict": "HALT — Decision 3 NOT EXECUTED (pre-invocation gate failure)",
+  "mc_consumption_assessment": "AMBIGUOUS — strict interpretation of MC-20260429-1 ONE-SHOT clock per directive ('qualquer non-SUCCESS disposition CONSOME o MC') suggests CONSUMED. However, R4 gate is a pre-invocation safety check that prevented child spawn entirely (zero side-effects, no materialization attempt, no manifest mutation). Determination escalated to Orion under R12 governance.",
+  "rollback_required": false,
+  "rollback_executed": "NOT_APPLICABLE (no side-effects to roll back)",
+  "decision_4_executed": false,
+  "decision_4_status": "BLOCKED — contingent on Decision 3 SUCCESS + Decision 6 PASS, neither achieved.",
+  "next_step": "Escalate to Orion for MC consumption determination + remediation path: (a) close non-whitelisted RAM consumers per wrapper Top-3 list, then re-invoke under fresh MC; OR (b) lower CAP_ABSOLUTE+OS_HEADROOM requirement; OR (c) accept HALT and re-plan."
+}

@@ -1,0 +1,79 @@
+{
+  "decision": "3 (Mai-2025 production invocation) — RETRY #1 under MC-20260429-1",
+  "retry_attempt_number": 1,
+  "retry_budget_remaining_post_this_attempt": 2,
+  "ruling_authorization": "docs/governance/mc-20260429-1-r4-halt-ruling.md (Riven custodial Ruling B — MC PRESERVED, sha256 d327b54425c6b077e65d333a0a16652a249094e51db731f28883a6d46bd76bb8)",
+  "executed_at_utc": "2026-04-25T13:17:07Z",
+  "halted_at_utc": "2026-04-25T13:17:11Z",
+  "executed_by": "gage (@devops)",
+  "preflight_q1_top3_pid_status": {
+    "pid_5440_chrome": "ENCERRADO (no tasks running)",
+    "pid_13448_msedgewebview2": "STILL RUNNING (185 MB working set) — registered but non-blocking; Q2 is the real gate",
+    "pid_14372_chrome": "ENCERRADO (no tasks running)",
+    "verdict": "PARTIAL — 2 of 3 closed; PID 13448 persists"
+  },
+  "preflight_q2_psutil_probe": {
+    "available_bytes": 7478435840,
+    "available_gib": 6.96,
+    "required_bytes": 9473794048,
+    "required_gib": 8.82,
+    "shortfall_bytes": 1995358208,
+    "shortfall_gib": 1.86,
+    "pass": false,
+    "verdict": "FAIL — gate refuses launch; wrapper NOT invoked per Riven ruling §5.1 (ABORT before child spawn, no MC consumption, report to Orion)"
+  },
+  "preflight_q3_manifest_invariant": {
+    "expected_sha256": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641",
+    "observed_sha256": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641",
+    "match": true,
+    "verdict": "PASS — invariant preserved, no R15 breach"
+  },
+  "preflight_q4_sentinel_health": {
+    "container": "sentinel-timescaledb",
+    "health_status": "no healthcheck configured (template parsing error on .State.Health.Status)",
+    "running_status": "running",
+    "verdict": "PASS — container UP, sem healthcheck native (running fallback satisfaz)"
+  },
+  "preflight_q5_pre_may_manifest_snapshot": {
+    "executed": false,
+    "reason": "Q2 FAIL — aborted before snapshot per ABORT path"
+  },
+  "command_planned": ".venv/Scripts/python scripts/run_materialize_with_ceiling.py --run-id may-2025 --start-date 2025-05-01 --end-date 2025-05-31 --ticker WDO --source sentinel --poll-seconds 30",
+  "command_invoked": false,
+  "wrapper_python_exit_code": null,
+  "run_result_exit_code": null,
+  "duration_seconds": null,
+  "halt_stage": "PRE-FLIGHT Q2 (manual psutil probe) — ABORT BEFORE WRAPPER",
+  "halt_reason": "Manual psutil probe returned available=6.96 GiB, threshold 8.82 GiB. Per Riven ruling §5.1 Q2 ABORT path: 'Se False, registre + ABORT (não invoque wrapper; reporte a Orion para nova rodada de operator quiesce).' Wrapper not invoked, no R4 gate triggered, no MC consumption.",
+  "child_spawned": false,
+  "child_self_peak": null,
+  "outputs": {
+    "parquet_path": "data/in_sample/year=2025/month=05/wdo-2025-05.parquet",
+    "parquet_created": false,
+    "parquet_sha256": null,
+    "manifest_post_sha256": "75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641 (UNCHANGED — wrapper not invoked)",
+    "manifest_row_count_post": 17,
+    "telemetry_csv": "NOT_CREATED",
+    "summary_json": "NOT_CREATED",
+    "log_path": "NOT_CREATED"
+  },
+  "side_effects": "NONE — wrapper not invoked, manifest byte-identical, no files created.",
+  "memory_state_at_halt": {
+    "available_bytes": 7478435840,
+    "available_gib": 6.96,
+    "total_gib": 15.97,
+    "delta_vs_attempt_1_gib": "+0.30 GiB (slight improvement vs attempt #1 6.66 GiB but still 1.86 GiB below threshold)",
+    "persistent_consumers_observed": [
+      {"process": "msedgewebview2.exe", "pid": 13448, "wset_mb": 185.1, "note": "ainda ativo após operator quiesce manual"}
+    ]
+  },
+  "verdict": "ABORT — Decision 3 retry #1 NOT INVOKED (pre-flight Q2 gate failure)",
+  "mc_consumption_assessment": "MC-20260429-1 PRESERVED — wrapper não invocado, R4 gate não disparado, zero side-effects. Per Riven ruling §5.1 Q2 ABORT path explicitly states 'reporte a Orion para nova rodada de operator quiesce' (não consume MC).",
+  "retry_budget_status": "Retries 2 e 3 sob MC-20260429-1 ainda disponíveis após operator quiesce adicional (este ABORT não conta contra budget de retries pois wrapper não foi invocado).",
+  "rollback_required": false,
+  "rollback_executed": "NOT_APPLICABLE",
+  "decision_4_executed": false,
+  "decision_4_status": "BLOCKED — contingent on Decision 3 SUCCESS",
+  "decision_6_executed": false,
+  "next_step": "Reportar a Orion. Necessária nova rodada de operator quiesce (operador deve fechar PID 13448 msedgewebview2 e quaisquer outros consumidores não-essenciais para liberar ~1.86 GiB adicional). Após quiesce, re-execute pre-flight Q1-Q5; se PASS, prossiga retry #2 sob MC-29-1."
+}
