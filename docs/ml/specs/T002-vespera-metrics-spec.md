@@ -412,114 +412,79 @@ Algoritmo CSCV (Combinatorially Symmetric Cross-Validation):
 | Todas variantes idênticas | `PBO = 0.5` por convenção (rank empatado) |
 | Variante com NaN | `raise ValueError` |
 
-### 6.4 Toy benchmark (AC4)
+### 6.4 Convenção de rank (LOCKED — Mira-decision)
 
-**T11 (negative correlation toy — esperado PBO ≈ 1.0):**
-
-Construir matriz 2×4 (2 variantes × 4 folds) onde IS e OOS rank são anti-correlatos. Ajuste: T=4 (variantes), N=4 (folds) para garantir CSCV viável.
+A convenção segue **Bailey, Borwein, Lopez de Prado, Zhu (2014) §3 eq. (6-8)** com a desambiguação operacional usada por `mlfinlab.backtest_statistics.statistics.probability_of_backtest_overfitting`:
 
 ```
-# 4 estratégias × 4 folds; folds 0-1 IS, 2-3 OOS (e permutações)
+rank_n = posição em ordem ASCENDENTE de R_OOS_t*
+         (rank=1 → t* foi o PIOR variante OOS; rank=T → t* foi o MELHOR variante OOS).
+
+w_n    = rank_n / (T + 1)
+λ_n    = log( w_n / (1 - w_n) )
+
+OVERFITTING ⟺  λ_n ≤ 0  ⟺  rank_n ≤ (T+1)/2  ⟺  t* ficou abaixo da mediana OOS.
+```
+
+**Tie-breaking:** `scipy.stats.rankdata(method='min')` — empates recebem o menor rank disponível (decisão conservadora; infla a contagem de overfitting marginalmente; importa ≤ 1% em toy benchmarks). Dex DEVE citar esta decisão no docstring de `pbo.py`.
+
+**Argmax IS tie-breaking:** se duas ou mais variantes empatam em `R_t^IS = mean(...)`, escolhe-se a de **menor índice** (`np.argmax` default — primeiro vencedor wins). Dex DEVE citar no docstring.
+
+### 6.5 Toy benchmark T11 (anti-correlação perfeita IS↔OOS)
+
+```python
+# 4 variantes × 4 folds (T=4, N=4); CSCV particiona N em 2 IS + 2 OOS → S = C(4,2) = 6 partições.
 cv_results_matrix = np.array([
-    [3.0, 3.0, 0.5, 0.5],   # variante 0: alto IS, baixo OOS
-    [2.0, 2.0, 1.0, 1.0],
-    [1.0, 1.0, 2.0, 2.0],
-    [0.5, 0.5, 3.0, 3.0],   # variante 3: baixo IS, alto OOS
-])
-# C(4, 2) = 6 partições IS/OOS
-
-# Para cada partição (J_IS, J_OOS):
-#   - Se J_IS = {0,1}, J_OOS = {2,3}: argmax IS = variante 0; rank OOS de var 0 = 4/4 (pior). λ = log(4/(4+1-4)) = log(4) > 0... espera, redefinindo:
-# Convention: rank 1 = melhor; rank T = pior.
-# variante 0 OOS = 0.5 → rank = 4 (pior); λ = log(rank/(T+1-rank)) = log(4/1) = log(4) > 0 → NÃO overfitting
-# Espera, λ ≤ 0 → overfitting. log(4/1) > 0 → NÃO conta.
-# Reformulando convention BBLZ 2014 (eq. 6, p.10): w_n = rank(R_OOS_t*) / (T+1); λ_n = log(w_n / (1 - w_n)).
-# w_n = 4/(4+1) = 0.8 → λ = log(0.8/0.2) = log(4) ≈ 1.386 > 0 → NÃO overfitting.
-# HMMMM — preciso revisitar. Construção do toy precisa ser ajustada.
-```
-
-> **NOTA Mira (TO-RESOLVE com Beckett antes de Dex implementar):** o toy 2×4 do AC4 da story é ambíguo na construção. A definição BBLZ 2014 de `w_n` retorna logit positivo quando OOS rank > mediana (i.e., variante boa OOS = NÃO overfit). Para forçar PBO ≈ 1.0 preciso de matriz onde **a variante max-IS é sistematicamente min-OOS** — exemplo abaixo:
-
-**T11-corrigido:**
-
-```
-cv_results_matrix = np.array([
-    # 4 variantes × 4 folds. Cada coluna é um fold.
-    # Construído para anti-correlação perfeita IS↔OOS:
-    [4, 4, 1, 1],   # var 0: alto nos folds 0-1, baixo nos folds 2-3
-    [3, 3, 2, 2],
-    [2, 2, 3, 3],
-    [1, 1, 4, 4],   # var 3: baixo nos folds 0-1, alto nos folds 2-3
-])
-
-# Partições C(4,2)=6:
-# IS={0,1}, OOS={2,3}: argmax_IS = var 0 (mean=4); R_OOS = [1,2,3,4]; var 0 rank OOS = 4 (pior) → w=4/5=0.8 → λ=log(0.8/0.2)=log(4)≈1.386
-# WAIT — convenção rank = 1 melhor: rank(var 0 OOS) = 4 (pior, mas rank=4 maior numericamente)
-# λ = log(rank/(T+1-rank)) com rank=4 → log(4/1) = 1.386 → λ > 0 → conta como NÃO overfit.
-# DEFINIÇÃO CORRETA BBLZ 2014: rank=1 melhor; logit usa rank invertido para overfit ser λ<0.
-# Ver eq 7-8 do paper: λ_n = log( rank(t*, OOS) / (T+1-rank(t*, OOS)) ) onde rank=1 é melhor.
-# Então var 0 OOS valor=1 (pior, rank=4 se rank=1 é melhor): rank(t*=var0, OOS) = 4 → λ = log(4/(4+1-4)) = log(4/1) = log(4) > 0 → NÃO overfit
-# CONFUSÃO. Reler BBLZ §3.
-
-# **Mira-rationale**: na convenção BBLZ §3 eq (6): rank é definido com 1 = melhor (top performance),
-# então λ_n = log( rank_n / (N+1-rank_n) ); λ < 0 ⟺ rank > (N+1)/2 ⟺ pior que mediana ⟺ OVERFITTING.
-# Para var 0 OOS valor 1.0 (pior, rank=T=4 = pior dos 4), λ = log(4/(5-4)) = log(4/1) = +1.386 > 0 → NÃO overfit ❌
-
-# Ajuste de convenção: em alguns refs (mlfinlab) λ é logit do PERCENTIL e a direção inverte.
-# **DECISÃO MIRA (locking convention):** seguir mlfinlab implementação:
-#   rank_n = posição em ordem ASCENDENTE de R_OOS (rank=1 = pior, rank=T = melhor).
-#   λ_n = log( rank_n / (T+1-rank_n) ).
-#   λ < 0 ⟺ rank < (T+1)/2 ⟺ pior que mediana ⟺ OVERFITTING.
-# Com essa convenção: var 0 OOS = 1.0 (pior) → rank=1 → λ = log(1/4) = -1.386 → λ < 0 → OVERFIT ✓
-
-# Recomputando T11 com mlfinlab convention:
-# Partições (S = C(4,2) = 6):
-# 1. IS={0,1}, OOS={2,3}: argmax_IS = var 0; rank_OOS(var 0) = 1 → λ < 0 → OVERFIT
-# 2. IS={0,2}, OOS={1,3}: argmax_IS = var 0 (média 2.5? recalcular: var0=[4,1]→2.5, var1=[3,2]→2.5, var2=[2,3]→2.5, var3=[1,4]→2.5 — empate!)
-#    NESSE CASO: empate em IS → escolher por convenção (primeiro em índice = var 0); OOS var0=[4,1]→2.5 = empate → rank=2 ou 3 → λ ≈ 0
-# Toy precisa ser SEM empates para resultado unambiguous.
-```
-
-**T11-FINAL (sem empates, anti-correlação garantida):**
-
-```
-cv_results_matrix = np.array([
-    # 4 variantes × 4 folds.
     [10.0, 9.0, 1.0, 0.5],   # var 0: domina IS folds 0-1, péssimo OOS folds 2-3
     [ 8.0, 7.0, 3.0, 2.0],
     [ 3.0, 2.0, 7.0, 8.0],
     [ 1.0, 0.5, 9.0, 10.0],  # var 3: péssimo IS folds 0-1, domina OOS folds 2-3
 ])
-
-# Para CADA das 6 partições C(4,2):
-# 1. IS=(0,1), OOS=(2,3): argmax_IS_mean = var0(9.5); rank_OOS(var0) = 1 → λ < 0 → OVERFIT (1)
-# 2. IS=(0,2), OOS=(1,3): mean IS por var: [5.5, 5.5, 2.5, 1.0] → argmax = var0 (empate? Então var0 por índice). OOS: var0=(9, 0.5)/2=4.75 vs var1=(7,2)=4.5, var2=(2,8)=5, var3=(0.5,10)=5.25. rank OOS de var0=2 (pior que var1 não, melhor que var1)
-#    Recalcular: ordem asc OOS = [var1=4.5, var0=4.75, var2=5.0, var3=5.25]; rank var0 = 2; λ = log(2/3) ≈ -0.405 → OVERFIT (2)
-# 3. IS=(0,3), OOS=(1,2): argmax IS: var0=(10,0.5)/2=5.25, var1=(8,2)=5, var2=(3,7)=5, var3=(1,9)=5 → argmax = var0. OOS asc: var0=(9,1)=5, var1=(7,3)=5, var2=(2,7)=4.5, var3=(0.5,9)=4.75. rank var0 = 3 ou 4 (empate). λ assume rank=3 (lowest of ties) → log(3/2)≈0.405 → λ>0 → NÃO overfit
-# 4. IS=(1,2), OOS=(0,3): argmax IS: var0=(9,1)=5, var1=(7,3)=5, var2=(2,7)=4.5, var3=(0.5,9)=4.75 → argmax=var0(empate, escolhe var0). OOS asc: var0=(10,0.5)=5.25, var1=(8,2)=5, var2=(3,8)=5.5, var3=(1,10)=5.5. rank var0=2 → λ=log(2/3)<0 → OVERFIT (3)
-# 5. IS=(1,3), OOS=(0,2): argmax IS: var0=(9,0.5)=4.75, var1=(7,2)=4.5, var2=(2,8)=5, var3=(0.5,10)=5.25 → argmax=var3. OOS asc: var3=(1,7)=4, var0=(10,1)=5.5, var1=(8,3)=5.5, var2=(3,7)=5. rank var3=1 → λ=log(1/4)<0 → OVERFIT (4)
-# 6. IS=(2,3), OOS=(0,1): argmax IS: var0=(1,0.5)=0.75, var1=(3,2)=2.5, var2=(7,8)=7.5, var3=(9,10)=9.5 → argmax=var3. OOS: var3=(1,0.5)=0.75 → rank=1 → OVERFIT (5)
-# 7. (não existe — só 6 partições)
-
-# Soma: 5 overfits / 6 partições + 1 boundary (caso 3 ambíguo, λ ≥ 0)
-# PBO ≈ 5/6 ≈ 0.833 (ou 4/6 ≈ 0.667 depending on tie-breaking convention)
-expected = 0.833    # com tie-break = rank lowest
-tolerância = 0.01   # margem de tie-breaking
 ```
 
-> **AÇÃO MIRA REQUERIDA antes de Dex implementar:** lockear a convenção de tie-breaking via comentário em `pbo.py` docstring. Recomendação: usar `scipy.stats.rankdata(method='min')` (rank lowest = mais conservador, infla overfitting count).
+**Computação manual (Dex deve reproduzir bit-a-bit):**
 
-> **NOTA URGENTE para Beckett:** este toy é mais complexo que o "2×4 trivial PBO=1.0" mencionado no AC4 da story T002.0d. Proponho atualizar AC4 para refletir T11-FINAL com `expected = 0.833 ± 0.01`. Validar em sign-off.
+| s | J_s^IS | J_s^OOS | t* (argmax IS) | R^OOS rank de t* (asc, method='min') | λ_s | overfit (λ ≤ 0)? |
+|---|--------|---------|----------------|---------------------------------------|-----|------------------|
+| 1 | {0,1}  | {2,3}   | var 0 (mean=9.5) | rank 1 (var 0 OOS mean = 0.75, pior)   | log(1/4) ≈ -1.386 | YES |
+| 2 | {0,2}  | {1,3}   | var 0 (mean=5.5, empate vs var1; argmin idx → var 0) | OOS means: var0=(9+0.5)/2=4.75, var1=(7+2)/2=4.5, var2=(2+8)/2=5.0, var3=(0.5+10)/2=5.25 → asc: [var1, var0, var2, var3] → rank(var0)=2 | log(2/3) ≈ -0.405 | YES |
+| 3 | {0,3}  | {1,2}   | var 0 (IS mean=5.25 vs var1=5.0, var2=5.0, var3=5.0; argmax → var 0) | OOS means: var0=(9+1)/2=5.0, var1=(7+3)/2=5.0, var2=(2+7)/2=4.5, var3=(0.5+9)/2=4.75; asc: [var2, var3, var0, var1] → rank(var0)=3 | log(3/2) ≈ 0.405 | NO |
+| 4 | {1,2}  | {0,3}   | var 0 (IS mean=5.0, empate; argmin idx → var 0) | OOS means: var0=(10+0.5)/2=5.25, var1=(8+2)/2=5.0, var2=(3+8)/2=5.5, var3=(1+10)/2=5.5; asc: [var1, var0, var2, var3 (empate var2 e var3 → rank-min=3 para ambos)] → rank(var0)=2 | log(2/3) ≈ -0.405 | YES |
+| 5 | {1,3}  | {0,2}   | var 3 (IS mean=5.25; var0=4.75, var1=4.5, var2=5.0, var3=5.25 → argmax = var 3) | OOS means: var0=(10+1)/2=5.5, var1=(8+3)/2=5.5, var2=(3+7)/2=5.0, var3=(1+7)/2=4.0; asc: [var3, var2, var0, var1 (empate var0 e var1 → rank-min=3)] → rank(var3)=1 | log(1/4) ≈ -1.386 | YES |
+| 6 | {2,3}  | {0,1}   | var 3 (IS mean=9.5) | OOS means: var0=(10+9)/2=9.5, var1=(8+7)/2=7.5, var2=(3+2)/2=2.5, var3=(1+0.5)/2=0.75; asc → rank(var3)=1 | log(1/4) ≈ -1.386 | YES |
 
-### 6.5 Toy benchmark adicional (AC4 simples — controle de sanidade)
+**PBO = 5 / 6 ≈ 0.8333**
 
-**T12 (zero correlation — esperado PBO ≈ 0.5):**
-
+```python
+expected   = 0.8333333333
+tolerância = 1e-4   # tie-breaking determinístico → exato em scipy ≥ 1.10
 ```
+
+> **Nota T11:** este toy substitui o "2×4 trivial PBO=1.0" originalmente no AC4 da story T002.0d. Proponho a Beckett/Pax que AC4 seja atualizado para refletir T11-FINAL `expected = 0.8333 ± 1e-4`. A construção 2×4 trivial só atinge PBO=1.0 com `T=2` variantes — caso degenerado onde o rank é binário (1 ou 2) e a fórmula λ = log(rank/(T+1-rank)) tem só 2 valores possíveis. Manter como T12 abaixo para sanity.
+
+### 6.6 Toy benchmark T12 (matrix degenerate — PBO=1.0 trivial)
+
+```python
+# T=2 variantes × N=4 folds com anti-correlação total.
+cv_results_matrix = np.array([
+    [10.0, 9.0, 1.0, 0.5],   # var 0: alta IS (folds 0,1), baixa OOS (folds 2,3)
+    [ 1.0, 0.5, 9.0, 10.0],  # var 1: opposite
+])
+# C(4,2) = 6 partições.
+# Em TODA partição, o argmax IS é exatamente a pior variante OOS:
+#   - rank(t*) = 1 sempre → λ = log(1/2) < 0 → overfit em todos.
+expected = 1.0
+tolerância = 1e-12
+```
+
+### 6.7 Toy benchmark T13 (controle ruído — PBO ≈ 0.5)
+
+```python
 cv_results_matrix = np.random.default_rng(42).normal(0, 1, size=(4, 8))
-# 4 variantes × 8 folds, ruído puro
-expected ≈ 0.5
-tolerância ≈ 0.15  (estocástico)
+# 4 variantes × 8 folds, ruído gaussiano puro, sem estrutura.
+# Em CSCV puramente aleatório, expected PBO converge a 0.5 (sem overfitting estrutural).
+expected   ≈ 0.5
+tolerância ≈ 0.15   # estocástico; n=8 folds → variância apreciável; Dex usa seed=42 para reproduzir
 ```
 
 ---
@@ -738,7 +703,8 @@ hit_rate   = 4/7 ≈ 0.5714
 ### Beckett (handshake)
 
 - [ ] Cross-validar T9 (DSR) contra `mlfinlab.backtest_statistics.statistics.deflated_sharpe_ratio` em commit explícito; reportar discrepâncias.
-- [ ] Validar convenção de PBO (T11-FINAL com tie-breaking `min`) — se discordar, propor convenção alternativa em sign-off.
+- [ ] Validar convenção LOCKED de rank em PBO (§6.4): `scipy.stats.rankdata(method='min')` para tie-break em rank OOS; argmax IS por menor índice — se discordar, propor convenção alternativa em sign-off ANTES de Dex implementar.
+- [ ] Validar T11 (PBO=0.8333) e T12 (PBO=1.0 trivial) — replicar manualmente conforme §6.5 e §6.6.
 - [ ] Confirmar shape de `BacktestResult` (paralelo) — `MetricsResult` consome `pnl_series` (per-bar returns) e `trades` (per-trade pnl) de cada `BacktestResult`. Acordar em handshake.
 - [ ] Validar `to_markdown()` schema em `T002-cpcv-report.md` template (Beckett owns).
 
