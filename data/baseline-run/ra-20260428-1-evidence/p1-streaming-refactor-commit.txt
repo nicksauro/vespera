@@ -1,0 +1,49 @@
+# RA-20260428-1 P1 — Canonical streaming refactor commit evidence
+#
+# Decision 2 (Stage-1 ISSUED 2026-04-24T21:18:10Z): canonical streaming
+# refactor of scripts/materialize_parquet.py:_fetch_month_dataframe to
+# streaming pq.ParquetWriter.write_table per-batch (no Python-list
+# accumulation). Pattern parity with scripts/build_raw_trades_cache.py:
+# _stream_month_to_parquet (ADR-4 §13.1 A1-A5).
+#
+# Authored by @dev (Dex); R10 custodial co-sign by @data-engineer (Dara)
+# attached at p1-dara-cosign.md.
+#
+# Repo:   C:\Users\Pichau\Desktop\algotrader
+# Branch: ra-28-1/p1-streaming-refactor (off main e94239a)
+# Commit: 82fbf87372db57458081360d6a6cae10539d04da
+
+commit_hash_hex = 82fbf87372db57458081360d6a6cae10539d04da
+
+# SHA256 of the refactored file post-commit
+scripts_materialize_parquet_py_sha256 = 5f2716bec713f99720129a6aa3db50cb213601ae4622f3693db132dcf197d0e5
+
+# Pre-refactor sha256 of the same file (for audit trail)
+scripts_materialize_parquet_py_sha256_pre_refactor = 1ed4d9e1a5e9ce1c3ec52a2ef19fa42a06ab02200997fa6d41a30c0feb329bd6
+
+# Invariant guards (RA-28-1 L2283-L2286 latent invariants)
+core_memory_budget_py_sha256_pre_and_post = 51972c522c79d42718bb2037b7efd36cb2ec6a195b9f34eb2ce42bead391a0ac
+data_manifest_csv_sha256_pre_and_post = 75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641
+
+# Diff stat
+files_changed = 2
+insertions = 622
+deletions = 24
+# scripts/materialize_parquet.py: +258 / -24
+# tests/unit/test_materialize_streaming_refactor.py (new): +364
+
+# Test regression
+pytest_pre_baseline_count = 256
+pytest_post_baseline_count = 265
+pytest_new_tests = 9
+pytest_all_pass = true
+
+# Linting
+ruff_clean = true
+mypy_new_regressions = 0
+# (2 pre-existing errors in unchanged cache-path lines verified pre-refactor via stash)
+
+# Pattern source (binding precedent)
+pattern_source_file = scripts/build_raw_trades_cache.py
+pattern_source_function = _stream_month_to_parquet
+pattern_source_adr = ADR-4 §13.1 A1-A5

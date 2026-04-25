@@ -1,0 +1,6 @@
+[manifest-mode] NO-MANIFEST (--no-manifest active; no manifest file will be written)
+[manifest-suppressed] month=2024-03 reason=--no-manifest
+[manifest] run complete; 0 month(s) flushed (--no-manifest active)
+[materialize] 2024-03 [2024-03-04 .. 2024-03-04] -> data\_scratch\p3-smoke\year=2024\month=03\wdo-2024-03.parquet
+[materialize]   rows=314060 phase=warmup sha256=2469a4712b44273db8cc4a9d0cfa843f8524a985eec8a905bf43ea646866dfa7
+TELEMETRY_CHILD_PEAK_EXIT commit=458444800 wset=190550016 pid=2396 timestamp_brt=2026-04-24T18:23:00
