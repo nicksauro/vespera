@@ -1,8 +1,9 @@
 """Tests for vespera_metrics.pbo — Probability of Backtest Overfitting (CSCV).
 
-Toy benchmarks T11, T12, T13 per spec §6.5-§6.7.
-Story T002.0d AC4 (updated reference per Mira spec §6.5: PBO=0.8333 instead
-of 1.0 trivial; T12 retained as sanity for trivial 2×N case).
+Toy benchmarks T11, T12, T13 per spec v0.2.2 §6.5-§6.7.
+Story T002.0d AC4: T11 anti-correlated 4×4 → PBO=1.0 (formula-faithful per
+spec v0.2.2 §6.5 corrected walkthrough); T12 trivial 2×N sanity → PBO=1.0;
+T13 pure noise → PBO≈0.5 (±0.15).
 Edge cases §6.3, §12 EC7.
 """
 from __future__ import annotations
@@ -16,27 +17,22 @@ from packages.vespera_metrics.pbo import probability_backtest_overfitting
 
 
 # ---------------------------------------------------------------------------
-# T11 — anti-correlation 4×4 (spec §6.5)
+# T11 — anti-correlation 4×4 (spec v0.2.2 §6.5)
 #
-# DEX FLAG TO MIRA (Article IV escalation, AC0 gate): the PBO impl computes
-# 1.0 on this matrix, NOT 5/6 ≈ 0.8333 as the §6.5 walkthrough table claims.
+# Expected: PBO = 1.0 (formula-faithful, all 6 partitions overfit).
 #
-# Reproduction: the §6.5 manual table for partition s=3 (IS={0,3}, OOS={1,2})
-# states "var 0 (IS mean=5.25 vs var1=5.0, var2=5.0, var3=5.0; argmax → var 0)".
-# Actual IS means for {0,3}:
+# Walkthrough (spec v0.2.2 §6.5, errata sweep corrected): for partition s=3
+# (IS={0,3}, OOS={1,2}), the IS column means are:
 #   var0 = (cv[0,0]+cv[0,3])/2 = (10+0.5)/2 = 5.25
 #   var1 = (cv[1,0]+cv[1,3])/2 = (8+2)/2    = 5.0
-#   var2 = (cv[2,0]+cv[2,3])/2 = (3+8)/2    = 5.5    ← spec table says 5.0
-#   var3 = (cv[3,0]+cv[3,3])/2 = (1+10)/2   = 5.5    ← spec table says 5.0
-# argmax → var 2 (lowest index among tie 5.5/5.5), NOT var 0.
+#   var2 = (cv[2,0]+cv[2,3])/2 = (3+8)/2    = 5.5
+#   var3 = (cv[3,0]+cv[3,3])/2 = (1+10)/2   = 5.5
+# argmax → var 2 (lowest index among tie 5.5/5.5).
 # OOS means in {1,2}: var2=(2+7)/2=4.5 → rank=1 → λ=log(1/4)<0 → overfit.
-# Therefore all 6 partitions overfit → PBO = 6/6 = 1.0.
+# All 6 partitions analogously overfit → PBO = 6/6 = 1.0.
 #
-# Mira's hand-arithmetic in the §6.5 table for s=3 is incorrect; the formula
-# itself (§6.2) is canonical and Article IV-clean. Per story T002.0d:
-# "Se diverge, levanta para Mira ANTES de marcar AC verde."
-# This test asserts the formula-faithful result (1.0) while documenting the
-# discrepancy for Mira's re-computation in next spec revision.
+# Spec v0.2.1 had an arithmetic error in the §6.5 s=3 row (claimed 5/6 ≈
+# 0.8333); resolved in v0.2.2 errata sweep — formula §6.2 is canonical.
 # ---------------------------------------------------------------------------
 def test_T11_anti_correlation_4x4():
     cv = np.array(
@@ -48,9 +44,8 @@ def test_T11_anti_correlation_4x4():
         ]
     )
     pbo = probability_backtest_overfitting(cv)
-    # Formula-faithful expected: all partitions overfit on this perfectly
-    # anti-correlated 4×4 → PBO = 1.0. (Spec walkthrough has arithmetic
-    # error in s=3 row; flagged to Mira for v0.2.1 metrics-spec revision.)
+    # Expected per spec v0.2.2 §6.5: perfectly anti-correlated 4×4 →
+    # all partitions overfit → PBO = 1.0 (formula-faithful, errata corrected).
     assert math.isclose(pbo, 1.0, abs_tol=1e-12)
 
 
