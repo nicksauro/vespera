@@ -10,6 +10,32 @@
 # Note: usernames shown are the AIOX agent IDs. Replace with actual GitHub
 # handles or team mentions (e.g. @org/team-risk) before T6 if needed; the
 # semantic intent is the binding constraint for review-routing.
+#
+# ─────────────────────────────────────────────────────────────────────────
+# OI-3 RESOLUTION (Gage R12 ruling, 2026-04-25)
+# ─────────────────────────────────────────────────────────────────────────
+# Decision: KEEP AIOX agent IDs (option b — semantic-preserving).
+#
+# Rationale: Repo is currently solo-dev (Nicolas + AIOX squad). No real
+# GitHub handles map to @dev, @risk-manager, @data-engineer, @devops.
+# GitHub silently treats unparseable owners as "no required reviewer" for
+# matched paths, which is acceptable because:
+#   1. Real enforcement is delivered via L1 (pre-commit hook) + L2 (CI
+#      required-status-checks gated on the canonical-invariant-protection
+#      workflow as of T4 toggle 2026-04-25).
+#   2. require_code_owner_reviews is OFF in branch-protection until real
+#      GitHub-handle mappings exist for these agent IDs.
+#   3. This file documents review-routing INTENT and serves as a manifest
+#      for future contributor mapping (when squad scales beyond solo-dev).
+#
+# Migration path when contributors join:
+#   - @dev          → add real GitHub handle owning impl scope
+#   - @risk-manager → add custodial-reviewer handle (R10/R15 sentinel)
+#   - @data-engineer→ add canonical-producer custodian handle
+#   - @devops       → @nicksauro (R12 owner) — already real
+#
+# Until then, this is a documentation contract, not an enforcement gate.
+# ─────────────────────────────────────────────────────────────────────────
 
 # L1 hook tree — Dex (impl) + Riven (R10/R15 sentinel custodial review)
 .githooks/                                       @dev @risk-manager
