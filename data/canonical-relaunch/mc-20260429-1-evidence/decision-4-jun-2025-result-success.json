@@ -1,0 +1,153 @@
+{
+  "decision": "4 (Jun-2025 production invocation) under MC-20260429-1 — SUCCESS (first attempt)",
+  "retry_attempt_number": 0,
+  "retry_slot_consumed": "none — clean first invocation, no R4 or cosign-guard pre-flight aborts",
+  "retry_budget_remaining_post_this_attempt": 3,
+  "ruling_authorization": "docs/governance/mc-20260429-1-r4-halt-ruling.md (parent verdict B) — Decision 4 retains original 3 R4-class retry ceiling per parent §5.1 (Decision-3 5-slot extension does NOT apply here per Ruling B-extended-2 §3.5)",
+  "executed_at_utc": "2026-04-25T14:28:24Z",
+  "completed_at_utc": "2026-04-25T14:31:25Z",
+  "executed_by": "gage (@devops)",
+  "preflight_q1_top3_pid_status": {
+    "verdict": "PASS — host quiesced from prior D3 retry-3 success; no top-3 kill needed; Q2 margin healthy."
+  },
+  "preflight_q2_psutil_probe": {
+    "available_bytes": 12094128128,
+    "available_gib": 11.26,
+    "required_bytes": 9473794048,
+    "required_gib": 8.82,
+    "margin_mib": 2499.0,
+    "pass": true,
+    "verdict": "PASS — margin HEALTHY (+2499 MiB above floor) — significantly more headroom than D3 retry-3 (+165 MiB pre-spawn). Trend recovery confirmed."
+  },
+  "preflight_q3_manifest_invariant": {
+    "expected_manifest_sha256": "b1f4c34c5aeb3ccca851a7725ae1c91d35dee98790c51959dc9e2ee369bc86d4",
+    "observed_manifest_sha256": "b1f4c34c5aeb3ccca851a7725ae1c91d35dee98790c51959dc9e2ee369bc86d4",
+    "expected_memory_budget_py_sha256": "1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d",
+    "observed_memory_budget_py_sha256": "1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d",
+    "match": true,
+    "verdict": "PASS — both invariants byte-identical pre-invocation; no R15 breach. Manifest sha matches post-D3 canonical."
+  },
+  "preflight_q4_sentinel_health": {
+    "container": "sentinel-timescaledb",
+    "running_status": "running",
+    "restart_count": 0,
+    "smoke_select_1": "PASS",
+    "verdict": "PASS — container UP, query plane responsive."
+  },
+  "preflight_q5_pre_jun_manifest_snapshot": {
+    "executed": true,
+    "snapshot_path": "data/canonical-relaunch/mc-20260429-1-evidence/q5-pre-jun-manifest-snapshot-d4.txt",
+    "manifest_sha256_pre": "b1f4c34c5aeb3ccca851a7725ae1c91d35dee98790c51959dc9e2ee369bc86d4",
+    "manifest_row_count_pre": 18,
+    "snapshot_timestamp_utc": "2026-04-25T14:28:15Z"
+  },
+  "preflight_q6_cosign_env_vars": {
+    "vespera_manifest_cosign": "MC-20260429-1",
+    "vespera_manifest_expected_sha256": "b1f4c34c5aeb3ccca851a7725ae1c91d35dee98790c51959dc9e2ee369bc86d4",
+    "exported_in_invocation_shell": true,
+    "verified_via_echo_pre_invoke": true,
+    "verdict": "PASS — Q6 binding precondition per Riven Ruling B-extended-2 §5.1 satisfied. Critical: expected-sha is post-D3 canonical sha (b1f4c3...86d4) per MWF-20260422-1 §4 'expected-sha must reference current manifest at invocation time' — NOT the original Stage-2 sha (75e72f...641)."
+  },
+  "command_invoked": ".venv/Scripts/python scripts/run_materialize_with_ceiling.py --run-id jun-2025 --start-date 2025-06-01 --end-date 2025-06-30 --ticker WDO --source sentinel --poll-seconds 30",
+  "wrapper_python_exit_code": 0,
+  "run_result_exit_code": 0,
+  "duration_seconds": 181,
+  "duration_seconds_summary_json": 180.7,
+  "cosign_banner_present_in_log": true,
+  "cosign_banner_line": "[manifest-mode] CANONICAL path=C:\\Users\\Pichau\\Desktop\\Algotrader\\data\\manifest.csv cosign=MC-20260429-1",
+  "cosign_banner_implication": "Post-banner exit 0 = SUCCESS in-Decision (per Riven §3.3 / Ruling B-extended-2 §5.1: post-banner exit ≥ 10 would have CONSUMED MC; exit 0 is clean Decision-4 success).",
+  "child_pid": 4664,
+  "child_self_peak": {
+    "commit_bytes": 12408119296,
+    "commit_gib": 11.556,
+    "wset_bytes": 11978842112,
+    "wset_gib": 11.156,
+    "telemetry_emit_line": "TELEMETRY_CHILD_PEAK_EXIT commit=12408119296 wset=11978842112 pid=4664 timestamp_brt=2026-04-25T11:30:58",
+    "child_peak_telemetry_missing": false
+  },
+  "wrapper_observed": {
+    "peak_commit_bytes": 819200,
+    "peak_rss_bytes": 3428352,
+    "tick_count": 6,
+    "duration_s": 180.7,
+    "ratio_commit_ceiling": 0.001,
+    "ceiling_gib": 0.574,
+    "interpretation": "Wrapper-side polling sees only its own process (the ceiling pass-through harness). Child telemetry is the authoritative R5 signal per ADR-4 §14.5.2 B1."
+  },
+  "r5_ceiling_check": {
+    "child_peak_commit_bytes": 12408119296,
+    "child_peak_commit_gib": 11.556,
+    "ceiling_default_gib": 12.5,
+    "ceiling_default_bytes": 13421772800,
+    "margin_under_ceiling_mib": 965.4,
+    "breached": false,
+    "verdict": "PASS — under ceiling with HEALTHY margin (+965 MiB / 0.944 GiB). Significantly more comfortable than D3 retry-3 (+104 MiB margin). Confirms hypothesis that Jun-2025 (~16.03M rows) lands lighter than May-2025 (~17.25M rows) by ~7%. No R5 concern."
+  },
+  "outputs": {
+    "parquet_path": "data/in_sample/year=2025/month=06/wdo-2025-06.parquet",
+    "parquet_created": true,
+    "parquet_sha256": "c89edf9f1d3e2b4746e15e2c9412c6c784ea702ae73ca1a69a67adcd62425c94",
+    "parquet_size_bytes": 81096829,
+    "parquet_size_mib": 77.34,
+    "row_count": 16034706,
+    "parquet_columns": ["timestamp", "ticker", "price", "qty", "aggressor", "buy_agent", "sell_agent", "year", "month"],
+    "parquet_min_timestamp": "2025-06-02T09:00:44.719000",
+    "parquet_max_timestamp": "2025-06-30T17:59:59.557000",
+    "holdout_boundary_check": "PASS — max_ts = 2025-06-30 17:59:59.557 < 2025-07-01 hold-out start. No drift past Jun-30. Min_ts = 2025-06-02 09:00:44 (Jun-1 was Sunday, expected).",
+    "manifest_pre_sha256": "b1f4c34c5aeb3ccca851a7725ae1c91d35dee98790c51959dc9e2ee369bc86d4",
+    "manifest_pre_row_count": 18,
+    "manifest_post_sha256": "78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72",
+    "manifest_post_row_count": 19,
+    "manifest_drift": "AUTHORIZED — row 19 appended for Jun 2025 parquet under MC-20260429-1 cosign authority",
+    "manifest_row_19": "data/in_sample/year=2025/month=06/wdo-2025-06.parquet,16034706,c89edf9f1d3e2b4746e15e2c9412c6c784ea702ae73ca1a69a67adcd62425c94,2025-06-02T09:00:44.719000,2025-06-30T17:59:59.557000,WDO,in_sample,2026-04-25T11:28:24",
+    "telemetry_csv": "data/jun-2025-telemetry.csv",
+    "summary_json": "data/jun-2025-summary.json",
+    "log_path": "data/jun-2025.log"
+  },
+  "decision_6_executed": true,
+  "decision_6_verdict": "PASS — exit 0; cosign banner present; parquet exists with 16,034,706 rows; child telemetry emitted (TELEMETRY_CHILD_PEAK_EXIT line in log); child peak under R5 ceiling (11.556 GiB < 12.5 GiB) with healthy +965 MiB margin; hold-out boundary preserved (max_ts ≤ 2025-06-30).",
+  "decision_4_executed": true,
+  "decision_4_verdict": "PASS — Custodial commit recorded in this evidence file + memory-budget.md §R10 Custodial — MC-20260429-1 — ISSUED STAGE 2 block updated.",
+  "decision_4_artifacts": {
+    "new_canonical_manifest_sha256": "78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72",
+    "parquet_sha256": "c89edf9f1d3e2b4746e15e2c9412c6c784ea702ae73ca1a69a67adcd62425c94",
+    "row_count": 16034706,
+    "peak_pagefile_bytes_authoritative": 12408119296,
+    "peak_pagefile_gib_authoritative": 11.556,
+    "authoritative_source": "child self-reported telemetry per ADR-4 §14.5.2 B1"
+  },
+  "post_commit_invariant_check": {
+    "memory_budget_py_sha256_post_d4": "1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d",
+    "memory_budget_py_unchanged": true,
+    "manifest_sha256_post_d4": "78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72",
+    "manifest_drift_authorized": true,
+    "verdict": "PASS — D6-post invariant re-check confirms memory_budget.py unchanged (still 1d6ed8...87d). Manifest changed as authorized by cosign-guarded D4 commit (was b1f4c3...86d4, now 78c9ad...ee72)."
+  },
+  "consumption_clock_state_post": "STARTED-CONSUMED-DECISIONS-3-AND-4 — Both Decision 3 (May-2025) and Decision 4 (Jun-2025) SUCCESS recorded under MC-29-1; ONE-SHOT consumption clock continues until Decision 8 SUCCESS or in-Decision HALT. Hold-out window (2025-07+) preserved.",
+  "mc_consumption_assessment": "DECISIONS-3-AND-4-CONSUMED-WITH-SUCCESS — MC-29-1 ONE-SHOT Decisions 3+4 slots both used productively (parquets + manifest rows 17, 18, 19 committed under cosign authority). Per Riven Ruling B-extended-2 §5.1 final paragraph: on D3 retry-3 SUCCESS clock advanced to D4 normally; D4 first-attempt SUCCESS confirms healthy execution path with Q6 cosign protocol working as designed.",
+  "retry_budget_status_post": {
+    "decision_3_pre_decision_gate_slots_used": 4,
+    "decision_3_pre_decision_gate_ceiling_extended": 5,
+    "decision_3_pre_decision_gate_slots_remaining": 1,
+    "decision_4_r4_class_slots_used": 0,
+    "decision_4_r4_class_slots_remaining": 3,
+    "note": "Decision 4 ceiling untouched — first attempt was clean SUCCESS with no R4 or cosign-guard pre-flight aborts. All 3 original R4-class slots remain available for future MC-29-1 Decision-4-class invocations (none expected; Jun-2025 is the only D4 slot for this MC)."
+  },
+  "verdict": "SUCCESS — Decision 4 (Jun-2025 production invocation) executed cleanly under MC-20260429-1 first attempt with all Q1-Q6 preconditions satisfied. Cosign-banner present, exit 0, parquet 16.03M rows committed, manifest row 19 appended (sha 78c9ad...ee72). R5 ceiling healthy margin (+965 MiB). Hold-out boundary preserved. Memory_budget.py invariant preserved post-D4. MC-29-1 Decisions 3+4 both consumed with SUCCESS. Sable G10 (#81) FULLY UNBLOCKED — both May+Jun parquets now available for post-relaunch rehash.",
+  "next_step": "Morgan close-out for task #71. Sable G10 post-relaunch rehash (#81) now FULLY UNBLOCKED with both May-2025 + Jun-2025 parquets available.",
+  "evidence_paths": {
+    "this_file": "data/canonical-relaunch/mc-20260429-1-evidence/decision-4-jun-2025-result-success.json",
+    "q5_snapshot": "data/canonical-relaunch/mc-20260429-1-evidence/q5-pre-jun-manifest-snapshot-d4.txt",
+    "ruling_parent": "docs/governance/mc-20260429-1-r4-halt-ruling.md",
+    "ruling_extension": "docs/governance/mc-20260429-1-r4-halt-ruling-extension-retry2.md",
+    "checkpoint": "data/canonical-relaunch/mc-20260429-1-evidence/CHECKPOINT-RESUME-HERE.md",
+    "predecessor_evidence_d3": "data/canonical-relaunch/mc-20260429-1-evidence/decision-3-may-2025-result-success.json"
+  },
+  "watch_list_observations": {
+    "q2_margin_trend": "RECOVERED — D3 retry-3 had +165 MiB margin pre-spawn; D4 first-attempt has +2499 MiB. Healthy quiesce confirmed between sessions.",
+    "r5_ceiling_margin": "HEALTHY — +965 MiB under ceiling vs D3 +104 MiB. Smaller dataset (16.03M vs 17.25M rows, ~7% reduction) translated to ~842 MiB peak reduction, consistent with linear scaling expectation.",
+    "holdout_boundary": "PRESERVED — max_ts in parquet = 2025-06-30 17:59:59.557, well within bounds. Sentinel query --end-date 2025-06-30 enforced correctly.",
+    "wall_clock": "FASTER — 181s (D4) vs 241s (D3 retry-3), consistent with smaller dataset.",
+    "no_anomalies": "Clean execution end-to-end. Q6 cosign protocol with updated expected-sha (b1f4c3...86d4) worked as designed."
+  }
+}

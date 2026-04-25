@@ -1,0 +1,116 @@
+================================================================================
+G10 POST-RELAUNCH-REHASH (extended to 19-row manifest under MC-20260429-1)
+================================================================================
+Gate ID:           G10
+Gate name:         POST-RELAUNCH-REHASH-19 (procedural extension of POST-RELAUNCH-REHASH-18 — manifest grew 16→18→19 across MC-20260423-1 + MC-20260429-1)
+Sable counter-sig: Sable (T002.0a custodial gate executor)
+Executed at UTC:   2026-04-25T15:03:39Z
+Executed at BRT:   2026-04-25T12:03:39-03:00
+Manifest under test: data/manifest.csv
+Manifest sha256:     78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72
+Manifest row count:  19 (header + 18 data rows)
+core/memory_budget.py sha256: 1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d (UNCHANGED — R1-1 invariant preserved)
+
+REFERENCE SOURCES
+-----------------
+- Frozen list: docs/MANIFEST_CHANGES.md → MC-20260423-1.files_verified_sha256 (16 rows, frozen 2026-04-23 by Riven)
+- Live manifest: data/manifest.csv (rows 1-18 data; rows 1-16 must match MC-20260423-1; rows 17-18 are new under MC-20260429-1 D3+D4 SUCCESS)
+
+PROCEDURE
+---------
+1. Re-hash all 18 parquets under data/in_sample/ via stdlib hashlib.sha256, 1 MiB chunked read.
+2. Compare rows 1-16 vs MC-20260423-1.files_verified_sha256 (frozen 2026-04-23) — must be byte-identical.
+3. Compare rows 17-18 (May-2025 + Jun-2025) vs current data/manifest.csv self-match.
+4. Verify all 18 self-match against current manifest.csv (no drift in pre-existing rows).
+
+FROZEN CHECK (rows 1-16 vs MC-20260423-1)
+-----------------------------------------
+[PASS] data/in_sample/year=2024/month=01/wdo-2024-01.parquet  sha=a5a3db8a4d129bef271ef5e28ac32a711670b10ee173159643c977aee5c36b30
+[PASS] data/in_sample/year=2024/month=02/wdo-2024-02.parquet  sha=9b2afe21be17486bfbfa2457ead0013507a9394a2bbed6b44bcfc3e099f7424e
+[PASS] data/in_sample/year=2024/month=03/wdo-2024-03.parquet  sha=0e4d59d644a3364494c4fdb5e91eb15d1a48589c706333a0a96cc4f40403d6a6
+[PASS] data/in_sample/year=2024/month=04/wdo-2024-04.parquet  sha=bd890da57ae0628bb766058fcd95a073da88f71720b66ef031e41483e6023dab
+[PASS] data/in_sample/year=2024/month=05/wdo-2024-05.parquet  sha=72a7b8e605aac0a8c0bbcc1781cbb0d0038d2c63708c3a36a83ffffa78d07340
+[PASS] data/in_sample/year=2024/month=06/wdo-2024-06.parquet  sha=1ebf2603f37522930198045d192cf835de0fd189824ddf7ad3cc46eb676c8b3a
+[PASS] data/in_sample/year=2024/month=07/wdo-2024-07.parquet  sha=62dd957a5b2242d2a8a69c64fefa85063824798037d5296f4e16ec460747e68e
+[PASS] data/in_sample/year=2024/month=08/wdo-2024-08.parquet  sha=bf7d42f5122710571c7c7e8050dfde6482874dfb31734b05d54c79ba0bb83ce0
+[PASS] data/in_sample/year=2024/month=09/wdo-2024-09.parquet  sha=c142aa8a79421db605277225837016aed70e7773b030907c1177af384b58757c
+[PASS] data/in_sample/year=2024/month=10/wdo-2024-10.parquet  sha=91bb2b9104c48727f0c82143416d765a8f69ee66f065fd6a918c26de42a02141
+[PASS] data/in_sample/year=2024/month=11/wdo-2024-11.parquet  sha=810bb88124eaa39ee0f67f45af3fe5cbec251c62400b5bf4032ed7581860f7e4
+[PASS] data/in_sample/year=2024/month=12/wdo-2024-12.parquet  sha=2c7a5c597889eeff31411dd8e813a7bb2250b0dfb3c4d4b0f0b166a3cb576057
+[PASS] data/in_sample/year=2025/month=01/wdo-2025-01.parquet  sha=2023ad052b6370869fefe40551add44bacc31f88ca6d8e8f928042e5ce612e17
+[PASS] data/in_sample/year=2025/month=02/wdo-2025-02.parquet  sha=90790b678740440ceefa2fe481b4a4a1385035ae99233a1d9d290c372f00b69d
+[PASS] data/in_sample/year=2025/month=03/wdo-2025-03.parquet  sha=81d978907ed31cc67e959ecda7546409d91bcca9940253b3446d7f16ba09ca85
+[PASS] data/in_sample/year=2025/month=04/wdo-2025-04.parquet  sha=6cbc3ef1bd9bd0888d2abcfeab5330c7e2068657c648a8dceb7fc7c14afda313
+
+Frozen subtotal: 16/16 PASS — zero drift in pre-existing parquets vs MC-20260423-1 frozen reference.
+
+SELF-MATCH CHECK (all 18 parquets vs current data/manifest.csv)
+---------------------------------------------------------------
+[PASS] data/in_sample/year=2024/month=01/wdo-2024-01.parquet
+[PASS] data/in_sample/year=2024/month=02/wdo-2024-02.parquet
+[PASS] data/in_sample/year=2024/month=03/wdo-2024-03.parquet
+[PASS] data/in_sample/year=2024/month=04/wdo-2024-04.parquet
+[PASS] data/in_sample/year=2024/month=05/wdo-2024-05.parquet
+[PASS] data/in_sample/year=2024/month=06/wdo-2024-06.parquet
+[PASS] data/in_sample/year=2024/month=07/wdo-2024-07.parquet
+[PASS] data/in_sample/year=2024/month=08/wdo-2024-08.parquet
+[PASS] data/in_sample/year=2024/month=09/wdo-2024-09.parquet
+[PASS] data/in_sample/year=2024/month=10/wdo-2024-10.parquet
+[PASS] data/in_sample/year=2024/month=11/wdo-2024-11.parquet
+[PASS] data/in_sample/year=2024/month=12/wdo-2024-12.parquet
+[PASS] data/in_sample/year=2025/month=01/wdo-2025-01.parquet
+[PASS] data/in_sample/year=2025/month=02/wdo-2025-02.parquet
+[PASS] data/in_sample/year=2025/month=03/wdo-2025-03.parquet
+[PASS] data/in_sample/year=2025/month=04/wdo-2025-04.parquet
+[PASS] [NEW row 18 — MC-20260429-1 D3 SUCCESS] data/in_sample/year=2025/month=05/wdo-2025-05.parquet  sha=561f443c16f36d6d07c01868a3343caa1cd4363d1e1c6b41a9dc909256427875
+[PASS] [NEW row 19 — MC-20260429-1 D4 SUCCESS] data/in_sample/year=2025/month=06/wdo-2025-06.parquet  sha=c89edf9f1d3e2b4746e15e2c9412c6c784ea702ae73ca1a69a67adcd62425c94
+
+Self-match subtotal: 18/18 PASS — manifest perfectly self-consistent.
+
+HOLD-OUT BOUNDARY VERIFICATION
+------------------------------
+- Row 18 (May-2025) max_ts: 2025-05-30T18:29:59.617 — within May 2025 (PASS)
+- Row 19 (Jun-2025) max_ts: 2025-06-30T17:59:59.557 — within Jun 2025; below 2025-07-01 hold-out floor (PASS)
+- No paths under data/hold_out/ present in manifest (PASS)
+- Phase distribution: warmup=6 (2024-01..2024-06), in_sample=12 (2024-07..2025-06), hold_out=0 (PASS)
+
+PASS CRITERION (per docs/qa/gates/T002.0a-sable-gates.md §G10)
+--------------------------------------------------------------
+Original: 16 frozen matches + 2 self-matches = 18/18. Procedural extension under MC-20260429-1: 16 frozen matches + 18 self-matches = 16/16 + 18/18 PASS.
+
+VERDICT
+-------
+G10 POST-RELAUNCH-REHASH = PASS
+
+- Zero drift in 16 pre-existing rows vs MC-20260423-1 frozen reference (Article IV — No Invention preserved across both Stage-2 D3 and D4 commits).
+- Both new rows (May-2025 + Jun-2025) self-consistent with manifest entries.
+- Hold-out boundary preserved (no leak past 2025-06-30).
+- core/memory_budget.py invariant unchanged (1d6ed8...287d) → R1-1 not breached.
+- Manifest sha 78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72 matches CHECKPOINT-RESUME-HERE.md and decision-4-jun-2025-result-success.json post-D4 commit.
+
+DOWNSTREAM IMPLICATIONS
+-----------------------
+- T002.0a gate G10: PASS (the last technical gate gating story Done; G01/G06/G07/G08 still pending per parent gates spec, unrelated to MC-29-1 closure).
+- Task #81 (G10 post-relaunch rehash): COMPLETE.
+- Beckett (CPCV setup) is now technically unblocked from the May+Jun 2025 manifest rows side; story Done depends on G01/G06/G07/G08.
+- No custodial incident detected → no further Riven escalation required from this gate.
+
+CONSTITUTIONAL REFERENCES
+-------------------------
+- Article I (CLI First) — re-hash performed via stdlib hashlib + os.path, CLI-invocable.
+- Article IV (No Invention) — every observed sha256 traces to file bytes on disk; every expected sha256 traces to MC-20260423-1 (frozen 2026-04-23) or current data/manifest.csv (Stage-2 D3+D4 cosign-authorized appends).
+- Article V (Quality First) — zero-trust re-verification; every byte checked.
+
+EXECUTOR
+--------
+Sable (T002.0a custodial gate executor) — counter-signed by Morgan (@pm) acting under PM closure authority for task #71.
+
+EVIDENCE PATHS
+--------------
+- This file: docs/qa/gates/evidence/T002.0a/g10-rehash-19.txt
+- Frozen reference: docs/MANIFEST_CHANGES.md (MC-20260423-1 entry, lines 6-87)
+- Live manifest: data/manifest.csv (sha 78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72, 19 rows)
+- D3 SUCCESS evidence: data/canonical-relaunch/mc-20260429-1-evidence/decision-3-may-2025-result-success.json
+- D4 SUCCESS evidence: data/canonical-relaunch/mc-20260429-1-evidence/decision-4-jun-2025-result-success.json
+- Checkpoint: data/canonical-relaunch/mc-20260429-1-evidence/CHECKPOINT-RESUME-HERE.md
+================================================================================

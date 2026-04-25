@@ -11,7 +11,6 @@ import json
 from datetime import date
 from pathlib import Path
 
-import pytest
 
 from packages.t002_eod_unwind.warmup.gate import (
     WarmUpGate,

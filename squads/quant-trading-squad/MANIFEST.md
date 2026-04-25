@@ -1,6 +1,36 @@
 # Quant Trading Squad — MANIFEST
 
-> Criado em 2026-04-21. Atualizado em 2026-04-21 (v2 — incorporado AIOX framework agents). Escopo: sistema algorítmico para WDO (mini dólar B3) primário, WIN (mini Ibovespa) supporting. Operação via ProfitDLL Nelogica, DMA2 (roteamento via corretora), dataset histórico trades-only.
+> Criado em 2026-04-21. Atualizado em 2026-04-21 (v3 — adicionado preâmbulo de Governança + R15). Escopo: sistema algorítmico para WDO (mini dólar B3) primário, WIN (mini Ibovespa) supporting. Operação via ProfitDLL Nelogica, DMA2 (roteamento via corretora), dataset histórico trades-only.
+
+---
+
+## Governança do MANIFEST
+
+Este documento é governança do squad. Mudanças em regras (R1…Rn), em ownership, ou em protocolo seguem fluxo formal abaixo. Edições mecânicas (tipos, links, formatação) não requerem deliberação.
+
+### Ownership
+
+| Papel | Agente | Autoridade |
+|-------|--------|-----------|
+| **Guardião Ultimate** | Usuário | Veto final. Sem sign-off, nenhuma mudança entra em vigor. |
+| **Custódio Auditor** | Sable (`@squad-auditor`) | Bloqueia merge por violação de processo. Não edita conteúdo. |
+| **Editor Técnico** | Pax (`@po`) | Transcreve decisões ratificadas. Não decide conteúdo. |
+| **Deliberantes** | Squad afetado por cada cláusula específica | Decidem via quórum. Composição varia por cláusula. |
+
+### Protocolo de Mudança (8 passos)
+
+1. **PROPOSTA:** qualquer agente pode propor (cláusula candidata + justificativa).
+2. **IDENTIFICAÇÃO DOS AFETADOS:** Pax mapeia agentes vinculados à cláusula.
+3. **DELIBERAÇÃO:** afetados apresentam posição — `ACCEPT` / `REJECT` / `ABSTAIN` + razão ≤3 linhas.
+4. **QUÓRUM:** unanimidade dos afetados OU 2/3 + override do Guardião.
+5. **AUDITORIA:** Sable verifica que passos 1-4 foram cumpridos. Emite parecer técnico (não voto).
+6. **RATIFICAÇÃO:** Guardião (usuário) dá sign-off final.
+7. **EDIÇÃO:** Pax transcreve ao MANIFEST com tag de versão (`R<n>.v<m>`).
+8. **PRESERVAÇÃO:** entrada append-only em [`MANIFEST_CHANGES.md`](MANIFEST_CHANGES.md) com proposta, votos, parecer, ratificação.
+
+**Mudanças sem este protocolo são NULAS.** Sable bloqueia merge. Casos de emergência (halt crítico em produção) permitem patch temporário com ratificação retroativa em até 24h, também registrada em `MANIFEST_CHANGES.md`.
+
+---
 
 ## Missão
 
@@ -55,7 +85,7 @@ O squad é composto por **16 agentes** organizados em duas camadas: **8 domain-a
 
 ## Regras Invioláveis do Squad
 
-Regras R1-R10 valem para os 7 agentes operacionais (domain). Sable (auditor) as verifica mas não está sujeito — mede aderência dos outros. Regras R11-R14 são regras de fronteira domain ↔ framework.
+Regras R1-R10 valem para os 7 agentes operacionais (domain). Sable (auditor) as verifica mas não está sujeito — mede aderência dos outros. Regras R11-R14 são regras de fronteira domain ↔ framework. Regra R15 é regra de governança de versionamento de specs ML.
 
 ### 1. Nunca assumir spec — websearch ou [TO-VERIFY]
 Parâmetros de mercado (tick size, multiplicador, margem, horário, corretagem) mudam. Agente que cita número sem fonte deve (a) fazer websearch e rotular `[WEB-CONFIRMED {data}]`, (b) rotular `[TO-VERIFY]` e instruir recálculo contra realidade.
@@ -98,6 +128,61 @@ Toda feature de código passa por: `@pm *create-epic` → `@sm *draft` → `@po 
 
 ### 14. Quinn audita código; Sable audita squad
 Quinn (`@qa`) roda QA gate no código de uma story — 7 checks de AIOX. Sable (`@squad-auditor`) roda audit de coerência dos agentes contra MANIFEST/MATRIX/GLOSSARY. Escopos distintos, sem overlap. Ambos podem bloquear merge.
+
+### 15. Semver em fase major==0 — minor pode ser breaking, com trilha auditável
+Durante fase de desenvolvimento inicial (`major == 0` no semver da spec ML), incrementos minor (`0.X.0 → 0.Y.0`) PODEM introduzir mudanças não-retrocompatíveis em specs ML, desde que TODAS as condições abaixo sejam satisfeitas:
+
+- (a) **Revisão registrada em `preregistration_revisions[]`** append-only na spec, com schema formalizado (ver seção "Schema de `preregistration_revisions[]`" abaixo).
+- (b) **Co-assinatura de Pax** (`@po`) no ADR da revisão — Pax atua como freio de processo, não como decisor técnico.
+- (c) **Justificativa ancorada em constraint de dados descoberto** (ex.: cobertura histórica real < cobertura assumida; schema de fonte externa incompatível), **NÃO em otimização de resultado** (ex.: "ajustei lookback para melhorar Sharpe"). Evidência de dados deve ser linkada.
+- (d) **Hold-out virgem permanece intocado** — qualquer revisão que alargue, encurte, ou mova a janela de hold-out fora do bound `VESPERA_UNLOCK_HOLDOUT` viola R1 e R15 simultaneamente, e é NULA.
+
+Após o primeiro major bump (`1.0.0`), semver 2.0.0 padrão volta a valer e breaking changes exigem major bump convencional.
+
+**Rationale:** SemVer 2.0.0 §4 reconhece que major==0 é fase de desenvolvimento inicial onde breaking changes são esperadas. R15 codifica essa permissão explicitamente para evitar major bumps espúrios a cada ajuste de data de corte, e em contrapartida exige trilha de auditoria (preregistration_revisions[]) que defende contra p-hacking disfarçado.
+
+**Não-retroativa.** R15 aplica-se a bumps futuros. v0.1.0 → v0.2.0 da spec T002 é o primeiro caso a se reger por R15, após o schema e o contract test estarem em vigor.
+
+#### Schema de `preregistration_revisions[]`
+
+Toda entrada em `preregistration_revisions[]` dentro de uma spec ML deve conter os campos abaixo. Campos ausentes → entrada NULA → Sable bloqueia merge.
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `revision_id` | string | Identificador único, padrão `PRR-{YYYYMMDD}-{n}` |
+| `timestamp_brt` | ISO 8601 BRT | Momento da revisão, BRT naive ou com offset `-03:00` |
+| `from_version` | semver | Versão da spec antes da revisão (ex.: `0.1.0`) |
+| `to_version` | semver | Versão da spec após a revisão (ex.: `0.2.0`) |
+| `breaking_fields` | lista[string] | Paths YAML exatos dos campos modificados (ex.: `["splits.in_sample", "features.percentile_lookback"]`) |
+| `justification` | string | Razão textual curta (≤ 5 linhas) |
+| `data_constraint_evidence` | string | Link ou citação para evidência empírica (ex.: query SQL + resultado, caminho de arquivo, hash de commit) |
+| `pax_cosign_hash` | string | Hash SHA256 do conteúdo da revisão assinado por Pax. Computado via `python scripts/pax_cosign.py compute <spec.yaml> [--index N]` e verificado via `python scripts/pax_cosign.py verify <spec.yaml>`. Pax executa o helper, inspeciona o payload impresso, e insere o hash no campo. O contract test `test_revision_cosign_hash_matches_payload` valida que o hash bate com o payload canônico — forjar, alterar a revisão após hash, ou usar chave diferente quebra o gate. |
+
+**Este schema é auditado pelo contract test `tests/contracts/test_spec_version_gate.py`** — fluxo: se `breaking change` detectado E `major == 0`, então `preregistration_revisions[]` deve ter entrada nova para a versão-alvo com todos os campos populados e não-vazios.
+
+### Schema de sign-off — carry-forward explícito (R15 addendum Finding-009)
+
+Sign-offs de agentes cujo escopo NÃO foi tocado pela revisão podem ser "carregados" da versão anterior **apenas via campo explícito**:
+
+```yaml
+sign_off:
+  # Sign-offs ativos — agentes re-executaram análise para esta versão:
+  mira_ml_viability: "..."
+  pax_cosign_revision: "..."
+  kira_thesis_gate_A: "..."
+  sable_audit_process: "..."
+
+  # Sign-offs carregados sem re-auditoria — opt-in, auditável:
+  carry_forward_unchallenged:
+    - agent: nova_microstructure           # nome do campo equivalente
+      from_version: "0.1.0"                # versão em que foi assinado originalmente
+      audit_ref: T002-nova-audit.md        # documento da auditoria original
+      reason: "mudança X não afeta escopo Y do agente"
+      claimed_by: mira                     # quem declara o carry-forward
+      challenged: false                    # se `true`, agente precisa re-assinar ativamente
+```
+
+**Regra:** qualquer agente listado em `carry_forward_unchallenged[]` pode exigir re-auditoria a qualquer momento setando `challenged: true` — isso invalida o carry-forward e bloqueia Fase E até o agente assinar ativamente. Campos ausentes de AMBAS as seções (ativo e carry-forward) = sign-off pendente = merge block.
 
 ---
 
@@ -207,6 +292,7 @@ Sinal (Mira pipeline)
 
 - [COLLABORATION_MATRIX.md](COLLABORATION_MATRIX.md) — quem pergunta o quê a quem
 - [DOMAIN_GLOSSARY.md](DOMAIN_GLOSSARY.md) — dicionário unificado de termos
+- [MANIFEST_CHANGES.md](MANIFEST_CHANGES.md) — histórico append-only de mudanças governadas pelo protocolo
 
 ---
 

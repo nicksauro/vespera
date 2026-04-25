@@ -1,0 +1,19 @@
+{
+  "run_id": "may-2025",
+  "start_ts": "2026-04-25T11:16:38",
+  "end_ts": "2026-04-25T11:20:39",
+  "duration_s": 240,
+  "peak_commit": 815104,
+  "peak_rss": 3424256,
+  "pagefile_alloc_start": 243077120,
+  "pagefile_alloc_end": 2676908032,
+  "delta_pagefile": 2433830912,
+  "ratio_commit_rss": 0.238,
+  "tick_count": 8,
+  "exit_code": 0,
+  "peak_commit_bytes_child_self_reported": 13312385024,
+  "peak_wset_bytes_child_self_reported": 12444581888,
+  "child_pid": 10392,
+  "child_peak_timestamp_brt": "2026-04-25T11:20:36",
+  "child_peak_telemetry_missing": false
+}

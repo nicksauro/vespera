@@ -1,0 +1,170 @@
+# EPIC-T002.0 — Execution Plan
+# =============================
+# Sequenciamento canônico das 5 stories (T002.0a–e) do Epic Phase E Infrastructure.
+# Gera input para `@pm *execute-epic docs/prd/EPIC-T002.0-EXECUTION.yaml`.
+
+epic_id: EPIC-T002.0
+epic_ref: docs/prd/EPIC-T002.0.md
+created_at_brt: "2026-04-21T20:30:00-03:00"
+owner_pm: "Morgan (@pm)"
+owner_po: "Pax (@po)"
+unblocks_task: "Task #36 — Beckett CPCV Gate (Fase E)"
+spec_ref: docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml
+spec_sha256: "4b5624ad6ba151c57e263f1d160d7e802354c5e164f777198755b70c59bdc3fc"
+readiness_audit: docs/ml/plans/T002-phase-E-readiness-gaps.md
+
+# ----------------------------------------------------------------
+# WAVES — paralelismo por ondas, serialização entre ondas
+# ----------------------------------------------------------------
+waves:
+
+  - wave: W1
+    label: "Fundação: custódia + atlas canônico"
+    parallel: true
+    stories:
+      - id: T002.0a
+        owner: "Dara (@data-engineer)"
+        reviewers: ["Riven (@risk-manager)", "Nelo (@profitdll-specialist)", "Sable (@auditor)"]
+        qa: "Quinn (@qa)"
+        depends_on: []
+        estimate_sessions: 1.0
+        deliverables:
+          - "sentinel_ro PostgreSQL role (read-only, GRANT SELECT on trades)"
+          - ".env.vespera gitignored com credencial de sentinel_ro"
+          - "scripts/materialize_parquet.py determinístico"
+          - "data/in_sample/year=YYYY/month=MM/*.parquet materializado"
+          - "data/manifest.csv com sha256 por arquivo"
+        exit_criterion: "Dara + Riven co-sign custodial; Sable valida hash protocol; Quinn PASS"
+
+      - id: T002.0e
+        owner: "Nova (@market-microstructure)"
+        reviewers: ["Beckett (@backtester)", "Sable (@auditor)"]
+        qa: "Quinn (@qa)"
+        depends_on: []
+        estimate_sessions: 0.5
+        deliverables:
+          - "docs/backtest/nova-cost-atlas.yaml (brokerage + emolumentos B3 + IR day-trade)"
+          - "Cada valor com fonte [WEB-CONFIRMED {data}]"
+          - "Formato consumível por engine-config (schema acordado com Beckett)"
+        exit_criterion: "Nova sign + fontes verificadas; Beckett confirma consumibilidade"
+
+  - wave: W2
+    label: "Camada de dados: adapters Timescale + Parquet"
+    parallel: false
+    depends_on_waves: [W1]
+    stories:
+      - id: T002.0b
+        owner: "Dex (@dev)"
+        reviewers: ["Aria (@architect)", "Beckett (@backtester)", "Dara (@data-engineer)"]
+        qa: "Quinn (@qa)"
+        depends_on: [T002.0a]
+        estimate_sessions: 1.0
+        deliverables:
+          - "packages/t002_eod_unwind/adapters/feed_timescale.py (slow path direct DB)"
+          - "packages/t002_eod_unwind/adapters/feed_parquet.py (hot path mmap)"
+          - "Contract tests: strict schema + VESPERA_UNLOCK_HOLDOUT fail-closed"
+          - "Perf: parquet mmap ≤ 4.5 min por replay (target Beckett)"
+        exit_criterion: "Aria sign contract; Beckett valida perf; Quinn contract tests verdes"
+
+  - wave: W3
+    label: "CPCV engine + Metrics module (spec-first)"
+    parallel: true
+    depends_on_waves: [W2]
+    stories:
+      - id: T002.0c
+        owner: "Dex (@dev)"
+        reviewers: ["Mira (@ml-researcher)", "Beckett (@backtester)"]
+        qa: "Quinn (@qa)"
+        depends_on: [T002.0b]
+        estimate_sessions: 2.0
+        deliverables:
+          - "packages/vespera_cpcv/__init__.py"
+          - "Purged Combinatorial CV (Lopez de Prado AFML Ch.12)"
+          - "N=10, k=2, 45 paths, embargo_sessions=1"
+          - "Seed-determinístico, parallel-safe"
+          - "Unit test: reproduz benchmark numérico AFML §12.4"
+        exit_criterion: "Mira valida algoritmo; Beckett sign interface; Quinn PASS"
+
+      - id: T002.0d
+        owner: "Mira (@ml-researcher) spec + Dex (@dev) impl"
+        reviewers: ["Beckett (@backtester)", "Kira (@quant-researcher)"]
+        qa: "Quinn (@qa)"
+        depends_on: [T002.0c] # soft: pode começar spec em paralelo; impl final precisa de 0c
+        estimate_sessions: 2.0
+        can_start_spec_in_parallel_with: T002.0c
+        deliverables:
+          - "packages/vespera_metrics/__init__.py"
+          - "DSR (Bailey-Lopez de Prado 2014)"
+          - "PBO (CPCV frequency-based)"
+          - "IC_spearman + bootstrap CI 10k"
+          - "sortino, MAR, ulcer_index, profit_factor, hit_rate"
+          - "sharpe_distribution_45paths"
+          - "Unit tests contra reference values"
+        exit_criterion: "Mira valida fórmulas; Kira confirma alignment com thesis kill criteria; Quinn PASS"
+
+# ----------------------------------------------------------------
+# SYNC POINT — destrava Task #36
+# ----------------------------------------------------------------
+sync_point:
+  name: "Phase E GO_EXECUTE"
+  trigger: "all 5 stories merged + Sable coherence audit do epic"
+  actions:
+    - "Beckett executa *mira-handshake contra v0.2.0"
+    - "Beckett roda *run-cpcv --spec {spec_ref} --dry-run"
+    - "Dry-run retorna GO_EXECUTE"
+    - "Morgan fecha EPIC-T002.0 status=Done"
+    - "Task #36 (Beckett CPCV Gate) sai de BLOCKED → READY"
+
+# ----------------------------------------------------------------
+# TIMELINE ESTIMATE (best case, linear)
+# ----------------------------------------------------------------
+timeline:
+  total_sessions_serial: 6.5
+  total_sessions_with_parallelism: 5.0
+  critical_path: [T002.0a, T002.0b, T002.0c, T002.0d]
+  parallel_tracks:
+    - [T002.0a, T002.0e]      # W1 parallel
+    - [T002.0c, T002.0d_spec] # W3 spec concurrent with impl
+  estimated_calendar_range: "3-7 dias corridos (depende de cadência humano↔squad)"
+
+# ----------------------------------------------------------------
+# HANDSHAKES required before each story leaves Draft
+# ----------------------------------------------------------------
+required_handshakes:
+  T002.0a: [Dara, Riven]
+  T002.0b: [Aria, Beckett]
+  T002.0c: [Mira, Beckett]
+  T002.0d: [Mira, Beckett]
+  T002.0e: [Nova, Beckett]
+  epic_overall: [Beckett]
+
+# ----------------------------------------------------------------
+# INVARIANTS (epic-wide)
+# ----------------------------------------------------------------
+invariants:
+  - "Hold-out 2025-07-01 → 2026-04-21 INTOCADO (R1 + R15(d))"
+  - "Spec v0.2.0 IMUTÁVEL durante o epic (R15: mudança = nova PRR + v0.3.0)"
+  - "R12: Gage monopoliza git push / gh pr create"
+  - "pytest tests/contracts/ mantém 25/25 durante todo o epic"
+  - "Qualquer story com data path tem AC explícito de VESPERA_UNLOCK_HOLDOUT fail-closed"
+
+# ----------------------------------------------------------------
+# RISKS
+# ----------------------------------------------------------------
+risks:
+  - id: R-0.1
+    risk: "CPCV bug sutil em purging/embargo produz PBO falso-baixo"
+    mitigation: "T002.0c AC obriga benchmark numérico AFML Ch.12 §12.4 passar"
+    owner: Mira
+  - id: R-0.2
+    risk: "Parquet materialização incompleta (gaps de meses em WDO)"
+    mitigation: "T002.0a AC obriga manifest.csv com row_count por mês; Sable valida continuidade"
+    owner: Dara
+  - id: R-0.3
+    risk: "Nova cost atlas atrasa além de W1"
+    mitigation: "Soft gap: Beckett usa defaults [TO-VERIFY]; T002.0e não bloqueia dry-run"
+    owner: Nova
+  - id: R-0.4
+    risk: "Descoberta durante dev força mudança na spec v0.2.0"
+    mitigation: "Parar story; Mira emite v0.3.0 + PRR-novo; epic re-assina"
+    owner: Morgan + Mira

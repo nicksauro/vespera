@@ -1,0 +1,71 @@
+================================================================================
+G06 — PARQUET-ORPHAN-SCAN
+================================================================================
+Gate ID: G06
+Gate name: PARQUET-ORPHAN-SCAN
+Owner / executor: Sable (squad-auditor)
+Date executed (BRT): 2026-04-25
+Story: T002.0a
+Spec: docs/qa/gates/T002.0a-sable-gates.md L71-79
+
+Objective
+---------
+Confirm zero orphan/staging files under data/in_sample/.
+Specifically, scan for any *.tmp, *.part, *.bak, or other non-*.parquet files
+that could indicate a partial write, an aborted run, or stale debug artifacts.
+
+Procedure (per spec)
+--------------------
+find data/in_sample -type f ! -name '*.parquet' -print
+
+Pass criterion: empty stdout.
+
+Execution
+---------
+Command:
+    find data/in_sample -type f ! -name '*.parquet' -print
+
+stdout: (empty)
+stderr: (empty)
+exit code: 0
+
+Cross-verification (totals)
+---------------------------
+Command: find data/in_sample -type f -print | wc -l       → 18
+Command: find data/in_sample -type f -name '*.parquet' -print | wc -l → 18
+Difference (non-parquet files): 18 - 18 = 0
+
+Inventory of files found
+------------------------
+data/in_sample/year=2024/month=01/wdo-2024-01.parquet
+data/in_sample/year=2024/month=02/wdo-2024-02.parquet
+data/in_sample/year=2024/month=03/wdo-2024-03.parquet
+data/in_sample/year=2024/month=04/wdo-2024-04.parquet
+data/in_sample/year=2024/month=05/wdo-2024-05.parquet
+data/in_sample/year=2024/month=06/wdo-2024-06.parquet
+data/in_sample/year=2024/month=07/wdo-2024-07.parquet
+data/in_sample/year=2024/month=08/wdo-2024-08.parquet
+data/in_sample/year=2024/month=09/wdo-2024-09.parquet
+data/in_sample/year=2024/month=10/wdo-2024-10.parquet
+data/in_sample/year=2024/month=11/wdo-2024-11.parquet
+data/in_sample/year=2024/month=12/wdo-2024-12.parquet
+data/in_sample/year=2025/month=01/wdo-2025-01.parquet
+data/in_sample/year=2025/month=02/wdo-2025-02.parquet
+data/in_sample/year=2025/month=03/wdo-2025-03.parquet
+data/in_sample/year=2025/month=04/wdo-2025-04.parquet
+data/in_sample/year=2025/month=05/wdo-2025-05.parquet
+data/in_sample/year=2025/month=06/wdo-2025-06.parquet
+
+All 18 files are *.parquet. No staging artifacts (.tmp, .part, .bak), no
+shadow copies, no leftover debug files.
+
+Verdict
+-------
+PASS — orphan-scan empty. data/in_sample/ contains exactly the 18 canonical
+parquet files corresponding to the 18 manifest rows. No write artifacts,
+no quarantine candidates, no Gage investigation triggered.
+
+Sign-off
+--------
+Sable (auditor) counter-signed 2026-04-25 BRT.
+Evidence path: docs/qa/gates/evidence/T002.0a/g06-orphan-scan.txt

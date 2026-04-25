@@ -1,0 +1,14 @@
+{
+  "run_id": "baseline-aug-2024",
+  "start_ts": "2026-04-23T20:36:43",
+  "end_ts": "2026-04-23T20:37:13",
+  "duration_s": 30,
+  "peak_commit": 401408,
+  "peak_rss": 2183168,
+  "pagefile_alloc_start": 1846718464,
+  "pagefile_alloc_end": 1846718464,
+  "delta_pagefile": 0,
+  "ratio_commit_rss": 0.184,
+  "tick_count": 1,
+  "exit_code": 11
+}

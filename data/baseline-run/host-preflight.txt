@@ -1,0 +1,388 @@
+# Vespera T002.0a G09 - Host Pre-flight
+# Captured by: @devops (Gage)
+# Captured at: 2026-04-22T23:13:24-03:00
+# Constitutional anchor: Article IV (No Invention), Article I (CLI First)
+# Trigger: ADR-1 v1 superseded - wrong host RAM assumption (32 GB assumed vs 16 GB real)
+# Purpose: input for ADR-1 v2 derivation (Aria) + R1/R2/R3 re-calibration (Riven)
+
+## Section 1: systeminfo
+
+Command: `systeminfo` (invoked via `powershell -Command systeminfo` to handle pt-BR console encoding; CP850 bytes converted to UTF-8).
+
+```
+
+
+Nome do host:                              DESKTOP-M81U9SG
+
+Nome do sistema operacional:               Microsoft Windows 10 Pro
+
+Versão do sistema operacional:             10.0.19045 N/A compilação 19045
+
+Fabricante do sistema operacional:         Microsoft Corporation
+
+Configuração do SO:                        Estação de trabalho autônoma
+
+Tipo de compilação do sistema operacional: Multiprocessor Free
+
+Proprietário registrado:                   hh
+
+Organização registrada:                    
+
+Identificação do produto:                  00331-10000-00001-AA248
+
+Data da instalação original:               28/03/2024, 14:40:46
+
+Tempo de Inicialização do Sistema:         20/04/2026, 19:50:14
+
+Fabricante do sistema:                     To be filled by O.E.M.
+
+Modelo do sistema:                         To be filled by O.E.M.
+
+Tipo de sistema:                           x64-based PC
+
+Processador(es):                           1 processador(es) instalado(s).
+
+                                           [01]: Intel64 Family 6 Model 58 Stepping 9 GenuineIntel ~3392 Mhz
+
+Versão do BIOS:                            American Megatrends Inc. 4.6.5, 16/10/2023
+
+Pasta do Windows:                          C:\Windows
+
+Pasta do sistema:                          C:\Windows\system32
+
+Inicializar dispositivo:                   \Device\HarddiskVolume1
+
+Localidade do sistema:                     pt-br;Português (Brasil)
+
+Localidade de entrada:                     pt-br;Português (Brasil)
+
+Fuso horário:                              (UTC-03:00) Brasília
+
+Memória física total:                      16.349 MB
+
+Memória física disponível:                 8.598 MB
+
+Memória Virtual: Tamanho Máximo:           58.174 MB
+
+Memória Virtual: Disponível:               36.315 MB
+
+Memória Virtual: Em Uso:                   21.859 MB
+
+Local(is) de arquivo de paginação:         C:\pagefile.sys
+
+Domínio:                                   WORKGROUP
+
+Servidor de Logon:                         \\DESKTOP-M81U9SG
+
+Hotfix(es):                                27 hotfix(es) instalado(s).
+
+                                           [01]: KB5066130
+
+                                           [02]: KB5034468
+
+                                           [03]: KB5011048
+
+                                           [04]: KB5011067
+
+                                           [05]: KB5015684
+
+                                           [06]: KB5072653
+
+                                           [07]: KB5071959
+
+                                           [08]: KB5014032
+
+                                           [09]: KB5032907
+
+                                           [10]: KB5034224
+
+                                           [11]: KB5043130
+
+                                           [12]: KB5046823
+
+                                           [13]: KB5050388
+
+                                           [14]: KB5050111
+
+                                           [15]: KB5052916
+
+                                           [16]: KB5054682
+
+                                           [17]: KB5055663
+
+                                           [18]: KB5058526
+
+                                           [19]: KB5059504
+
+                                           [20]: KB5061902
+
+                                           [21]: KB5063706
+
+                                           [22]: KB5063261
+
+                                           [23]: KB5063979
+
+                                           [24]: KB5066411
+
+                                           [25]: KB5066790
+
+                                           [26]: KB5071982
+
+                                           [27]: KB5075039
+
+Placa(s) de Rede:                          2 NIC(s) instalado(s).
+
+                                           [01]: Realtek PCIe GbE Family Controller
+
+                                                 Nome da conexão: Ethernet 2
+
+                                                 DHCP ativado:    Sim
+
+                                                 Servidor DHCP:   192.168.0.1
+
+                                                 Endereço(es) IP
+
+                                                 [01]: 192.168.0.6
+
+                                                 [02]: fe80::da5:6d1d:6c5c:a71a
+
+                                                 [03]: 2804:14d:4cb6:8309:f80a:304:ed41:61d2
+
+                                                 [04]: 2804:14d:4cb6:8309:8d4e:face:4562:15c9
+
+                                                 [05]: 2804:14d:4cb6:8309:ee9d:28c9:9025:8d33
+
+                                           [02]: Hyper-V Virtual Ethernet Adapter
+
+                                                 Nome da conexão: vEthernet (WSL)
+
+                                                 DHCP ativado:    Não
+
+                                                 Endereço(es) IP
+
+                                                 [01]: 192.168.80.1
+
+                                                 [02]: fe80::e7e1:5c4e:f382:4c73
+
+Requisitos do Hyper-V:                     Hipervisor detectado. Recursos necessários para o Hyper-V não serão exibidos.
+```
+
+## Section 2: Memory modules (wmic memorychip)
+
+Command: `wmic memorychip get capacity,speed,manufacturer,partnumber,banklabel /format:list`
+
+Note: `wmic` is flagged deprecated on Windows 10 22H2+ but still functional on 10.0.19045. Output was UTF-16LE, converted to UTF-8 via iconv.
+
+```
+﻿
+
+BankLabel=BANK 0
+Capacity=8589934592
+Manufacturer=0000
+PartNumber= 
+Speed=1333
+
+
+BankLabel=BANK 2
+Capacity=8589934592
+Manufacturer=0000
+PartNumber= 
+Speed=1333
+```
+
+## Section 3: Computer system
+
+Command: `wmic computersystem get totalphysicalmemory,model,manufacturer /format:list`
+
+```
+﻿
+
+Manufacturer=To be filled by O.E.M.
+Model=To be filled by O.E.M.
+TotalPhysicalMemory=17143058432
+```
+
+## Section 4: PageFile config
+
+Command 4a: `wmic pagefileset get name,initialsize,maximumsize /format:list`
+
+Result: returned `Nenhuma instancia disponivel.` (pt-BR: 'No instance available'). This indicates NO user-configured pagefile setting - the pagefile is SYSTEM-MANAGED (dynamic, grows on demand up to Virtual Memory Max).
+
+Fallback: `Get-CimInstance -ClassName Win32_PageFileSetting` (PowerShell):
+
+```
+No Win32_PageFileSetting instance present (indicates system-managed pagefile, not user-configured)
+```
+
+Command 4b: `wmic pagefile get name,allocatedbasesize,currentusage,peakusage /format:list`
+
+Note: AllocatedBaseSize / CurrentUsage / PeakUsage are in MB.
+
+```
+﻿
+
+AllocatedBaseSize=41825
+CurrentUsage=6686
+Name=C:\pagefile.sys
+PeakUsage=32096
+```
+
+## Section 5: CPU
+
+Command: `wmic cpu get name,numberofcores,numberoflogicalprocessors,maxclockspeed /format:list`
+
+```
+﻿
+
+MaxClockSpeed=3392
+Name=Intel(R) Core(TM) i7-3770 CPU @ 3.40GHz
+NumberOfCores=4
+NumberOfLogicalProcessors=8
+```
+
+## Section 6: Current memory pressure at t=0 (psutil)
+
+Interpreter: `C:\Python314\python.exe` (system Python). Project venv `.venv/Scripts/python.exe` was NOT present - captured that fact as-is, no fallback fabrication.
+
+psutil was NOT installed on system Python initially; installed transiently via `pip install psutil` (v7.2.2) purely for this capture.
+
+Command:
+
+```python
+import psutil, json
+vm = psutil.virtual_memory()
+sm = psutil.swap_memory()
+print(json.dumps({"virtual": vm._asdict(), "swap": sm._asdict()}, indent=2))
+```
+
+Output:
+
+```json
+{
+  "virtual": {
+    "total": 17143058432,
+    "available": 9017765888,
+    "percent": 47.4,
+    "used": 8125292544,
+    "free": 9017765888
+  },
+  "swap": {
+    "total": 43856764928,
+    "used": 7010336768,
+    "free": 36846428160,
+    "percent": 16.0,
+    "sin": 0,
+    "sout": 0
+  }
+}
+```
+
+## Section 7: Top-20 processes by memory
+
+Primary command (PowerShell): `Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 20 ProcessName,Id,WorkingSet64,PrivateMemorySize64 | Format-Table -AutoSize`
+
+WorkingSet64 and PrivateMemorySize64 are in BYTES.
+
+```
+
+ProcessName           Id WorkingSet64 PrivateMemorySize64
+-----------           -- ------------ -------------------
+vmmem               6560    736215040          3514994688
+Discord             6816    627646464           711630848
+chrome              8984    569262080           475492352
+claude             18468    544538624          1376100352
+MsMpEng             4124    335884288           471490560
+chrome             14644    260472832           295473152
+chrome              5176    239403008           116961280
+chrome             17388    235843584           165289984
+Spotify             8740    226369536           352903168
+com.docker.backend  7872    141455360           182095872
+Spotify            13252    134881280           284057600
+Code               11276    131506176           225087488
+explorer           11928    117968896           326541312
+msedgewebview2     13448    109834240            95993856
+chrome              1432    108462080            84230144
+Battle.net          5920     98283520            97046528
+chrome             17796     93634560            43933696
+Docker Desktop     13924     87961600           113573888
+Battle.net         18716     84459520            80158720
+msedgewebview2     12092     75710464           136478720
+```
+
+Cross-check (tasklist /v /fo csv, sorted in Python, pt-BR headers preserved verbatim; memory values in K). Full raw CSV (287 processes) stored alongside at `_tmp_tasklist.csv`.
+
+```
+Nome da imagem,Identifica��o pessoal,Nome da sess�o,Sess�o#,Uso de mem�ria,Status,Nome de usu�rio,Tempo de CPU,T�tulo da janela
+vmmem,6560,Services,0,718.984 K,Unknown,NT VIRTUAL MACHINE\2DF3C003-9CAE-4FCE-B55E-6105BC556055,3:00:38,N/A
+Discord.exe,6816,Console,2,612.944 K,Running,DESKTOP-M81U9SG\Pichau,2:14:21,Discord Overlay Input Trap
+chrome.exe,8984,Console,2,536.060 K,Unknown,DESKTOP-M81U9SG\Pichau,0:02:25,N/A
+claude.exe,18468,Console,2,532.852 K,Unknown,DESKTOP-M81U9SG\Pichau,0:43:17,N/A
+MsMpEng.exe,4124,Services,0,312.584 K,Unknown,AUTORIDADE NT\SISTEMA,1:23:35,N/A
+chrome.exe,14644,Console,2,247.868 K,Running,DESKTOP-M81U9SG\Pichau,0:01:30,N/A
+chrome.exe,5176,Console,2,233.604 K,Running,DESKTOP-M81U9SG\Pichau,0:01:20,(4947) Igor QUEBRA O SIL�NCIO sobre Raphael Sousa: Qual � a VERDADEIRA INTEN��O da CHOQUEI na Internet? - YouTube - Google Chrome
+chrome.exe,17388,Console,2,230.316 K,Unknown,DESKTOP-M81U9SG\Pichau,0:01:08,N/A
+Spotify.exe,8740,Console,2,221.064 K,Unknown,DESKTOP-M81U9SG\Pichau,0:34:36,N/A
+com.docker.backend.exe,7872,Console,2,137.612 K,Running,DESKTOP-M81U9SG\Pichau,0:34:03,OleMainThreadWndName
+Spotify.exe,13252,Console,2,131.680 K,Running,DESKTOP-M81U9SG\Pichau,0:06:57,Spotify Premium
+Code.exe,11276,Console,2,128.480 K,Unknown,DESKTOP-M81U9SG\Pichau,0:01:12,N/A
+explorer.exe,11928,Console,2,114.952 K,Running,DESKTOP-M81U9SG\Pichau,0:06:32,N/A
+msedgewebview2.exe,13448,Console,2,107.260 K,Unknown,DESKTOP-M81U9SG\Pichau,0:01:09,N/A
+chrome.exe,1432,Console,2,105.920 K,Unknown,DESKTOP-M81U9SG\Pichau,0:00:01,N/A
+Battle.net.exe,5920,Console,2,95.984 K,Unknown,DESKTOP-M81U9SG\Pichau,0:00:56,N/A
+chrome.exe,17796,Console,2,91.440 K,Unknown,DESKTOP-M81U9SG\Pichau,0:00:00,N/A
+Docker Desktop.exe,13924,Console,2,87.952 K,Unknown,DESKTOP-M81U9SG\Pichau,0:49:10,N/A
+Battle.net.exe,18716,Console,2,82.480 K,Unknown,DESKTOP-M81U9SG\Pichau,0:03:04,N/A
+msedgewebview2.exe,12092,Console,2,73.936 K,Running,DESKTOP-M81U9SG\Pichau,0:00:31,N/A
+```
+
+## Section 8: Commit charge (crucial for ADR-1 v2)
+
+Command:
+
+```python
+import psutil
+mem = psutil.virtual_memory()
+print(f'total={mem.total} available={mem.available} used={mem.used} percent={mem.percent}')
+sw = psutil.swap_memory()
+print(f'swap_total={sw.total} swap_used={sw.used} swap_percent={sw.percent}')
+```
+
+Output:
+
+```
+total=17143058432 available=9035472896 used=8107585536 percent=47.3
+swap_total=43856764928 swap_used=7010271232 swap_percent=16.0
+```
+
+Derived key values (for Aria ADR-1 v2 / Riven R1-R3 re-calibration):
+
+- Physical RAM total: 17,143,058,432 B = 16,349 MB ~= 15.97 GiB. Composition: 2x 8 GB DDR3 DIMMs @ 1333 MHz (BANK 0 + BANK 2).
+- psutil swap_total (Windows: pagefile backing store size): 43,856,764,928 B ~= 40.85 GiB.
+- Total Commit Limit (RAM + pagefile): 17,143,058,432 + 43,856,764,928 = 61,000 MB nominal. systeminfo reports `Memoria Virtual: Tamanho Maximo: 58,174 MB` ~= 56.81 GiB (the smaller systeminfo figure reflects the OS commit-limit accounting, which is the authoritative ceiling).
+- Currently available RAM: 9,017,765,888 B ~= 8.40 GiB (47.4% used).
+- Currently committed (swap used): 7,010,336,768 B ~= 6.53 GiB (16.0% of commit).
+- PageFile active size (AllocatedBaseSize): 41,825 MB ~= 40.85 GiB (SYSTEM-MANAGED, can grow).
+- PageFile PeakUsage (historical high-water mark since last boot 2026-04-20 19:50:14 BRT): 32,096 MB ~= 31.34 GiB.
+
+## Section 9: Python env sanity
+
+```
+$ python --version
+Python 3.14.3
+$ python -c "import psutil; print(f'psutil version: {psutil.__version__}')"
+psutil version: 7.2.2
+$ python -c "import sys; print(sys.executable)"
+C:\Python314\python.exe
+```
+
+Note: Project venv `C:\Users\Pichau\Desktop\algotrader\.venv\Scripts\python.exe` does NOT exist. psutil 7.2.2 was installed transiently on system Python 3.14.3 for this capture only. Creating the project venv is a prerequisite before the actual baseline-run begins.
+
+## Anomalies / observations for baseline-run validity
+
+1. Project venv missing: `.venv/Scripts/python.exe` does not exist on host. Any baseline-run command that expects it will fail. Must be provisioned before T002.0a G09 baseline-run begins.
+2. Current memory pressure at capture time is MODERATE (47.4% used): ~8.1 GB already consumed by user workload at t=0. Top consumers: vmmem (~703 MB - WSL2/Docker), Discord (~598 MB), chrome.exe (multiple instances aggregating ~1.6 GB+), claude.exe (~519 MB), MsMpEng.exe (~320 MB - Windows Defender). Baseline-run should either (a) shut down these processes first, OR (b) budget against `available=9.0 GB`, NOT `total=16.0 GB`.
+3. Hardware is older-generation: Intel i7-3770 (Ivy Bridge, released 2012), DDR3-1333. Relevant for throughput assumptions in Aria's ADR-1 v2 - do NOT assume modern-CPU memory bandwidth. 4 physical cores / 8 logical.
+4. PageFile is SYSTEM-MANAGED (not user-pinned): currently 40.85 GiB allocated, historical peak 31.3 GiB. A memory-intensive baseline-run that forces heavy paging could expand the pagefile further - disk I/O on C: drive becomes the failure mode, not hard OOM. R1/R2/R3 thresholds must distinguish 'RAM pressure' from 'commit pressure'.
+5. Hyper-V / WSL2 active: `Hipervisor detectado` + vmmem running. RAM measurements above already reflect hypervisor overhead. Any baseline-run that spawns additional WSL/Docker workloads will compound memory pressure.
+6. wmic deprecation notice: `wmic` still works on 10.0.19045 but is flagged for removal. All wmic captures above were cross-validated with PowerShell `Get-CimInstance` where possible. Future re-captures should prefer CIM cmdlets.
+7. BIOS-level system info is placeholder: Manufacturer/Model = 'To be filled by O.E.M.' - this is a custom / whitebox build, no vendor PSU / thermal specs available.

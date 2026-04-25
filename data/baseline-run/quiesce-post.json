@@ -1,0 +1,163 @@
+{
+  "timestamp_brt": "2026-04-23T20:37:49.611884-03:00",
+  "phase": "post",
+  "virtual_memory": {
+    "total": 17143058432,
+    "available": 9300430848,
+    "percent": 45.7,
+    "used": 7842627584,
+    "free": 9300430848
+  },
+  "top30_rss": [
+    {
+      "pid": 19528,
+      "name": "vmmem",
+      "rss": 2394886144
+    },
+    {
+      "pid": 18468,
+      "name": "claude.exe",
+      "rss": 560861184
+    },
+    {
+      "pid": 4124,
+      "name": "MsMpEng.exe",
+      "rss": 373043200
+    },
+    {
+      "pid": 13448,
+      "name": "msedgewebview2.exe",
+      "rss": 203055104
+    },
+    {
+      "pid": 11928,
+      "name": "explorer.exe",
+      "rss": 199884800
+    },
+    {
+      "pid": 7872,
+      "name": "com.docker.backend.exe",
+      "rss": 181387264
+    },
+    {
+      "pid": 15192,
+      "name": "SearchApp.exe",
+      "rss": 121229312
+    },
+    {
+      "pid": 13924,
+      "name": "Docker Desktop.exe",
+      "rss": 114245632
+    },
+    {
+      "pid": 12092,
+      "name": "msedgewebview2.exe",
+      "rss": 101752832
+    },
+    {
+      "pid": 2132,
+      "name": "Docker Desktop.exe",
+      "rss": 83099648
+    },
+    {
+      "pid": 7152,
+      "name": "msedgewebview2.exe",
+      "rss": 79085568
+    },
+    {
+      "pid": 15016,
+      "name": "nvcontainer.exe",
+      "rss": 71307264
+    },
+    {
+      "pid": 14464,
+      "name": "NVIDIA Share.exe",
+      "rss": 67416064
+    },
+    {
+      "pid": 9644,
+      "name": "WhatsApp.Root.exe",
+      "rss": 60850176
+    },
+    {
+      "pid": 9476,
+      "name": "msrdc.exe",
+      "rss": 52305920
+    },
+    {
+      "pid": 5492,
+      "name": "OneDrive.exe",
+      "rss": 51445760
+    },
+    {
+      "pid": 7448,
+      "name": "msrdc.exe",
+      "rss": 50618368
+    },
+    {
+      "pid": 13432,
+      "name": "Docker Desktop.exe",
+      "rss": 50372608
+    },
+    {
+      "pid": 128,
+      "name": "Registry",
+      "rss": 49836032
+    },
+    {
+      "pid": 16340,
+      "name": "SearchApp.exe",
+      "rss": 47890432
+    },
+    {
+      "pid": 17104,
+      "name": "ShellExperienceHost.exe",
+      "rss": 46661632
+    },
+    {
+      "pid": 13220,
+      "name": "AdobeCollabSync.exe",
+      "rss": 45383680
+    },
+    {
+      "pid": 2788,
+      "name": "svchost.exe",
+      "rss": 41037824
+    },
+    {
+      "pid": 9184,
+      "name": "MoUsoCoreWorker.exe",
+      "rss": 35426304
+    },
+    {
+      "pid": 5552,
+      "name": "SearchIndexer.exe",
+      "rss": 34930688
+    },
+    {
+      "pid": 4920,
+      "name": "dwm.exe",
+      "rss": 34672640
+    },
+    {
+      "pid": 3160,
+      "name": "svchost.exe",
+      "rss": 28876800
+    },
+    {
+      "pid": 18192,
+      "name": "com.docker.build.exe",
+      "rss": 28659712
+    },
+    {
+      "pid": 468,
+      "name": "svchost.exe",
+      "rss": 27607040
+    },
+    {
+      "pid": 3192,
+      "name": "StartMenuExperienceHost.exe",
+      "rss": 26558464
+    }
+  ]
+}

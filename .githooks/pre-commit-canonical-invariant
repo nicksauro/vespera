@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit-canonical-invariant
+#
+# L1 pre-commit hook for canonical-invariant cosign discipline.
+# Authority: ADR-5 (Aria RATIFY + Riven CONDITIONAL_COSIGN C-1/C-2/C-3 + Dex COSIGNED).
+# Story:     docs/stories/R15.2-canonical-invariant-hardening-impl.story.md
+#
+# Sequence ratified by ADR-5 §12.3 C-1 / C-2 reference impl:
+#   1. Detect canonical mutations among staged files.
+#   2. If none → exit 0 (allow).
+#   3. If any → require cosign flag in commit message body.
+#   4. Validate cosign flag matches single-source-of-truth COSIGN_REGEX.
+#   5. Resolve ruling artefact via deterministic glob precedence first-match-wins
+#      (governance > qa-gates > memory-budget). Fail-closed on no-match (C-1 R-B).
+#   6. For each mutated canonical, compute new sha from the STAGED BLOB
+#      (`git show :path | sha256sum`, NOT on-disk read). Atomically rewrite the
+#      matching line in .github/canonical-invariant.sums and `git add` it
+#      (C-2 hook-mandatory auto-update).
+#   7. exit 0 (allow).
+#
+# Bash portability per Dex ADR-5 §12.2 row 1: shebang `#!/usr/bin/env bash` for
+# Windows Git Bash (bash lives at /usr/bin/bash, not /bin/bash). Discipline:
+# `set -euo pipefail`, GNU-coreutils-portable invocations only.
+
+set -euo pipefail
+
+# ----- Resolve repo root + lib paths (hook can be invoked from any subdir) -----
+REPO_ROOT=$(git rev-parse --show-toplevel)
+LIB_REGEX="$REPO_ROOT/.githooks/lib/cosign-regex.sh"
+SUMS_FILE="$REPO_ROOT/.github/canonical-invariant.sums"
+
+# Single-source-of-truth regex (AC2). Source the lib file rather than duplicate.
+if [[ ! -f "$LIB_REGEX" ]]; then
+    echo "ERROR: cosign-regex lib missing at $LIB_REGEX" >&2
+    echo "       Single-source regex contract broken (AC2)" >&2
+    exit 1
+fi
+# shellcheck disable=SC1090
+source "$LIB_REGEX"
+
+# ----- Step 1: detect canonical mutations among staged files -----
+# Canonical surfaces declared in R15 / ADR-5 §3.1. Adding new surfaces is a
+# future R15-class story; if added, append to this list AND to .sums.
+CANONICALS=(
+    "data/manifest.csv"
+    "core/memory_budget.py"
+)
+
+mutated=()
+for canonical in "${CANONICALS[@]}"; do
+    if git diff --cached --name-only | grep -qx "$canonical"; then
+        mutated+=("$canonical")
+    fi
+done
+
+if [[ "${#mutated[@]}" -eq 0 ]]; then
+    # No canonical staged → hook is a no-op.
+    exit 0
+fi
+
+echo "[canonical-invariant-hook] mutated canonicals: ${mutated[*]}"
+
+# ----- Step 2: read commit message body, extract cosign flag -----
+# Pre-commit hooks run BEFORE the commit message is finalised; the editor
+# template lives in .git/COMMIT_EDITMSG. For non-interactive commits
+# (`git commit -m '...'`), the message is also placed there before this hook
+# fires under most git versions; for `-F file` it is also placed there. We
+# read it as the canonical source.
+COMMIT_MSG_FILE="$REPO_ROOT/.git/COMMIT_EDITMSG"
+if [[ ! -f "$COMMIT_MSG_FILE" ]]; then
+    echo "ERROR: commit message file not found at $COMMIT_MSG_FILE" >&2
+    echo "       Cannot validate cosign flag" >&2
+    exit 1
+fi
+
+# Strip comment lines (git's `#` lines), then grep for the flag.
+flag=$(grep -v '^[[:space:]]*#' "$COMMIT_MSG_FILE" \
+        | grep -oE '(MWF|R1-1-WAIVER|MC)-[0-9]{8}-[0-9]+' \
+        | head -n1 || true)
+
+if [[ -z "$flag" ]]; then
+    echo "ERROR: canonical mutation detected but no cosign flag found in commit message." >&2
+    echo "       Required format: MWF-YYYYMMDD-N | R1-1-WAIVER-YYYYMMDD-N | MC-YYYYMMDD-N" >&2
+    echo "       See ADR-5 §4.1 + MWF-20260422-1 L213." >&2
+    exit 1
+fi
+
+if [[ ! "$flag" =~ $COSIGN_REGEX ]]; then
+    echo "ERROR: extracted token '$flag' does not match single-source COSIGN_REGEX." >&2
+    exit 1
+fi
+
+echo "[canonical-invariant-hook] cosign flag accepted: $flag"
+
+# ----- Step 3: deterministic glob precedence first-match-wins (Riven C-1 R-B) -----
+# Order MUST be exactly:
+#   1. docs/governance/${flag_lower}*.md   (MC-29-1 R4 ruling precedent)
+#   2. docs/qa/gates/${flag}-gate.md       (MWF-22-1 gate precedent)
+#   3. docs/architecture/memory-budget.md  (Decision Matrix fallback) — additionally
+#                                          require literal `grep -qF "$flag"` hit.
+# No-match across all three → exit 1 (fail-closed).
+flag_lower=$(printf '%s' "$flag" | tr '[:upper:]' '[:lower:]')
+ruling=""
+
+# 1st: docs/governance/${flag_lower}*.md
+shopt -s nullglob
+for cand in "$REPO_ROOT"/docs/governance/${flag_lower}*.md; do
+    if [[ -f "$cand" ]]; then
+        ruling="$cand"
+        break
+    fi
+done
+shopt -u nullglob
+
+# 2nd: docs/qa/gates/${flag}-gate.md
+if [[ -z "$ruling" ]] && [[ -f "$REPO_ROOT/docs/qa/gates/${flag}-gate.md" ]]; then
+    ruling="$REPO_ROOT/docs/qa/gates/${flag}-gate.md"
+fi
+
+# 3rd: docs/architecture/memory-budget.md (literal grep required)
+if [[ -z "$ruling" ]] && [[ -f "$REPO_ROOT/docs/architecture/memory-budget.md" ]]; then
+    if grep -qF "$flag" "$REPO_ROOT/docs/architecture/memory-budget.md"; then
+        ruling="$REPO_ROOT/docs/architecture/memory-budget.md"
+    fi
+fi
+
+if [[ -z "$ruling" ]]; then
+    echo "ERROR: no ruling artefact found for $flag in any of the 3 deterministic glob paths:" >&2
+    echo "       1) docs/governance/${flag_lower}*.md" >&2
+    echo "       2) docs/qa/gates/${flag}-gate.md" >&2
+    echo "       3) docs/architecture/memory-budget.md (literal grep)" >&2
+    echo "       Fail-closed per Riven C-1 R-B closure." >&2
+    exit 1
+fi
+
+echo "[canonical-invariant-hook] ruling artefact: $ruling"
+
+# ----- Step 4: auto-update .sums atomically (Riven C-2) -----
+# Per ADR-5 §12.3 C-2 reference impl: read STAGED blob via `git show :path`,
+# NOT on-disk file. Atomically rewrite matching line via mktemp + awk + mv,
+# then `git add` so the .sums update lands in the SAME commit as the canonical
+# mutation. NO manual fallback (Riven §11.3 escape clause not invoked).
+if [[ ! -f "$SUMS_FILE" ]]; then
+    echo "ERROR: .github/canonical-invariant.sums missing at $SUMS_FILE" >&2
+    echo "       Cannot auto-update; baseline must land via T5 before this hook is functional." >&2
+    exit 1
+fi
+
+for canonical in "${mutated[@]}"; do
+    new_sha=$(git show ":$canonical" | sha256sum | awk '{print $1}')
+    if [[ -z "$new_sha" || "${#new_sha}" -ne 64 ]]; then
+        echo "ERROR: failed to compute sha256 for staged blob :$canonical" >&2
+        exit 1
+    fi
+
+    # Verify the canonical has a line in .sums to rewrite.
+    if ! awk -v p="$canonical" '$2==p {found=1} END {exit !found}' "$SUMS_FILE"; then
+        echo "ERROR: $canonical missing from $SUMS_FILE — baseline drift" >&2
+        echo "       Run T5 to seed the baseline before mutating this canonical." >&2
+        exit 1
+    fi
+
+    tmp=$(mktemp)
+    awk -v p="$canonical" -v s="$new_sha" \
+        '$2==p {print s"  "p; next} {print}' \
+        "$SUMS_FILE" > "$tmp"
+    mv "$tmp" "$SUMS_FILE"
+    git add "$SUMS_FILE"
+    echo "[canonical-invariant-hook] .sums updated: $canonical -> $new_sha"
+done
+
+echo "[canonical-invariant-hook] PASS — cosign $flag with ruling $ruling, .sums atomically updated"
+exit 0

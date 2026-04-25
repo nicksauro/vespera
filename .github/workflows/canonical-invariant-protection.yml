@@ -1,0 +1,244 @@
+name: canonical-invariant-protection
+
+# L2 server-side enforcement of canonical-invariant cosign discipline.
+# Authority: ADR-5 (Aria RATIFY + Riven CONDITIONAL_COSIGN C-1/C-2/C-3 + Dex COSIGNED).
+# Story: docs/stories/R15.2-canonical-invariant-hardening-impl.story.md
+#
+# Defense layers per ADR-5 §3.2:
+#   L1 pre-commit hook  -> .githooks/pre-commit-canonical-invariant (developer machine, skippable via --no-verify)
+#   L2 CI required check -> THIS WORKFLOW (server-side authoritative; non-skippable when wired into branch protection at T6)
+#   L3 CODEOWNERS        -> root CODEOWNERS file (human review for any change to enforcement infra)
+#
+# Sequencing (Riven C-3 INVARIANT): this workflow lands FIRST (advisory), smoke-test SECOND, hook THIRD,
+# .sums baseline + CODEOWNERS FOURTH, branch-protection toggle (Gage R12) LAST.
+# Inverse ordering = --no-verify bypass window = custodial NO-GO.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # ------------------------------------------------------------------
+  # Job 1 - validate .gitattributes -text discipline preserved (R-2 mitigation per ADR-5 §6).
+  # ------------------------------------------------------------------
+  gitattributes-discipline:
+    name: gitattributes -text discipline (R-2)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Assert -text lines present for canonical surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f .gitattributes ]]; then
+            echo "::error::.gitattributes missing — R15 baseline regressed"
+            exit 1
+          fi
+          grep -qxF 'data/manifest.csv -text' .gitattributes \
+            || { echo "::error::.gitattributes missing 'data/manifest.csv -text' line (R-2 regression)"; exit 1; }
+          grep -qxF 'core/memory_budget.py -text' .gitattributes \
+            || { echo "::error::.gitattributes missing 'core/memory_budget.py -text' line (R-2 regression)"; exit 1; }
+          echo "PASS: .gitattributes -text discipline intact for both canonical surfaces"
+
+  # ------------------------------------------------------------------
+  # Job 2 - validate .sums consistency vs canonical files (sha256sum -c).
+  # This is the core L2 drift-detection check.
+  # ------------------------------------------------------------------
+  sums-consistency:
+    name: canonical-invariant.sums consistency check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run sha256sum -c against .sums
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f .github/canonical-invariant.sums ]]; then
+            # Transitional state per Story T1.2 NOTE: workflow lands at T1, .sums baseline at T5.
+            # Until T5 lands, this job is expected to fail in advisory mode (non-blocking pre-T6).
+            echo "::warning::.github/canonical-invariant.sums not yet present (expected pre-T5 in R15.2 sequencing — advisory mode)"
+            exit 1
+          fi
+          sha256sum -c .github/canonical-invariant.sums
+          echo "PASS: .sums consistent with canonical surfaces on disk"
+
+  # ------------------------------------------------------------------
+  # Job 3 - if PR diff includes .sums itself, validate cosign in PR title/body
+  #         AND ruling artefact stable across PR (NOT introduced in same HEAD - R-4 mitigation).
+  # Single-source regex via .githooks/lib/cosign-regex.sh (AC2 single-source-of-truth).
+  # ------------------------------------------------------------------
+  sums-mutation-cosign:
+    name: .sums mutation cosign validation (R-4)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect .sums mutation in PR diff
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          if git diff --name-only "$base_sha" "$head_sha" | grep -qx '.github/canonical-invariant.sums'; then
+            echo "sums_mutated=true" >> "$GITHUB_OUTPUT"
+            echo "PR mutates .github/canonical-invariant.sums — cosign validation required"
+          else
+            echo "sums_mutated=false" >> "$GITHUB_OUTPUT"
+            echo "PR does not mutate .sums — skip cosign validation"
+          fi
+
+      - name: Validate cosign flag in PR title or body
+        if: steps.detect.outputs.sums_mutated == 'true'
+        shell: bash
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # Single-source-of-truth regex (AC2). Source the lib file rather than duplicate.
+          if [[ ! -f .githooks/lib/cosign-regex.sh ]]; then
+            echo "::error::.githooks/lib/cosign-regex.sh missing — single-source regex contract broken (AC2)"
+            exit 1
+          fi
+          # shellcheck disable=SC1091
+          source .githooks/lib/cosign-regex.sh
+
+          # Extract cosign flag from PR title or body. Anchor on word boundaries.
+          # Format: MWF-YYYYMMDD-N | R1-1-WAIVER-YYYYMMDD-N | MC-YYYYMMDD-N
+          combined=$(printf '%s\n%s\n' "${PR_TITLE:-}" "${PR_BODY:-}")
+          flag=$(printf '%s\n' "$combined" \
+            | grep -oE '(MWF|R1-1-WAIVER|MC)-[0-9]{8}-[0-9]+' \
+            | head -n1 || true)
+
+          if [[ -z "$flag" ]]; then
+            echo "::error::No cosign flag (MWF-/R1-1-WAIVER-/MC-YYYYMMDD-N) found in PR title or body"
+            echo "::error::PR mutates .github/canonical-invariant.sums; cosign flag is mandatory per ADR-5 §4.1 + AC4"
+            exit 1
+          fi
+          if [[ ! "$flag" =~ $COSIGN_REGEX ]]; then
+            echo "::error::Extracted token '$flag' does not match COSIGN_REGEX (single-source-of-truth check)"
+            exit 1
+          fi
+          echo "PASS: cosign flag $flag found in PR metadata"
+          echo "cosign_flag=$flag" >> "$GITHUB_OUTPUT"
+          echo "$flag" > /tmp/cosign_flag
+
+      - name: Validate ruling artefact stable across PR (R-4 — not introduced in same HEAD)
+        if: steps.detect.outputs.sums_mutated == 'true'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          flag=$(cat /tmp/cosign_flag)
+          flag_lower=$(printf '%s' "$flag" | tr '[:upper:]' '[:lower:]')
+
+          # Job 4 logic (deterministic glob precedence first-match-wins) is invoked here
+          # to locate the ruling artefact path against BASE_SHA. R-4: artefact must exist
+          # in BASE (i.e. NOT introduced in this same PR HEAD as the .sums mutation).
+          ruling=""
+          # 1st: docs/governance/${flag_lower}*.md (per MC-29-1 R4 ruling precedent)
+          for cand in docs/governance/${flag_lower}*.md; do
+            if [[ -f "$cand" ]]; then
+              ruling="$cand"
+              break
+            fi
+          done
+          # 2nd: docs/qa/gates/${flag}-gate.md (per MWF-22-1 gate precedent)
+          if [[ -z "$ruling" ]] && [[ -f "docs/qa/gates/${flag}-gate.md" ]]; then
+            ruling="docs/qa/gates/${flag}-gate.md"
+          fi
+          # 3rd: docs/architecture/memory-budget.md w/ literal grep -qF flag hit
+          if [[ -z "$ruling" ]] && [[ -f "docs/architecture/memory-budget.md" ]]; then
+            if grep -qF "$flag" docs/architecture/memory-budget.md; then
+              ruling="docs/architecture/memory-budget.md"
+            fi
+          fi
+
+          if [[ -z "$ruling" ]]; then
+            echo "::error::No ruling artefact found for $flag in any of the 3 deterministic glob paths"
+            echo "::error::  1) docs/governance/${flag_lower}*.md"
+            echo "::error::  2) docs/qa/gates/${flag}-gate.md"
+            echo "::error::  3) docs/architecture/memory-budget.md (literal grep)"
+            echo "::error::Fail-closed per Riven C-1 R-B closure"
+            exit 1
+          fi
+
+          # R-4: ensure ruling artefact existed at BASE (was not introduced in same PR HEAD).
+          # For governance/qa-gate paths, require the file to exist at BASE_SHA.
+          # For memory-budget.md fallback, require the flag literal to exist at BASE_SHA.
+          if [[ "$ruling" == "docs/architecture/memory-budget.md" ]]; then
+            if ! git show "$BASE_SHA:$ruling" 2>/dev/null | grep -qF "$flag"; then
+              echo "::error::Ruling flag '$flag' not present in $ruling at BASE_SHA — introduced in same PR HEAD (R-4 violation)"
+              exit 1
+            fi
+          else
+            if ! git cat-file -e "$BASE_SHA:$ruling" 2>/dev/null; then
+              echo "::error::Ruling artefact '$ruling' did not exist at BASE_SHA — introduced in same PR HEAD (R-4 violation)"
+              exit 1
+            fi
+          fi
+          echo "PASS: ruling artefact '$ruling' is stable across PR (existed at BASE_SHA)"
+
+  # ------------------------------------------------------------------
+  # Job 4 - deterministic glob precedence first-match-wins lookup
+  #         for ruling artefact. Riven C-1 R-B closure (fail-closed on no-match).
+  # This job is a STANDALONE verifier of the precedence-loop semantics; Job 3 invokes
+  # the same logic inline. Keeping Job 4 as a guard rail surfaces breakage in the
+  # ordering even outside .sums-mutation PRs (e.g. in regression CI).
+  # ------------------------------------------------------------------
+  glob-precedence-verifier:
+    name: deterministic glob precedence (Riven C-1 R-B)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Verify hook + lib both source the same precedence order
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f .githooks/pre-commit-canonical-invariant ]]; then
+            echo "::warning::.githooks/pre-commit-canonical-invariant not yet present (expected pre-T3 in R15.2 sequencing — advisory mode)"
+            exit 0
+          fi
+          # Assert the three precedence paths appear in order in the hook.
+          hook=.githooks/pre-commit-canonical-invariant
+          line1=$(grep -nF 'docs/governance/' "$hook" | head -n1 | cut -d: -f1 || echo 0)
+          line2=$(grep -nF 'docs/qa/gates/'  "$hook" | head -n1 | cut -d: -f1 || echo 0)
+          line3=$(grep -nF 'docs/architecture/memory-budget.md' "$hook" | head -n1 | cut -d: -f1 || echo 0)
+          if [[ "$line1" -eq 0 || "$line2" -eq 0 || "$line3" -eq 0 ]]; then
+            echo "::error::Hook missing one of the 3 precedence path literals (governance / qa-gates / memory-budget)"
+            exit 1
+          fi
+          if [[ "$line1" -ge "$line2" || "$line2" -ge "$line3" ]]; then
+            echo "::error::Hook glob-precedence ordering violation: governance must precede qa-gates must precede memory-budget"
+            echo "::error::Lines: governance=$line1 qa-gates=$line2 memory-budget=$line3"
+            exit 1
+          fi
+          echo "PASS: hook honours C-1 R-B deterministic glob precedence (governance < qa-gates < memory-budget)"

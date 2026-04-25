@@ -1,0 +1,23 @@
+{
+  "timestamp_utc": "2026-04-24T11:50:12.109599+00:00",
+  "phase": "retry5-quiesce-mid",
+  "virtual_memory": {
+    "total": 17143058432,
+    "available": 9576796160,
+    "used": 7566262272,
+    "percent": 44.1,
+    "free": 9576796160
+  },
+  "r4_gate": {
+    "threshold_bytes": 9473794048,
+    "observed_available_bytes": 9576796160,
+    "decision": "PROCEED"
+  },
+  "e7_drift": {
+    "threshold": 0.1,
+    "drift_ratio": 0.010872319102371096,
+    "observed_available_bytes": 9576796160,
+    "baseline_floor_bytes": 9473794048,
+    "decision": "PROCEED"
+  }
+}

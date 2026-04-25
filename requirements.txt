@@ -1,0 +1,23 @@
+# Vespera algotrader — runtime + dev dependencies
+# Pins established 2026-04-23 by @dev during venv provisioning for G09a baseline-run.
+# Every entry traces to an actual import in the repo; no speculative extras.
+
+# --- Core runtime ---
+# psutil: core/memory_budget.py, core/run_with_ceiling.py, pre-flight checks
+psutil>=5.9,<8
+# psycopg2-binary: scripts/materialize_parquet.py, packages/t002_eod_unwind/adapters/feed_timescale.py
+#                   (lazy imports, DB reads from Sentinel TimescaleDB)
+psycopg2-binary>=2.9,<3
+# pyarrow: scripts/preview_manifest.py, packages/t002_eod_unwind/adapters/feed_parquet.py (parquet I/O)
+# NOTE: upper bound widened to <25 — only pyarrow 22+ ships cp314 wheels (system
+# Python is 3.14.3; 3.11/3.12 unavailable on this host). @dev 2026-04-23.
+pyarrow>=14,<25
+# pandas: scripts/materialize_parquet.py (lazy), adapter-parity tests
+pandas>=2.1,<3
+# PyYAML: packages/t002_eod_unwind/warmup/calendar_loader.py, scripts/pax_cosign.py,
+#          tests/contracts/test_spec_version_gate*
+PyYAML>=6,<7
+
+# --- Dev / test ---
+pytest>=7,<9
+ruff

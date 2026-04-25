@@ -1,0 +1,124 @@
+# Retry #4 under RA-20260425-1 (ADR-1 v3) — baseline-aug-2024
+# Appended entry (not replacing prior RA-20260424-1 audit at quiesce-audit-20260424.yaml).
+# Gage @devops, executed 2026-04-23 BRT.
+- quiesce_window:
+    amendment_id: RA-20260425-1
+    supersedes: RA-20260424-1
+    governing_adr: ADR-1 v3
+    operator: gage
+    date_brt: 2026-04-23
+    run_id: baseline-aug-2024
+    retry_attempt: 4
+    ceiling_expires_at_brt: "2026-04-24T00:35:23-03:00"  # start + 4h per Decision 2
+    authorized_invocation_flags:
+      no_manifest: true
+      manifest_path: null
+      output_dir: "data/baseline-run/scratch"
+      no_ceiling: true
+      poll_seconds: 30
+    pre:
+      timestamp_brt: "2026-04-23T20:35:11.449848-03:00"
+      manifest_sha256: 75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641
+      parquet_sha256: bf7d42f5122710571c7c7e8050dfde6482874dfb31734b05d54c79ba0bb83ce0
+      available_bytes: 9959813120
+      sentinel_health: "running (no healthcheck configured; State.Status=running recorded)"
+      sha_snapshot_path: "data/baseline-run/_sha_pre.json"
+      quiesce_pre_snapshot: "data/baseline-run/quiesce-pre.json"
+    quiesce:
+      step_a_docker_stop:
+        timestamp_brt: "2026-04-23T20:35:23-03:00"
+        service: "sentinel-timescaledb"
+        exit_code: 0
+      step_b_wsl_shutdown:
+        timestamp_brt: "2026-04-23T20:35:40-03:00"
+        exit_code: 0
+      step_c_sleep:
+        timestamp_brt: "2026-04-23T20:36:16-03:00"
+        duration_s: 30
+      step_d_mid_capture:
+        timestamp_brt: "2026-04-23T20:36:25.502375-03:00"
+        available_bytes: 9496334336
+        mid_snapshot_path: "data/baseline-run/quiesce-mid.json"
+      step_e_gate:
+        decision: PROCEED
+        formula: "available >= CAP_ABSOLUTE_v3 + OS_HEADROOM"
+        threshold_bytes: 9473794048
+        available_bytes: 9496334336
+        margin_bytes: 22540288
+    e7_drift_check:
+      baseline_floor_bytes: 9473794048
+      observed_available_bytes: 9496334336
+      drift_ratio: 0.002379
+      drift_threshold: 0.10
+      drift_decision: PROCEED
+      rationale: "observed floor 9.496 GB is 0.24% above baseline 9.474 GB — well within the 10% tolerance band; host-state consistent with v3 empirical anchor."
+    baseline_child:
+      launched: true
+      wrapper_pid: 7804
+      start_ts_brt: "2026-04-23T20:36:43-03:00"
+      end_ts_brt: "2026-04-23T20:37:13-03:00"
+      exit_code: 11
+      duration_s: 30.6
+      tick_count: 1
+      peak_commit_bytes: 401408        # startup-only; process died on PG connect before real workload
+      peak_rss_bytes: 2183168           # startup-only; NOT representative of Aug-2024 materialization peak
+      peak_pagefile_alloc_bytes: 1846718464
+      duration_cap_exceeded: false
+      emergency_kill:
+        threshold_bytes: 7980049613
+        tripped: false
+        trip_timestamp_brt: null
+        observed_commit_bytes_at_trip: null
+      failure_mode: "PG_CONNECT_REFUSED"
+      failure_detail: |
+        materialize_parquet.py failed at startup on psycopg connect to localhost:5433
+        ("connection to server at localhost port 5433 failed: Connection refused").
+        Error surfaced 30.6s after wrapper launch. The sentinel-timescaledb
+        container was stopped at Step a per RA-20260425-1 Decision 1 (authorized
+        stops minimum set) — but the child materialize_parquet.py reads from the
+        same PG-on-5433 endpoint to build the parquet baseline. The stop therefore
+        severed the child's data source by design of the RA.
+      log_path: "data/baseline-aug-2024.log"
+      telemetry_csv_path: "data/baseline-aug-2024-telemetry.csv"
+      summary_json_path: "data/baseline-aug-2024-summary.json"
+      scratch_parquets_written: 0
+    restore:
+      step_a_wsl_state: "dormant (no Gage-initiated restart; wsl --list --running shows stale cache, vmmem alive under Docker Desktop's docker-desktop distro)"
+      step_b_docker_start:
+        timestamp_brt: "2026-04-23T20:37:22-03:00"
+        service: "sentinel-timescaledb"
+        exit_code: 0
+      step_c_container_health:
+        timestamp_brt: "2026-04-23T20:37:22-03:00"
+        status: "healthy_proxy"
+        health_probe: "State.Status=running AND pg_isready -U sentinel -p 5432 inside container → PASS on first poll"
+        poll_count: 1
+      step_d_post_capture:
+        timestamp_brt: "2026-04-23T20:37:49.611884-03:00"
+        available_bytes: 9300430848
+        post_snapshot_path: "data/baseline-run/quiesce-post.json"
+      step_e_sha256_reverify:
+        manifest_match: true
+        parquet_match: true          # wdo-2024-08.parquet unchanged
+        all_17_files_match: true
+        pre_snapshot: "data/baseline-run/_sha_pre.json"
+        post_snapshot: "data/baseline-run/_sha_post.json"
+    hold_out_lock_verified: true       # VESPERA_UNLOCK_HOLDOUT empty; no hold-out code path executed
+    final_disposition: "BASELINE_FAIL"
+    disposition_rationale: |
+      Baseline-run child failed deterministically and immediately (exit 11, 30.6s)
+      because its PostgreSQL data source on localhost:5433 was stopped in Phase 2a.
+      This is a structural defect inherited from RA-20260424-1's Decision 1 rationale
+      ("Container is idle for baseline-run — baseline uses canonical parquets, not
+      Sentinel DB") — empirically false: the `materialize_parquet.py` child queries
+      sentinel-timescaledb via psycopg. Canonical state intact (17/17 sha256 match);
+      no manifest write; scratch unmodified; hold-out untouched. One-shot RA is
+      now CONSUMED. New RA required for any retry — additionally, Decision 1
+      must be revised to KEEP `sentinel-timescaledb` UP (only WSL2/vmmem stop
+      remains the reclaim lever; need alternative memory-reclaim strategy OR
+      accept that materialize must run with sentinel-timescaledb container
+      running, which changes the R4 gate arithmetic).
+    references:
+      governing_doc: "docs/architecture/memory-budget.md §R4 Amendment — Baseline-Run Quiesce Authorization (RA-20260425-1)"
+      halt_report: "data/baseline-run/baseline-aug-2024-halt-report.md (Retry #4 section appended by Phase 7)"
+      manifest_entry: "docs/MANIFEST_CHANGES.md line 230+ (spec_issuance RA-20260425-1)"

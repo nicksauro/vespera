@@ -601,3 +601,158 @@
       - "Article IV (No Invention) — every flip artefact and signoff traces to Riven's flip_procedure (RA-26-1 issuance_preconditions L411), Quinn gate §Recommendation, Dex commit hashes in git log, or sha256 values computed at flip-time from files whose provenance is documented. No invented fields or thresholds."
       - "Article V (Quality First) — evidence manifest pins every file by path + sha; zero-ambiguity for Gage Decision 3 pre-quiesce verification (Gage re-hashes and compares vs P2/P3 pinned values)."
       - "Article I (CLI First) — flip executed via Edit/Write tool calls under aiox-master CLI session; sha256 computation via certutil/hashlib CLI-invocable."
+
+- manifest_change:
+    type: custodial_signoff
+    change_id: MC-20260429-1
+    decision: 9 (post-execution co-sign — Stage-2 D3+D4 production parquet appends)
+    date_brt: 2026-04-25
+    actor: riven
+    triggered_by: pm (morgan) — task #71 closure orchestration
+    co_sign_basis: |
+      MC-20260429-1 Stage-2 was ISSUED 2026-04-24T22:42:35Z UTC by Orion (aiox-master)
+      acting under Riven-delegated R10 custodial authority. Decisions 3 (May-2025) +
+      Decision 4 (Jun-2025) were authorized as ONE-SHOT cosign-guarded canonical
+      manifest mutations. Decision 9 is the post-execution co-sign required by
+      MC-20260423-1 schema parity ("Riven approves script invocation → Gage
+      executes → Riven co-signs MANIFEST_CHANGES.md entry") and by Riven Ruling
+      B-extended-2 §5.1 (post-banner exit 0 = in-Decision SUCCESS, governance
+      ledger entry required to close the consumption clock window).
+    affected_file: data/manifest.csv
+    affected_rows: 2  # rows 18 (May-2025) + 19 (Jun-2025) appended
+    mutation_summary: |
+      Two cosign-guarded canonical appends executed under MC-20260429-1
+      Stage-2 ISSUED authority:
+        Row 18: data/in_sample/year=2025/month=05/wdo-2025-05.parquet
+                (May-2025 production parquet, 17,249,667 rows, 81.98 MiB)
+        Row 19: data/in_sample/year=2025/month=06/wdo-2025-06.parquet
+                (Jun-2025 production parquet, 16,034,706 rows, 77.34 MiB)
+      Manifest sha lineage:
+        - Stage-2 ISSUED (pre-D3): 75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641
+        - Post-D3 (May commit):    b1f4c34c5aeb3ccca851a7725ae1c91d35dee98790c51959dc9e2ee369bc86d4
+        - Post-D4 (Jun commit):    78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72  # current canonical
+    canonical_manifest_sha256_at_signoff: "78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72"  # observed live; matches CHECKPOINT-RESUME-HERE.md and decision-4-jun-2025-result-success.json post-D4 value
+    core_memory_budget_py_sha256_at_signoff: "1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d"  # UNCHANGED across both D3+D4 commits — R1-1 invariant preserved
+    verification:
+      method: "Schema parity vs MC-20260423-1 (custodial_signoff template); zero-trust hash recomputation; cross-reference of Q1-Q6 preconditions in D3 + D4 evidence JSON files; G10 post-relaunch rehash by Sable."
+      checks_passed: 12
+      checks_failed: 0
+      checks:
+        - check: "Stage-2 was ISSUED before any cosign-guarded canonical write"
+          status: PASS
+          evidence: "MC-20260429-1 Stage-2 ISSUED in memory-budget.md §R10 Custodial; sha 75e72f...641 frozen at issuance"
+        - check: "D3 Q1-Q6 preconditions ALL PASS (retry-3 invocation under Riven Ruling B-extended-2)"
+          status: PASS
+          evidence: "data/canonical-relaunch/mc-20260429-1-evidence/decision-3-may-2025-result-success.json preflight_q1..q6 blocks"
+        - check: "D3 cosign banner present in run log; post-banner wrapper_python_exit_code=0 → in-Decision SUCCESS per Ruling B-extended-2 §5.1"
+          status: PASS
+          evidence: "decision-3-may-2025-result-success.json cosign_banner_present_in_log=true; wrapper_python_exit_code=0; cosign_banner_line preserved"
+        - check: "D3 child peak commit (12.398 GiB) under R5 ceiling (12.5 GiB) — TIGHT margin (+104 MiB) but PASS"
+          status: PASS
+          evidence: "decision-3-may-2025-result-success.json r5_ceiling_check.breached=false; margin_under_ceiling_mib=104.3"
+        - check: "D3 parquet sha256 matches manifest row 18 entry (561f443c...875)"
+          status: PASS
+          evidence: "data/manifest.csv row 18 + decision-3-may-2025-result-success.json outputs.parquet_sha256"
+        - check: "D4 Q1-Q6 preconditions ALL PASS (first-attempt invocation; Q3 expected_sha=b1f4c3...86d4 = post-D3 canonical)"
+          status: PASS
+          evidence: "data/canonical-relaunch/mc-20260429-1-evidence/decision-4-jun-2025-result-success.json preflight_q1..q6 blocks; expected_sha correctly references post-D3 canonical per MWF-20260422-1 §4"
+        - check: "D4 cosign banner present in run log; post-banner wrapper_python_exit_code=0 → in-Decision SUCCESS"
+          status: PASS
+          evidence: "decision-4-jun-2025-result-success.json cosign_banner_present_in_log=true; wrapper_python_exit_code=0"
+        - check: "D4 child peak commit (11.556 GiB) under R5 ceiling (12.5 GiB) — HEALTHY margin (+965 MiB)"
+          status: PASS
+          evidence: "decision-4-jun-2025-result-success.json r5_ceiling_check.breached=false; margin_under_ceiling_mib=965.4"
+        - check: "D4 parquet sha256 matches manifest row 19 entry (c89edf9f...c94)"
+          status: PASS
+          evidence: "data/manifest.csv row 19 + decision-4-jun-2025-result-success.json outputs.parquet_sha256"
+        - check: "Hold-out boundary preserved across BOTH D3 + D4 commits (max_ts of all canonical rows ≤ 2025-06-30T23:59:59 < 2025-07-01 hold-out floor)"
+          status: PASS
+          evidence: "row 18 max_ts=2025-05-30T18:29:59.617; row 19 max_ts=2025-06-30T17:59:59.557; no rows under data/hold_out/"
+        - check: "core/memory_budget.py invariant unchanged across both commits (R1-1 frozenset preserved; sha 1d6ed8...287d byte-identical)"
+          status: PASS
+          evidence: "decision-3 + decision-4 post_commit_invariant_check.memory_budget_py_unchanged=true; live recomputation at signoff matches"
+        - check: "G10 post-relaunch rehash (Sable, T002.0a §G10 extended for 19-row manifest): 16/16 frozen + 18/18 self-match = PASS"
+          status: PASS
+          evidence: "docs/qa/gates/evidence/T002.0a/g10-rehash-19.txt — zero drift in rows 1-16 vs MC-20260423-1; both new rows self-consistent"
+    files_verified_sha256:
+      - path: data/in_sample/year=2025/month=05/wdo-2025-05.parquet
+        sha256: 561f443c16f36d6d07c01868a3343caa1cd4363d1e1c6b41a9dc909256427875
+        rows: 17249667
+        size_bytes: 85966741
+        start_ts_brt: 2025-05-02T09:00:53.407
+        end_ts_brt:   2025-05-30T18:29:59.617
+        phase: in_sample
+        ticker: WDO
+      - path: data/in_sample/year=2025/month=06/wdo-2025-06.parquet
+        sha256: c89edf9f1d3e2b4746e15e2c9412c6c784ea702ae73ca1a69a67adcd62425c94
+        rows: 16034706
+        size_bytes: 81096829
+        start_ts_brt: 2025-06-02T09:00:44.719  # Jun-1 was Sunday; first trading day Jun-2 expected
+        end_ts_brt:   2025-06-30T17:59:59.557
+        phase: in_sample
+        ticker: WDO
+    consumption_clock_state_post_signoff: "STARTED-CONSUMED-DECISIONS-3-AND-4 — both ONE-SHOT slots used productively under Stage-2 ISSUED authority. Consumption clock window CLOSED on this Decision 9 entry (post-execution co-sign satisfies the governance ledger closure required by Ruling B-extended-2 §5.1). Future canonical writes require new MC-YYYYMMDD-N issuance."
+    retry_budget_final_state:
+      decision_3_pre_decision_gate_slots_used: 4
+      decision_3_pre_decision_gate_ceiling_extended: 5
+      decision_3_pre_decision_gate_slots_remaining: 1  # not exercised — D3 consumed productively on retry-3
+      decision_4_r4_class_slots_used: 0
+      decision_4_r4_class_slots_remaining: 3  # untouched — first-attempt clean SUCCESS
+      note: "Both decision-class budgets close out under MC-29-1; no further wrapper invocations expected under this MC."
+    decision: APPROVE_POST_EXECUTION
+    justification: |
+      All 12 deterministic checks passed. Both D3 + D4 executions traced byte-for-byte
+      to authorized Q1-Q6 preconditions, cosign-guarded post-banner exit 0 dispositions,
+      and R5-ceiling-compliant child peak telemetry per ADR-4 §14.5.2 B1 (child
+      self-reported authoritative). Manifest mutations are byte-identical to evidence
+      JSON outputs blocks. R1-1 invariant (memory_budget.py frozenset) preserved across
+      both commits. G10 post-relaunch rehash confirms zero drift in 16 pre-existing
+      rows + perfect self-match of both new rows. Hold-out boundary (2025-07-01+)
+      preserved with zero leak. Article IV (No Invention) compliance: every appended
+      manifest field traces to parquet bytes on disk, Sentinel query results, or
+      cosign-guarded write under MC-29-1 authority.
+    process_compliance_acknowledged: true
+    process_compliance_detail: |
+      Authorization chain followed correctly end-to-end:
+        1. PM (Morgan) tasked Stage-2 issuance to Riven via MC-29-1 draft.
+        2. Orion (aiox-master) flipped DRAFT → ISSUED on Riven-delegated authority
+           per flip_procedure (delegation pattern matches RA-20260426-1 precedent).
+        3. Gage (@devops) executed D3 retry-3 + D4 first-attempt under exclusive
+           git-write authority; zero git push occurred during execution per brief.
+        4. Riven (this entry, signed by Orion-on-Riven-behalf under R10 delegation
+           per same pattern as MC-20260423-1 retro precedent) co-signs the post-
+           execution ledger to close the consumption clock window.
+      Contrast with MC-20260423-1 (Dex retro): no scope violation occurred this
+      cycle. All cosign env vars exported pre-invocation per Ruling B-extended-2
+      Q6 binding precondition. Cosign banners present in both run logs.
+    next_action: |
+      1. Manifest now canonical R15 source of truth (19 rows; sha 78c9ad...ee72).
+         Pre-existing 16 rows immutable per MC-20260423-1; new rows 18-19
+         immutable post this signoff per MC-20260429-1.
+      2. Task #71 (MC-29-1 Decisions 3+4 production runs) ready for PM
+         (Morgan) close-out — all governance preconditions satisfied.
+      3. Task #81 (G10 post-relaunch rehash) COMPLETE per
+         docs/qa/gates/evidence/T002.0a/g10-rehash-19.txt PASS verdict.
+      4. Beckett (CPCV setup, task #36) is technically unblocked from the
+         May+Jun 2025 manifest rows side. Story Done depends on
+         remaining gates G01/G06/G07/G08 (unrelated to MC-29-1 closure).
+      5. Future canonical manifest mutations require new MC-YYYYMMDD-N
+         issuance. MC-29-1 consumption clock CLOSED.
+      6. Gage commit/push is DEFERRED per PM decision (working tree dirty
+         is local-custodial OK; user controls push timing). When Gage is
+         dispatched, expected scope: data/manifest.csv +
+         data/canonical-relaunch/mc-20260429-1-evidence/* +
+         docs/MANIFEST_CHANGES.md +
+         docs/architecture/memory-budget.md +
+         data/in_sample/year=2025/month=05/wdo-2025-05.parquet +
+         data/in_sample/year=2025/month=06/wdo-2025-06.parquet +
+         docs/qa/gates/evidence/T002.0a/g10-rehash-19.txt +
+         data/canonical-relaunch/mc-20260429-1-evidence/CHECKPOINT-RESUME-HERE.md.
+    constitutional_refs:
+      - Article I (CLI First) — every Q1-Q6 precondition + execution + signoff CLI-invocable (psutil, sha256sum, .venv/Scripts/python, hashlib, docker)
+      - Article II (Agent Authority) — git-write delegation respected (Gage exclusive); manifest mutations gated by Riven R10 (this signoff); PM closure non-overlapping
+      - Article IV (No Invention) — every field in this entry traces to evidence JSON files, run logs, on-disk file bytes, or prior MC entries with documented provenance
+      - Article V (Quality First) — zero-trust 12-check audit; G10 post-relaunch rehash independent verification; Q3 invariant re-checked at signoff time
+    riven_signature_timestamp_brt: "2026-04-25T12:08:00-03:00"
+    riven_signature_basis: "R10 custodial — post-execution co-sign of cosign-guarded D3+D4 mutations under Stage-2 ISSUED authority; signed by Orion (aiox-master) acting on Riven-delegated authority per R10 delegation pattern (precedent: MC-20260423-1 retro signoff + RA-20260426-1 flip)"
+    orion_proxy_signature_timestamp_utc: "2026-04-25T15:08:00Z"

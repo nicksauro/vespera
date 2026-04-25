@@ -1,0 +1,112 @@
+ra_reference: RA-20260428-1
+stage_2_flip_timestamp_utc: 2026-04-24T21:36:22Z
+stage_2_flip_timestamp_brt: 2026-04-24T18:36:22-03:00
+authored_by: "Gage (@devops) - Decision 5 audit"
+authored_at_brt: 2026-04-24T18:49:27-03:00
+
+decision_3_invocation:
+  branch: ra-28-1/p1-streaming-refactor
+  branch_head_commit: 82fbf87372db57458081360d6a6cae10539d04da
+  wrapper_command_line: "C:\\Python314\\python.exe C:\\Users\\Pichau\\Desktop\\Algotrader\\scripts\\materialize_parquet.py --start-date 2024-08-01 --end-date 2024-08-31 --ticker WDO --output-dir data\\baseline-run\\ra-20260428-1-decision-3-scratch --no-manifest --source sentinel"
+  run_id: ra-28-1-decision-3-sentinel-aug2024
+  child_pid: 2368
+  wrapper_pid: 11040
+  child_exit_code: 0
+  start_timestamp_brt: 2026-04-24T18:43:14
+  end_timestamp_brt: 2026-04-24T18:45:45
+  wall_clock_seconds: 150.6
+  tick_count: 5
+  poll_seconds: 30
+  ceiling_mode: no-ceiling-uncapped-baseline
+
+sentinel_path_baseline:
+  month: 2024-08
+  ticker: WDO
+  row_count: 21058318
+  peak_wset_bytes: 225001472                    # child self-reported, authoritative
+  peak_pagefile_bytes: 473739264                # child self-reported, authoritative
+  peak_wset_gib: 0.2096
+  peak_pagefile_gib: 0.4412
+  peak_rss_bytes_parent_polled: 214884352
+  peak_commit_bytes_parent_polled: 464109568    # sub-Nyquist; delta from child below
+  parent_child_delta_bytes: 9629696             # 473739264 - 464109568
+  parent_child_delta_pct: 2.07                  # (delta / child_peak) * 100
+  derivation_source: child_self_reported_telemetry_exit
+  telemetry_commit_ref: "80805ac5"              # T002.4 merge commit
+  psutil_version: "7.2.2"
+  child_peak_timestamp_brt: 2026-04-24T18:45:38
+
+q6d_nyquist_disposition:
+  expected_runtime_floor_s: 180                 # per P4 doc
+  actual_runtime_s: 150.6
+  ratio_threshold_s: 300                        # 10 x poll_seconds
+  ratio_satisfied: false                        # 150.6 < 300
+  primary_peak_source: child_self_reported      # binding per Q6d "regardless" clause
+  parent_polling_retained_for: reactive_r5_warn_kill_gating_only
+  step7_derivation_input_source: peak_pagefile_bytes_child_self_reported
+  disposition: q6d_binding_met_by_construction  # child telemetry is authoritative regardless of ratio
+
+output_parquet:
+  path: data/baseline-run/ra-20260428-1-decision-3-scratch/year=2024/month=08/wdo-2024-08.parquet
+  sha256: 9eaea6ac68dd95849ecada48dd421bd22a64fff1d19023bb492803055cfae758
+  size_bytes: 116622884
+  row_count: 21058318
+  phase: in_sample
+  ticker: WDO
+  month: 2024-08
+  custodial_status: scratch_baseline_not_canonical  # NOT added to data/manifest.csv; lives in baseline-run/ tree
+
+decision_3_run_artifacts:
+  summary_json:
+    path: data/baseline-run/ra-20260428-1-decision-3-scratch/ra-28-1-decision-3-sentinel-aug2024-summary.json
+    sha256: 8626c64736c1315924cd2d83157cb0e28a9fdb706852dd5ab88f4c5cea5c8075
+  telemetry_csv:
+    path: data/baseline-run/ra-20260428-1-decision-3-scratch/ra-28-1-decision-3-sentinel-aug2024-telemetry.csv
+    sha256: 66386044743570a2aeb2e76592826205565214dc51c1052ca463cec22ac481d2
+  decision_3_log:
+    path: data/baseline-run/ra-20260428-1-decision-3-scratch/ra-28-1-decision-3-sentinel-aug2024.log
+    sha256: aa2f3e52f0193d4021c93bce0a70f3f5ef22e622b5428a2972dd80a85e15fcfe
+  wrapper_stdout_log:
+    path: data/baseline-run/ra-20260428-1-decision-3-scratch/wrapper-stdout.log
+    sha256: e159c6225505713738f8982c61182c082dd83521a28730317f41e1b81a24a092
+
+precondition_evidence:
+  p1a: { path: data/baseline-run/ra-20260428-1-evidence/p1-streaming-refactor-commit.txt, sha256: 6cf7c44af81073908e327998082a1f82a99b9f332543f68d4840e081b43f8b1a }
+  p1b: { path: data/baseline-run/ra-20260428-1-evidence/p1-dara-cosign.md, sha256: b4eaa9e9bee3b86801413507fca9eab4bf3ddfc994c6273b812e486212113dc4 }
+  p2:  { path: data/baseline-run/ra-20260428-1-evidence/p2-qa-gate-refactor.md, sha256: 01d0a316c9bf44234923d0a2f4b6efefc28682f33f496f961448a4f4b6671868 }
+  p3a: { path: data/baseline-run/ra-20260428-1-evidence/p3-telemetry-smoke-test.json, sha256: 7e37b5690ab3b46edda9fc4f6fa33caf32a7fb6d3fa704e1bc5e9c3318028dab }
+  p3b: { path: data/baseline-run/ra-20260428-1-evidence/p3-smoke-test-run.log, sha256: 8e5e34430fbebb0984c0ac043ec95d4aecc0f860b3bd744e8c9d60534d9cb3f2 }
+  p4:  { path: data/baseline-run/ra-20260428-1-evidence/p4-nyquist-check.md, sha256: e8d39ed1fb0d7f846e4a2cc8d873003768da06560a2280b12e1e2a970b78ca25 }
+
+canonical_invariants_at_decision_3_start:
+  data_manifest_csv_sha256: 75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641
+  core_memory_budget_py_sha256: 51972c522c79d42718bb2037b7efd36cb2ec6a195b9f34eb2ce42bead391a0ac
+
+canonical_invariants_at_decision_3_end:
+  data_manifest_csv_sha256: 75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641
+  core_memory_budget_py_sha256: 51972c522c79d42718bb2037b7efd36cb2ec6a195b9f34eb2ce42bead391a0ac
+  both_preserved: true
+
+step7_ceiling_bytes_candidate_informational:
+  # Dex is the step-7 populate authority; this is informational only
+  formula: "CEILING_BYTES = min(ceil(peak_pagefile_bytes x 1.3), CAP_ABSOLUTE_v3)"
+  peak_pagefile_aug2024: 473739264
+  multiplier: 1.3
+  product: 615861043.2
+  ceil: 615861044
+  cap_absolute_v3: 8400052224
+  candidate_value: 615861044
+  candidate_mib: 587.3
+  candidate_gib: 0.5735
+  cap_binding: false
+  multiplier_binding: true
+  headroom_below_cap_pct: 92.67  # (1 - candidate/cap) * 100
+
+consumption_status:
+  ra_28_1_one_shot_clock: CONSUMED_WITH_SUCCESS
+  retry_required_for_new_workload: NEW_RA_REQUIRED
+  downstream_unblocked:
+    - task_78_dex_step7_populate
+    - task_87_morgan_t002_0a_revalidation
+    - task_71_gage_mai_jun_2025_relaunch (after step-7)
+    - task_81_sable_g10_post_relaunch_rehash (after #71)

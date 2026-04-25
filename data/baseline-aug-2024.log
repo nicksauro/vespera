@@ -1,0 +1,5 @@
+[manifest-mode] NO-MANIFEST (--no-manifest active; no manifest file will be written)
+[manifest-suppressed] month=2024-08 reason=--no-manifest
+[manifest] run complete; 0 month(s) flushed (--no-manifest active)
+[materialize] 2024-08 [2024-08-01 .. 2024-08-31] -> data\baseline-run\scratch\year=2024\month=08\wdo-2024-08.parquet
+[materialize]   rows=21058318 phase=in_sample sha256=220c84e27c1aeb2a05e96650f93e4199995c969d6b7f0e85626c77e670ed13f5

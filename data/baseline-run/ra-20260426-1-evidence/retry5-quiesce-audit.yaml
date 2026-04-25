@@ -1,0 +1,125 @@
+- quiesce_window:
+    amendment_id: RA-20260426-1
+    supersedes: RA-20260425-1 (CONSUMED retry #4)
+    governing_adr: ADR-1 v3
+    governing_amendment: ADR-4 Amendment 20260424-1 §13 (Option B cache routing)
+    operator: gage
+    date_brt: 2026-04-24
+    run_id: baseline-aug-2024
+    retry_number: 5
+    invocation_mode: --source=cache
+    source_mode: cache
+    ceiling_expires_at_brt: 2026-04-24T12:50:00-03:00
+    precondition_evidence:
+      t12b_verdict_path: data/baseline-run/ra-20260426-1-evidence/p1-t12b-sentinel-down.txt
+      t12b_verdict: PASSED
+      cache_manifest_sha256_at_evidence: b7ef8562c112c2815e21c11486c03044f88bcb64a52333e4d279002c255a9885
+      cache_aug2024_parquet_sha256_at_evidence: 2473bdcc4fe9ab08bf5ce35c36327175abdc0bf69acc303f7054281fcc4fe90a
+      peak_ws_pilot_build_bytes: 221130752
+      wrapper_source_passthrough_gate_path: docs/qa/gates/RA-20260426-1-chain-gate.md
+    authorized_invocation_flags:
+      source: cache
+      cache_dir: data/cache/raw_trades
+      cache_manifest: data/cache/cache-manifest.csv
+      no_manifest: true
+      manifest_path: null
+      output_dir: data/baseline-run/scratch
+      no_ceiling: true
+      poll_seconds: 30
+    pre:
+      timestamp_brt: 2026-04-24T08:49:16-03:00
+      manifest_sha256: 75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641
+      parquet_sha256: bf7d42f5122710571c7c7e8050dfde6482874dfb31734b05d54c79ba0bb83ce0
+      cache_manifest_sha256_at_quiesce_pre: b7ef8562c112c2815e21c11486c03044f88bcb64a52333e4d279002c255a9885
+      cache_aug2024_parquet_sha256_at_quiesce_pre: 2473bdcc4fe9ab08bf5ce35c36327175abdc0bf69acc303f7054281fcc4fe90a
+      available_bytes: 10657693696
+      sentinel_health: healthy
+    quiesce:
+      step_a_docker_stop: {timestamp_brt: "2026-04-24T08:49:35-03:00", exit_code: 0}
+      step_b_wsl_shutdown: {timestamp_brt: "2026-04-24T08:49:45-03:00", exit_code: 0}
+      step_c_sleep: {timestamp_brt: "2026-04-24T08:49:45-03:00", duration_s: 30}
+      step_d_mid_capture: {timestamp_brt: "2026-04-24T08:50:12-03:00", available_bytes: 9576796160}
+      step_e_gate:
+        decision: PROCEED
+        formula: "available >= CAP_ABSOLUTE_v3 + OS_HEADROOM"
+        threshold_bytes: 9473794048
+        available_bytes: 9576796160
+    e7_drift_check:
+      baseline_floor_bytes: 9473794048
+      observed_available_bytes: 9576796160
+      drift_ratio: 0.010872319102371096
+      drift_threshold: 0.10
+      drift_decision: PROCEED
+    baseline_child:
+      launched: true
+      attempt_1_exit_code: 1  # stale log-file collision (data/baseline-aug-2024.log from retry #4)
+      attempt_1_remediation: "Archived 3 stale prior-retry artifacts (log, telemetry.csv, summary.json) to data/baseline-run/ra-20260426-1-evidence/prior-retry-artifacts-archive/. Canonical sha re-verified unchanged. Invocation NOT mutated (no --force added). Single quiesce window preserved."
+      attempt_2_pid: 15244
+      start_ts_brt: "2026-04-24T08:50:58-03:00"
+      end_ts_brt: "2026-04-24T08:51:58-03:00"
+      exit_code: 0
+      duration_cap_exceeded: false
+      duration_s: 60
+      total_trades_written: 21058318
+      parquet_row_count: 21058318
+      parquet_row_groups: 211
+      parquet_size_bytes: 116625226
+      parquet_sha256_scratch: 220c84e27c1aeb2a05e96650f93e4199995c969d6b7f0e85626c77e670ed13f5
+      emergency_kill:
+        threshold_bytes: 7980049613
+        tripped: false
+        trip_timestamp_brt: null
+        observed_commit_bytes_at_trip: null
+      peak_commit_bytes: 819200
+      peak_rss_bytes: 3969024
+      peak_pagefile_alloc_bytes: 2389372928
+      delta_pagefile_bytes: 159318016
+      ratio_commit_rss: 0.206
+      tick_count: 2
+      poll_seconds: 30
+    restore:
+      step_a_wsl_state: dormant
+      step_b_docker_start: {timestamp_brt: "2026-04-24T08:52:50-03:00", exit_code: 0}
+      step_c_container_health: {timestamp_brt: "2026-04-24T08:53:20-03:00", status: accepting_connections, poll_count: 1}
+      step_d_post_capture: {timestamp_brt: "2026-04-24T08:53:26-03:00", available_bytes: 9558282240}
+      step_e_sha256_reverify:
+        manifest_match: true
+        parquet_match: true
+        cache_manifest_match: true
+        cache_aug2024_parquet_match: true
+        all_16_canonical_parquets_match: true
+        all_16_canonical_parquets_checked: 16
+        all_16_canonical_parquets_mismatches: 0
+    final_disposition: SUCCESS_BUT_TELEMETRY_INSUFFICIENT
+    hold_out_lock_verified: true
+    ra_26_1_one_shot_consumed: true
+    telemetry_concerns:
+      issue: "peak_commit=819,200 bytes and peak_rss=3.9 MB are suspiciously low — the materialize child was born, read 21,058,318 rows from cache parquet, and exited within 60s total wall time. Wrapper poll_seconds=30 produced only 2 samples (tick_count=2). The two samples likely captured Python interpreter startup (vms≈400KB-800KB) and an inter-phase idle moment — NOT peak materialize-child working memory during pandas DataFrame construction + parquet write."
+      rationale: "The cache-read path is dramatically faster than the sentinel-stream path that RA-20260426-1's peak-memory concern was derived from. A 30s poll on a 60s run cannot capture peak under Nyquist sampling theorem."
+      impact_for_issue_78: "peak_commit=819,200 bytes is NOT usable as the empirical basis for CEILING_BYTES derivation. Aria+Riven should convene to decide whether: (a) re-run with finer poll (e.g., --poll-seconds=1 or --poll-seconds=2) under a new RA; (b) use peak_pagefile_alloc_bytes=2,389,372,928 (~2.22 GiB) as a conservative upper bound indicator for CEILING_BYTES; (c) accept that cache-backed path operates at ~4 MB RSS (trivial) and derive CEILING_BYTES from the sentinel-path semantics instead; (d) instrument materialize_parquet.py with self-reported peak via resource.getrusage or a VmHWM read at exit."
+    canonical_invariants_preserved:
+      manifest_csv_sha256_start: 75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641
+      manifest_csv_sha256_end: 75e72f2c1185eb795a5db6c5a127706e1b90c30906216a72ea79c443d5391641
+      manifest_drift: false
+      cache_manifest_sha256_start: b7ef8562c112c2815e21c11486c03044f88bcb64a52333e4d279002c255a9885
+      cache_manifest_sha256_end: b7ef8562c112c2815e21c11486c03044f88bcb64a52333e4d279002c255a9885
+      cache_manifest_drift: false
+      cache_aug2024_parquet_start: 2473bdcc4fe9ab08bf5ce35c36327175abdc0bf69acc303f7054281fcc4fe90a
+      cache_aug2024_parquet_end: 2473bdcc4fe9ab08bf5ce35c36327175abdc0bf69acc303f7054281fcc4fe90a
+      cache_aug2024_parquet_drift: false
+      in_sample_aug2024_parquet_start: bf7d42f5122710571c7c7e8050dfde6482874dfb31734b05d54c79ba0bb83ce0
+      in_sample_aug2024_parquet_end: bf7d42f5122710571c7c7e8050dfde6482874dfb31734b05d54c79ba0bb83ce0
+      in_sample_aug2024_parquet_drift: false
+    evidence_paths:
+      pre_snapshot: data/baseline-run/ra-20260426-1-evidence/retry5-quiesce-pre.json
+      mid_snapshot: data/baseline-run/ra-20260426-1-evidence/retry5-quiesce-mid.json
+      post_snapshot: data/baseline-run/ra-20260426-1-evidence/retry5-quiesce-post.json
+      child_stdout_attempt1: data/baseline-run/ra-20260426-1-evidence/retry5-child.stdout
+      child_stderr_attempt1: data/baseline-run/ra-20260426-1-evidence/retry5-child.stderr
+      child_stdout_attempt2: data/baseline-run/ra-20260426-1-evidence/retry5-child-v2.stdout
+      child_stderr_attempt2: data/baseline-run/ra-20260426-1-evidence/retry5-child-v2.stderr
+      wrapper_log: data/baseline-aug-2024.log
+      wrapper_summary_json: data/baseline-aug-2024-summary.json
+      wrapper_telemetry_csv: data/baseline-aug-2024-telemetry.csv
+      scratch_parquet: data/baseline-run/scratch/year=2024/month=08/wdo-2024-08.parquet
+      archived_prior_retry_artifacts: data/baseline-run/ra-20260426-1-evidence/prior-retry-artifacts-archive/

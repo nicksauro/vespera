@@ -1,0 +1,35 @@
+{
+  "source_log_file": "data/_scratch/p3-smoke/p3-smoke-test.log",
+  "raw_telemetry_line": "TELEMETRY_CHILD_PEAK_EXIT commit=458444800 wset=190550016 pid=2396 timestamp_brt=2026-04-24T18:23:00",
+  "parsed_event": {
+    "peak_pagefile_bytes": 458444800,
+    "peak_wset_bytes": 190550016,
+    "child_pid": 2396,
+    "timestamp_brt": "2026-04-24T18:23:00",
+    "_schema_note": "T002.4 contract emits commit=<peak_pagefile_bytes> and wset=<peak_wset_bytes> as space-separated key=value tokens on stdout. commit and peak_pagefile_bytes are equivalent (PeakPagefileUsage on Windows); wset and peak_wset_bytes are equivalent (PeakWorkingSetSize)."
+  },
+  "wrapper_parsed_values_from_summary": {
+    "peak_commit_bytes_child_self_reported": 458444800,
+    "peak_wset_bytes_child_self_reported": 190550016,
+    "child_pid": 2396,
+    "child_peak_timestamp_brt": "2026-04-24T18:23:00",
+    "child_peak_telemetry_missing": false
+  },
+  "byte_for_byte_match": true,
+  "child_exit_code": 0,
+  "wrapper_reported_duration_s": 30,
+  "wall_clock_seconds": 31,
+  "psutil_version": "7.2.2",
+  "ra_reference": "RA-20260428-1 Stage-1 P3",
+  "run_id": "p3-smoke-test",
+  "smoke_test_month": "2024-03 (WDO, 314060 rows)",
+  "success_criteria": {
+    "child_exit_code_0": true,
+    "runtime_approx_30s": true,
+    "telemetry_line_emitted": true,
+    "peak_pagefile_bytes_gt_0": true,
+    "peak_wset_bytes_gt_0": true,
+    "wrapper_parsed_matches_child_emitted": true,
+    "psutil_pinned_7_2_2": true
+  }
+}

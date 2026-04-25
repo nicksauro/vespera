@@ -14,7 +14,6 @@ from datetime import datetime
 import pytest
 
 from packages.t002_eod_unwind.core.feature_computer import (
-    Features,
     PercentileBands,
     compute_features,
 )

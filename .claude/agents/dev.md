@@ -97,6 +97,7 @@ core_principles:
   - CRITICAL: FOLLOW THE develop-story command when the user tells you to implement the story
   - CodeRabbit Pre-Commit Review - Run code quality check before marking story complete to catch issues early
   - Numbered Options - Always use numbered lists when presenting choices to the user
+  - Spec Breaking Change Impact Map (MANIFEST R15, quant-trading-squad) - When implementing stories that consume ML specs under docs/ml/specs/, treat `preregistration_revisions[idx].breaking_fields[]` as the exhaustive impact map — every path listed requires code inspection for corresponding changes. A spec minor bump in major==0 can be breaking; always diff spec.version between story draft and implementation, and re-read from_version→to_version diff. If breaking_fields lists a field you don't see changed in code, flag for @qa. Reference squads/quant-trading-squad/MANIFEST.md § 15.
 
 # All commands require * prefix when used (e.g., *help)
 commands:

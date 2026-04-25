@@ -1,0 +1,15 @@
+[wrapper] run_id: baseline-aug-2024
+[wrapper] command: C:\Users\Pichau\Desktop\algotrader\.venv\Scripts\python.exe C:\Users\Pichau\Desktop\Algotrader\scripts\materialize_parquet.py --start-date 2024-08-01 --end-date 2024-08-31 --ticker WDO --output-dir data\baseline-run\scratch --no-manifest --source cache --cache-dir data\cache\raw_trades --cache-manifest data\cache\cache-manifest.csv
+[wrapper] log_dir: C:\Users\Pichau\Desktop\Algotrader\data
+[wrapper] ceiling: UNCAPPED (baseline)
+[wrapper] poll_seconds: 30
+ERROR: log file already exists at C:\Users\Pichau\Desktop\Algotrader\data\baseline-aug-2024.log; pass force_overwrite=True (or --force on CLI) to overwrite. Current file preserved.
+
+=== RunResult ===
+  exit_code         : 1
+  peak_commit       : 0 bytes (0.000 GiB)
+  peak_rss          : 0 bytes (0.000 GiB)
+  tick_count        : 0
+  duration_s        : 0.0
+  telemetry_csv     : C:\Users\Pichau\Desktop\Algotrader\data\baseline-aug-2024-telemetry.csv
+  summary_json      : C:\Users\Pichau\Desktop\Algotrader\data\baseline-aug-2024-summary.json

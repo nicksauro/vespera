@@ -1,0 +1,241 @@
+# Beckett Engine Config — T002 EOD Unwind WDO
+# =============================================================================
+# Owner:        Beckett (@backtester) — consumer of Nova cost atlas
+# Source atlas: docs/backtest/nova-cost-atlas.yaml v1.0.0 (Nova compiled)
+# Audit:        docs/backtest/nova-cost-atlas-audit.md (Sable APPROVED_WITH_CONDITIONS)
+# Story:        docs/stories/T002.0e.story.md (AC9 + AC10)
+# Spec ref:     docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml §costs
+# =============================================================================
+# ARTICLE IV — NO INVENTION
+# Cada valor numérico aqui (a) é referência direta a atlas Nova v1.0.0 com sha lock,
+# (b) é parametrização determinística do simulador (slippage cushion, fail-fast policy)
+# documentada em ADR/persona Beckett, ou (c) carrega tag [TO-VERIFY YYYY-MM-DD]
+# preservando condition aberta em audit Sable.
+#
+# Beckett NUNCA inventa custo numérico. Se atlas mudar versão sem nova review,
+# loader falha (policy_on_version_mismatch: fail_fast).
+# =============================================================================
+# UNIDADES
+#  - currency: BRL (exceto onde notado)
+#  - per_contract_per_side = por contrato, por lado (entrada OU saída)
+#  - tick_size_points / multiplier vêm single-source de atlas Nova → DOMAIN_GLOSSARY
+# =============================================================================
+
+engine_config_version: "1.0.0"
+compiled_at_brt: "2026-04-25T15:00:00-03:00"
+compiled_by: "Beckett (@backtester)"
+consumer_of: "Nova cost atlas"
+contract: "WDO"
+phase: "T002.0e — Fase E CPCV wire"
+
+# =============================================================================
+# COST ATLAS REFERENCE — single-source canonical
+# =============================================================================
+# Loader carrega atlas, computa SHA256 do conteúdo e compara com lock abaixo.
+# Mismatch → BacktestCosts.from_engine_config() levanta CostAtlasShaMismatch.
+# Política Article IV: nenhum custo é "estimado" pelo engine; tudo vem do atlas.
+cost_atlas_ref:
+  path: "docs/backtest/nova-cost-atlas.yaml"
+  atlas_version_lock: "1.0.0"
+  atlas_sha256_lock: "acf449415a3c9f5dce0571c307dc891d00488860132093c40b2f00c2434a5126"
+  policy_on_version_mismatch: "fail_fast"
+  policy_on_sha_mismatch: "fail_fast"
+  sha_normalization: "lf"   # SHA computado sobre conteúdo normalizado para LF (resiste a CRLF do Windows)
+  rationale: |
+    Story T002.0e Beckett-consume-signoff (2026-04-22) committed atlas em
+    git blob com hash acf44941… (LF canonical). Disco no Windows pode renderizar
+    com CRLF (file CRLF). Loader normaliza CRLF→LF antes de hashear para
+    coincidir com canonical commit. Se atlas mudar conteúdo (não só EOL),
+    novo SHA divergirá e CPCV aborta.
+
+# =============================================================================
+# COST COMPONENTS — mapping atlas → BacktestCosts
+# =============================================================================
+# Beckett NÃO duplica valores numéricos do atlas aqui (Article IV: single-source).
+# Loader resolve cada `from:` lookup contra atlas v1.0.0 carregado e injeta em
+# BacktestCosts. Comentários `# atlas → ...` documentam o valor esperado para
+# code review humano, mas autoridade de truth é o YAML do atlas.
+cost_components:
+
+  # -----------------------------------------------------------------------
+  # BROKERAGE — corretagem PF retail
+  # -----------------------------------------------------------------------
+  # atlas → costs.brokerage.per_contract_one_way (0.00 BRL [WEB-CONFIRMED 2026-04-22])
+  # Substitui placeholder histórico R$ 0.25 hard-coded em BacktestCosts default.
+  brokerage:
+    from: "costs.brokerage.per_contract_one_way"
+    atlas_tag: "[WEB-CONFIRMED 2026-04-22]"
+    expected_brl: 0.00
+    target_field: "brokerage_per_contract_side_rs"
+    notes: |
+      5 fontes (Clear, Rico+RLP, XP+RLP, BTG day-trade module, Nu Invest) confirmam
+      zero corretagem em WDO retail day-trade. Se squad migrar p/ corretora com fee,
+      Nova publica atlas v1.1.0 e este lock falha — força revisão.
+
+  # -----------------------------------------------------------------------
+  # EXCHANGE FEES — emolumentos B3 + registro + liquidação
+  # -----------------------------------------------------------------------
+  # atlas → costs.exchange_fees.per_contract_one_way (1.23 BRL = 0.43 emolumentos + 0.80 registro + 0.00 liquidacao)
+  # Substitui placeholder histórico R$ 0.35 hard-coded em BacktestCosts default.
+  exchange_fees:
+    from: "costs.exchange_fees.per_contract_one_way"
+    atlas_tag: "[WEB-CONFIRMED 2026-04-22]"
+    expected_brl: 1.23
+    target_field: "exchange_fees_per_contract_side_rs"
+    breakdown_atlas_refs:
+      emolumentos: "costs.exchange_fees.breakdown.emolumentos_brl"   # 0.43 [WEB-CONFIRMED]
+      registro:    "costs.exchange_fees.breakdown.registro_brl"      # 0.80 [WEB-CONFIRMED]
+      liquidacao:  "costs.exchange_fees.breakdown.liquidacao_brl"    # 0.00 [TO-VERIFY 2026-04-22]
+    to_verify_open_conditions:
+      - finding: "Sable F-04 atlas-audit"
+        scope: "liquidacao_brl tratado como 0.0; total R$ 1.23 já engloba day-trade prática"
+        gate: "soft (não bloqueia CPCV Fase E)"
+        defer_to: "atlas v1.0.1 sprint"
+    notes: |
+      Day-trade WDO regime. Swing trade seria ~1.6x maior (fora de escopo T002).
+
+  # -----------------------------------------------------------------------
+  # IR DAY-TRADE — post-hoc on monthly net gain (não aplicado per-fill)
+  # -----------------------------------------------------------------------
+  # atlas → costs.tax_day_trade
+  # Beckett NÃO injeta IR em BacktestCosts (que opera per-fill); IR é aplicado
+  # post-hoc pelo metrics_collector sobre ganho líquido mensal. Registrado aqui
+  # para reproducibilidade e validação Sable.
+  ir_day_trade:
+    from: "costs.tax_day_trade"
+    atlas_tag: "[WEB-CONFIRMED 2026-04-22]"
+    expected:
+      ir_rate: 0.20                       # atlas.costs.tax_day_trade.ir_rate
+      irrf_daily_rate: 0.01               # compensável, ignorado em backtest (não custo terminal)
+      treatment: "post_hoc_on_monthly_net_gain"   # atlas.costs.tax_day_trade.treatment_choice (option c)
+      darf_code: 8468
+    applies_at: "metrics_aggregation_monthly"
+    applies_at_per_fill: false             # BacktestCosts.fees_rs NÃO inclui IR
+    rationale_atlas_ref: "costs.tax_day_trade.treatment_rationale"
+    notes: |
+      Post-hoc agregado mensal: aplica 20% sobre soma(PnL_mensal_líquido) > 0.
+      Compensa perdas intraday/intermês no mesmo mês calendário. Riven refina
+      cash-flow para produção live; aproximação aceitável para GO/NO-GO Fase E.
+      IRRF 1% retido pela corretora é compensável com IR devido — não é custo terminal,
+      portanto ignorado em backtest. Registrado para auditoria.
+
+# =============================================================================
+# SLIPPAGE MODEL — deterministic Roll + worst-case ticks
+# =============================================================================
+# Slippage NÃO vem do atlas Nova (atlas é só custos B3/IR/corretagem).
+# Slippage é parametrização determinística do simulador Beckett (persona
+# core_principle "SLIPPAGE NUNCA É ZERO"). Defaults preservados de
+# BacktestCosts atual — story T002.0e não modifica modelo de slippage.
+slippage_model:
+  type: "roll_half_plus_extra_ticks"
+  roll_spread_half_points: 0.5            # half of 1-tick Roll spread (default Beckett)
+  slippage_extra_ticks: 1                  # worst-case cushion (default Beckett)
+  target_fields:
+    roll_spread_half_points: "roll_spread_half_points"
+    slippage_extra_ticks: "slippage_extra_ticks"
+  rationale: |
+    Dataset histórico é trades-only (sem book) → queue position worst-case.
+    Modelo determinístico: slip = roll_half + extra_ticks × tick_size = 0.5 + 1×0.5 = 1.0 pt.
+    LONG paga mid + slip; SHORT recebe mid - slip. Persona Beckett core_principle
+    SLIPPAGE NUNCA É ZERO. Refinamento futuro: empirical Roll model 2√(-cov(Δp, Δp_{t-1}))
+    + calibração via @execution-trader (Tiago) live logs.
+  to_verify:
+    - tag: "[TO-VERIFY 2026-04-25]"
+      field: "slippage_extra_ticks"
+      reason: "Cushion 1-tick é default conservador Beckett; refinamento empírico requer book ou live calibration de Tiago. Mantém default até captura ou calibration."
+
+# =============================================================================
+# WDO CONTRACT SPEC — single-source via atlas (NOT duplicated here)
+# =============================================================================
+# Beckett NÃO redefine tick_size/multiplier — vem de atlas.product (que vem
+# de DOMAIN_GLOSSARY). Engine valida coerência com constantes WDO_TICK_SIZE /
+# WDO_MULTIPLIER em exec_backtest.py durante load (sanity assertion).
+wdo_contract:
+  source: "atlas.product"
+  fields:
+    tick_size_points:
+      from: "product.tick_size_points"        # 0.5 [WEB-CONFIRMED via glossário]
+      expected: 0.5
+      assert_matches_module_constant: "packages.t002_eod_unwind.adapters.exec_backtest.WDO_TICK_SIZE"
+    contract_multiplier_brl_per_point:
+      from: "product.contract_multiplier_brl_per_point"   # 10.00 [WEB-CONFIRMED 2026-04-21]
+      expected: 10.00
+      assert_matches_module_constant: "packages.t002_eod_unwind.adapters.exec_backtest.WDO_MULTIPLIER"
+    contract_size_usd:
+      from: "product.contract_size_usd"        # 10000 [WEB-CONFIRMED 2026-04-22]
+      expected: 10000
+
+# =============================================================================
+# AUDIT PROVENANCE — quem assinou, quando, sha
+# =============================================================================
+audit_provenance:
+  atlas_compiled_by: "Nova (@market-microstructure)"
+  atlas_compiled_at_brt: "2026-04-22T09:00:00-03:00"
+  atlas_audited_by: "Sable (@auditor)"
+  atlas_audit_path: "docs/backtest/nova-cost-atlas-audit.md"
+  atlas_audit_verdict: "APPROVED_WITH_CONDITIONS"
+  atlas_audit_at_brt: "2026-04-22T10:45:00-03:00"
+  beckett_consumed_by: "Beckett (@backtester)"
+  beckett_consumed_at_brt: "2026-04-22T10:15:00-03:00"
+  beckett_signoff_path: "docs/stories/T002.0e.story.md#beckett-consume-sign-off-2026-04-22"
+  engine_config_compiled_by: "Beckett (@backtester)"
+  engine_config_compiled_at_brt: "2026-04-25T15:00:00-03:00"
+  engine_config_story: "docs/stories/T002.0e.story.md (AC9 + AC10)"
+
+  open_audit_conditions_tracked:
+    - id: "F-02"
+      severity: "moderado"
+      description: "BTG source aging (artigo 2020) — substituir URL ou marcar verify-annual"
+      defer_to: "atlas v1.0.1"
+      blocks_phase_E: false
+    - id: "F-03"
+      severity: "moderado"
+      description: "Portal Tributário tax source weak — IRRF 1% só Nu Invest confirma"
+      defer_to: "atlas v1.0.1"
+      blocks_phase_E: false
+    - id: "F-04"
+      severity: "moderado"
+      description: "3 sources HTTP 403 (CM Capital, Clear, Rico) — snapshots locais necessários"
+      defer_to: "atlas v1.0.1"
+      blocks_phase_E: false
+    - id: "atlas.to_verify[0]"
+      severity: "soft"
+      description: "liquidacao_brl breakdown não publicado por B3; tratado como 0.0 no engine"
+      defer_to: "atlas v1.0.1 (Sable extrair PDF Tarifacao_V1_PT)"
+      blocks_phase_E: false
+
+# =============================================================================
+# CONSUMER CONTRACT — como BacktestCosts.from_engine_config() resolve
+# =============================================================================
+consumer_contract:
+  loader_function: "BacktestCosts.from_engine_config(path: pathlib.Path)"
+  expected_steps:
+    - "1. Carrega engine-config.yaml via yaml.safe_load"
+    - "2. Resolve cost_atlas_ref.path; lê atlas bytes do disco"
+    - "3. Normaliza CRLF→LF, computa SHA256, compara com cost_atlas_ref.atlas_sha256_lock"
+    - "4. Se mismatch → CostAtlasShaMismatch (fail_fast)"
+    - "5. Carrega atlas via yaml.safe_load; valida atlas.atlas_version == cost_atlas_ref.atlas_version_lock"
+    - "6. Se mismatch → CostAtlasVersionMismatch (fail_fast)"
+    - "7. Resolve cost_components.brokerage.from → atlas.costs.brokerage.per_contract_one_way → 0.00"
+    - "8. Resolve cost_components.exchange_fees.from → atlas.costs.exchange_fees.per_contract_one_way → 1.23"
+    - "9. Lê slippage_model.roll_spread_half_points e slippage_extra_ticks deste config"
+    - "10. Retorna BacktestCosts(brokerage_per_contract_side_rs=0.00, exchange_fees_per_contract_side_rs=1.23, roll_spread_half_points=0.5, slippage_extra_ticks=1)"
+  back_compat:
+    note: "Constructor BacktestCosts(...) com defaults legacy permanece para back-compat de testes existentes; marcado [DEPRECATED — use from_engine_config]"
+    deprecated_path: "BacktestCosts.__init__ direct call with default placeholders R$ 0.25/0.35"
+
+# =============================================================================
+# CHANGELOG
+# =============================================================================
+changelog:
+  - version: "1.0.0"
+    date_brt: "2026-04-25"
+    author: "Beckett (@backtester)"
+    story: "T002.0e"
+    changes:
+      - "Initial engine-config wiring Nova atlas v1.0.0 (sha acf44941…)"
+      - "BacktestCosts.from_engine_config(path) loader spec defined"
+      - "Slippage model (roll_half=0.5, extra_ticks=1) preserved as deterministic Beckett default"
+      - "WDO contract spec single-source via atlas.product (no duplication)"
+      - "4 open audit conditions tracked (F-02/F-03/F-04 + liquidacao_brl) — non-blocking Phase E"
+      - "Article IV preserved — no invented numerical values"

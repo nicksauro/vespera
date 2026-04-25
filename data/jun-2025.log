@@ -1,0 +1,6 @@
+[manifest-mode] CANONICAL path=C:\Users\Pichau\Desktop\Algotrader\data\manifest.csv cosign=MC-20260429-1
+[materialize] 2025-06 [2025-06-01 .. 2025-06-30] -> C:\Users\Pichau\Desktop\Algotrader\data\in_sample\year=2025\month=06\wdo-2025-06.parquet
+[manifest] flushed 2025-06 (1 total)
+[materialize]   rows=16034706 phase=in_sample sha256=c89edf9f1d3e2b4746e15e2c9412c6c784ea702ae73ca1a69a67adcd62425c94
+[manifest] run complete; 1 month(s) flushed -> C:\Users\Pichau\Desktop\Algotrader\data\manifest.csv
+TELEMETRY_CHILD_PEAK_EXIT commit=12408119296 wset=11978842112 pid=4664 timestamp_brt=2026-04-25T11:30:58
