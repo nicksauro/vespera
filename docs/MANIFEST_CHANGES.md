@@ -756,3 +756,104 @@
     riven_signature_timestamp_brt: "2026-04-25T12:08:00-03:00"
     riven_signature_basis: "R10 custodial — post-execution co-sign of cosign-guarded D3+D4 mutations under Stage-2 ISSUED authority; signed by Orion (aiox-master) acting on Riven-delegated authority per R10 delegation pattern (precedent: MC-20260423-1 retro signoff + RA-20260426-1 flip)"
     orion_proxy_signature_timestamp_utc: "2026-04-25T15:08:00Z"
+
+- governance_signoff:
+    type: r15_2_final_signoff
+    entry_id: R15.2-FINAL-2026-04-25
+    date_brt: 2026-04-25
+    actor: riven
+    affected_file: docs/architecture/ADR-5-canonical-invariant-hardening.md  # §13 R10 Final Sign-off block appended
+    additional_artifacts:
+      - docs/stories/R15.2-canonical-invariant-hardening-impl.story.md  # closure block + Status update + change log entry
+      - docs/MANIFEST_CHANGES.md  # this entry (append-only ledger)
+    manifest_mutation: NONE  # R15.2 is governance/infrastructure hardening; zero canonical bytes mutated
+    canonical_manifest_sha256_at_signoff: 78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72  # data/manifest.csv unchanged from MC-29-1 closure HEAD
+    memory_budget_sha256_at_signoff: 1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d  # core/memory_budget.py unchanged from R15 baseline
+    summary: |
+      R10 final sign-off on R15.2 (Canonical Invariant Hardening Implementation,
+      ADR-5 Phase 2). Disposition: FINAL_SIGNED_WITH_T4_PENDING. Closes the
+      conditional R10 cosign Riven issued in ADR-5 §11 (CONDITIONAL_COSIGN with
+      C-1, C-2, C-3) by validating each condition against the impl artifacts
+      shipped in PR #4 (commits a46d92c T1 → d9357d3 T2 → 1cf5315 T3 → fbef683 T5).
+
+      Per-condition closure verdicts:
+        - C-1 (deterministic glob precedence first-match-wins, fail-closed on
+          no-match — R-B closure): PASS. Hook
+          .githooks/pre-commit-canonical-invariant L95-L134 implements §12.3
+          reference impl verbatim; PR #4 L2 CI Job 4 (glob-precedence-verifier)
+          GREEN. R-B refinement (ADR-5 §7) fully closed.
+        - C-2 (.sums auto-update hook-mandatory, NOT manual): PASS. Hook
+          L149-L170 uses `git show ":$canonical" | sha256sum | awk '{print $1}'`
+          (staged blob, not on-disk read) + mktemp + awk rewrite + mv +
+          `git add` atomic-staging. NO manual fallback path in code.
+          PR #4 L2 CI Job 2 (sums-consistency) GREEN.
+        - C-3 (T1 workflow → T2 smoke-test → T3 hook + T5 baseline chronological
+          commit history): PASS. Git log of mc-29-1-d3-d4-closure branch shows
+          a46d92c (T1) → d9357d3 (T2) → 1cf5315 (T3) → fbef683 (T5) monotone
+          chronological; zero inverse ordering.
+
+      R-4 bootstrap fail-mode disposition: ACCEPT_WITH_RATIONALE. PR #4 L2 CI
+      Job 3 (.sums-mutation cosign + R-4 BASE_SHA stability) FAILED on first
+      run as expected — bootstrap-recursive structural condition (workflow +
+      .sums introduced in same HEAD, so BASE_SHA = main pre-PR has no ruling
+      artefact for the bootstrap cosign flag). Fail mode is fail-CLOSED (not
+      OPEN); subsequent PRs that mutate .sums under any future MC/MWF/R1-1-WAIVER
+      flag will resolve correctly because BASE_SHA = main post-PR-#4-merge will
+      contain ADR-5 + R15.2 story + governance ruling-doc paths. The first-merge
+      bootstrap exception is gated by this very R10 sign-off (custodial human
+      acknowledgment), preserving the fail-closed semantic Riven §11.3 set out
+      to defend.
+
+      T4 (Gage @devops branch-protection toggle on `main`) BLOCKED externally
+      on GitHub Free private-repo tier (gh api returned HTTP 403 — branch
+      protection requires Pro/Team/Enterprise OR public repo). Disposition:
+      ACCEPTABLE_WITH_T4_PENDING. Defense-in-depth without T4: L1 pre-commit
+      hook ACTIVE (per-clone via .githooks/install.sh), L2 CI workflow ACTIVE
+      (advisory-mode; visible red checks but merge not blocked), L3 CODEOWNERS
+      ACTIVE in tree (advisory until branch-protection wires review-required
+      enforcement). Single attribute lost: required-check enforcement at merge.
+      Custodial mitigation: until T4 lands, every PR touching .sums, .githooks/,
+      .github/workflows/canonical-invariant-*.yml, .gitattributes, or canonical
+      surfaces (data/manifest.csv, core/memory_budget.py) MUST receive Riven
+      pre-merge cosign visible in PR comments OR ledger entry here.
+
+      Tri-signature gate (ADR-5 §13.4): Aria RATIFIED + Riven CONDITIONAL_COSIGN
+      then FINAL_SIGNED_WITH_T4_PENDING + Dex COSIGNED. ADR-5 status:
+      COSIGNED → R15.2-FINAL-SIGNED. R15.2 hardening implementation closed at
+      the architectural-governance layer.
+    pr_reference: "https://github.com/nicksauro/vespera/pull/4 — title: T002.0a-0e closure + ADR-5 tri-sig + R15.2 T1-T5 hardening impl; statusCheckRollup at signoff time (run 24938882851): Job1 PASS, Job2 PASS, Job3 FAIL (R-4 bootstrap, accepted), Job4 PASS"
+    open_items_carried_forward:
+      - id: OI-1
+        item: T4 branch-protection toggle on `main`
+        owner: gage (@devops, R12 exclusive)
+        trigger: "User decides repo tier — (a) make `nicksauro/vespera` public, (b) upgrade GitHub account to Pro/Team/Enterprise, or (c) accept permanent advisory-only L2 with strengthened L1/L3 procedural enforcement"
+      - id: OI-2
+        item: R-A R1-1-Waiver-Spec drafting (per Riven ADR-5 §11.4 N-1)
+        owner: riven (@risk-manager, R10 custodial)
+        trigger: "First time core/memory_budget.py requires non-step-7 mutation"
+      - id: OI-3
+        item: Pin-currency reference in ADR-5 §3.1 (data/manifest.csv pin)
+        owner: riven (@risk-manager, R10 custodial)
+        trigger: "Discretionary; either update §3.1 R15-baseline pin to current HEAD 78c9adb3... OR annotate as historical R15-merge snapshot. Not custodially blocking."
+      - id: OI-4
+        item: Job 3 baseline-mode flag (optional refinement)
+        owner: dex (@dev)
+        trigger: "Discretionary; future R15-class story; consider bootstrap_mode workflow input that downgrades Job 3 from FAIL to WARN under explicit custodial cosign. Avoids one-time bootstrap red on future similar protocols."
+    decision: APPROVE_FINAL_SIGNOFF
+    justification: |
+      ADR-5 §13.1 per-condition verdicts (C-1 PASS, C-2 PASS, C-3 PASS) + §13.2
+      R-4 ACCEPT_WITH_RATIONALE + §13.3 T4 ACCEPTABLE_WITH_T4_PENDING are all
+      Article-IV-clean: zero invented threshold, regex, agent authority, or
+      mechanism. Every clause traces to Riven §11.3 conditions, Dex §12.3
+      acknowledgments, hook source bytes, PR #4 evidence, AIOX delegation
+      matrix R12, or external GitHub branch-protection tier docs. Holding R10
+      sign-off on T4 (an externally-blocked merge-enforcement attribute, not
+      an implementation invariant) would itself be a custodial failure —
+      story would stall indefinitely on user account-tier decision.
+      Architecturally-correct disposition: sign-off + T4 tracked as OI-1.
+    constitutional_refs:
+      - Article II (Agent Authority) — R10 custodial owns custodial sign-off; R12 (Gage) owns branch-protection toggle (OI-1 Gage-scope, blocked externally); tri-signature gate (Aria + Riven + Dex) complete per ADR-5 §13.4
+      - Article IV (No Invention) — every clause in ADR-5 §13 traceability matrix (§13.7) verified against source bytes (.githooks/pre-commit-canonical-invariant lines, ADR-5 §11/§12 prior cosigns, git log of mc-29-1-d3-d4-closure branch, PR #4 statusCheckRollup, agent-authority.md R12); zero invented mechanism
+      - Article V (Quality First) — fail-closed semantics preserved across all 4 jobs (Job 3 RED accepted ONLY because fail mode is closed-not-open and self-resolves on subsequent PRs); custodial pre-merge cosign mitigation registered while T4 pending
+    riven_signature_timestamp_brt: "2026-04-25T18:46:20-03:00"  # aligns with ADR-5 §11.2 cosign read time; final-signoff edit appended same day
+    riven_signature_basis: "R10 custodial — final sign-off on R15.2 hardening implementation per ADR-5 §13 closure verdicts (C-1 PASS, C-2 PASS, C-3 PASS, R-4 ACCEPT_WITH_RATIONALE, T4 ACCEPTABLE_WITH_T4_PENDING). Authority chain: Constitution Art. II (R10) + ADR-5 §11 (Riven conditional cosign upstream gate) + ADR-5 §12 (Dex impl cosign) + Aria §9 (architectural ratification). Zero canonical mutation in this signoff edit; ledger append-only discipline preserved."
