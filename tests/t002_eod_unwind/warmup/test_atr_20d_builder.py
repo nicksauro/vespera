@@ -18,7 +18,6 @@ from packages.t002_eod_unwind.warmup.atr_20d_builder import (
 )
 from packages.t002_eod_unwind.warmup.calendar_loader import (
     CalendarData,
-    CalendarLoader,
 )
 
 

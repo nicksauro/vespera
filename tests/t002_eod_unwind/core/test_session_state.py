@@ -6,7 +6,7 @@ AC2: snapshot_at(ts) returns close <= ts — anti-leakage.
 
 from __future__ import annotations
 
-from datetime import date, datetime, time
+from datetime import date, datetime
 
 import pytest
 
