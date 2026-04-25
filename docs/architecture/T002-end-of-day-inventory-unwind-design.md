@@ -3,7 +3,7 @@
 **Owner:** Aria (@architect)
 **Data:** 2026-04-21 BRT
 **Fase:** B — Architecture
-**Input:** `docs/research/thesis/T002-end-of-day-inventory-unwind-wdo.md` + `docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.1.0.yaml` (sha256 `c7c020ef…0b751`)
+**Input:** `docs/research/thesis/T002-end-of-day-inventory-unwind-wdo.md` + `docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml` (sha256 `98f22f3c…24614`) — atualizado de v0.1.0 sob PRR-20260421-1; ver §13 Alignment History
 **Output:** este documento → handoff para River (Fase C — story)
 
 ---
@@ -91,21 +91,23 @@ Antes de qualquer sessão operar, duas estruturas precisam estar prontas:
 | Saída | `ATR_20d_today = average(true_range[D-20:D-1])` |
 | Persistência | Cache em `state/T002/atr_20d.json` atualizado ao final de cada sessão |
 
-### 3.2. Percentis rolling 252d (P20, P60, P80)
+### 3.2. Percentis rolling 126d (P20, P60, P80)
 
 Para `|ret_acumulado_dia|/ATR_20d` e `ATR_day/ATR_20d`:
 
 | Fonte | Método |
 |-------|--------|
-| Build offline | Batch job que consome dataset histórico, agrupa por dia, computa a série de `magnitude` e `atr_ratio` dos últimos 252 dias úteis |
-| Persistência | `state/T002/percentiles_252d.json` — atualizado 1× ao fim de cada sessão |
+| Build offline | Batch job que consome dataset histórico, agrupa por dia, computa a série de `magnitude` e `atr_ratio` dos últimos 126 dias úteis |
+| Persistência | `state/T002/percentiles_126d.json` — atualizado 1× ao fim de cada sessão |
 | Runtime | Carrega do JSON no startup da sessão; NÃO recomputa durante o pregão |
+
+**Razão arquitetural do P126** (vs P252 da v0.1.0): cobertura contínua do TimescaleDB Sentinel inicia 2024-01-02 (Jan 2023 tem apenas 6 dias úteis isolados, descartáveis). P252 exigiria ~252 dias úteis de warm-up antes do in_sample start, gap não-cobrível pelo dataset disponível. P126 é o maior lookback viável que (a) cabe em ~126 dias úteis 2024-01-02→2024-06-30 como warm-up, (b) preserva in_sample de 12 meses (2024-07-01→2025-06-30) e hold-out virgem intacto (2025-07-01→2026-04-21). Ratificado em PRR-20260421-1 sob MANIFEST R15. Ver §13 Alignment History.
 
 ### 3.3. Warm-up state machine
 
 ```
 startup → WARM_UP_IN_PROGRESS
-  ├─ ATR_20d OK AND percentiles_252d OK → READY_TO_TRADE
+  ├─ ATR_20d OK AND percentiles_126d OK → READY_TO_TRADE
   └─ qualquer falha → WARM_UP_FAILED (loga Quinn, DIA IGNORADO)
 ```
 
@@ -251,7 +253,7 @@ Este log é o **ground truth** para: (1) EOD reconciliation (R9), (2) Quinn code
 | Warm-up falhou ao startup | WarmUpGate | `WARM_UP_FAILED`; dia inteiro ignorado; alerta Quinn | ALTA |
 | Ordem rejeitada pela B3 | Tiago (seu escopo) | Retry político; falha persistente → R10 nível 2 | MÉDIA |
 | Posição aberta às 17:55:00 | Tiago | Força market sell/buy — não respeita outros critérios | CRÍTICA |
-| State file corrupto (atr_20d.json / percentiles.json) | WarmUpGate | Rebuild from scratch; se > 10 min, DIA IGNORADO | MÉDIA |
+| State file corrupto (atr_20d.json / percentiles_126d.json) | WarmUpGate | Rebuild from scratch; se > 10 min, DIA IGNORADO | MÉDIA |
 | Dia pós-Copom em live | Filter | Skip entries inteiras (respeita spec) | BAIXA |
 
 ---
@@ -276,7 +278,7 @@ packages/
       schedule.py                 # Timing loop
     warmup/
       atr_20d_builder.py
-      percentiles_252d_builder.py
+      percentiles_126d_builder.py
       gate.py                     # WARM_UP state machine
     telemetry/
       decision_logger.py
@@ -316,8 +318,8 @@ gate_B_signature:
   signed_by: Aria (@architect)
   signed_at_brt: "2026-04-21T18:00:00"
   thesis_ref: "docs/research/thesis/T002-end-of-day-inventory-unwind-wdo.md"
-  spec_ref: "docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.1.0.yaml"
-  spec_hash: "sha256:c7c020ef987abe17d1246feab930087742c97d7731fbfd7e5a3711082c50b751"
+  spec_ref: "docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml"
+  spec_hash: "sha256:98f22f3c8ceee521cbb696b62cd3cf6bd49e4556af77005589e720a4d4b24614"
   design_invariants:
     - "engine de sinal é PURA e compartilhada entre backtest e live (layers 2-3-4)"
     - "backtest↔live divergem apenas nos adapters (layer 1 e 5)"
@@ -330,3 +332,59 @@ gate_B_signature:
 ```
 
 **Assinatura:** Aria (@architect) — 2026-04-21 BRT
+
+---
+
+## 13. Alignment History
+
+Append-only — registra realinhamentos arquiteturais subsequentes ao gate signature original. Cada entrada é imutável após registro.
+
+```yaml
+alignment_history:
+  - alignment_id: ALN-20260425-1
+    timestamp_brt: "2026-04-25T00:00:00-03:00"
+    author: Aria (@architect)
+    type: spec_drift_correction
+    triggered_by: "Pax flagged divergence: design doc §3.2 referenciava 'Percentis rolling 252d' (legado v0.1.0); spec ML canônica é v0.2.0 com lookback 126d sob PRR-20260421-1."
+    spec_ref_before: "docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.1.0.yaml (sha256:c7c020ef…0b751)"
+    spec_ref_after: "docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml (sha256:98f22f3c…24614)"
+    prr_reference: PRR-20260421-1  # spec v0.2.0 § preregistration_revisions[0]
+    architectural_changes:
+      - field: "§3.2 título — 'Percentis rolling 252d' → 'Percentis rolling 126d'"
+      - field: "§3.2 build offline — '252 dias úteis' → '126 dias úteis'"
+      - field: "§3.2 persistência — 'percentiles_252d.json' → 'percentiles_126d.json'"
+      - field: "§3.3 warm-up state machine — 'percentiles_252d OK' → 'percentiles_126d OK'"
+      - field: "§9 failure-modes — state file path atualizado para percentiles_126d.json"
+      - field: "§10 module layout — 'percentiles_252d_builder.py' → 'percentiles_126d_builder.py'"
+      - field: "§3.2 reframing arquitetural — adicionado parágrafo justificando P126 vs P252 (cobertura DB Sentinel)"
+      - field: "header Input — bumped v0.1.0 → v0.2.0 com hash novo"
+      - field: "§12 gate_B_signature.spec_ref + spec_hash — bumped para v0.2.0"
+    architectural_rationale: |
+      P126 é a maior janela de lookback viável dada a constraint de dados:
+      TimescaleDB Sentinel tem cobertura contínua a partir de 2024-01-02
+      (Jan 2023 = 6 dias isolados, descartáveis). P252 exigiria warm-up
+      anterior a 2024-01, impossível. P126 cabe em 2024-01-02→2024-06-30
+      (~126 business days), preservando in_sample 12 meses (2024-07-01→
+      2025-06-30) e hold-out virgem intacto (2025-07-01→2026-04-21).
+      Decisão registrada em PRR-20260421-1 sob MANIFEST R15 (semver
+      breaking change append-only).
+    invariants_preserved:
+      - "Engine de sinal continua PURA e compartilhada entre backtest e live (layers 2-3-4 inalterados)"
+      - "Backtest↔live divergem apenas nos adapters (layer 1 e 5 inalterados)"
+      - "Fail-closed warm-up gate inalterado (apenas o nome do artefato de percentis foi atualizado)"
+      - "Tiago monopolista de SendOrder (R3); Riven monopolista de budget (R4) — inalterados"
+      - "Hold-out virgem intacto (R1) — preservado pelo PRR-20260421-1"
+    cross_doc_coherence_note: |
+      Thesis (Kira owns) e audits (T002-mira-audit.md, T002-nelo-audit.md)
+      ainda referenciam P252 — esses documentos foram emitidos sob spec
+      v0.1.0 e estão preserved-as-of-v0.1.0. A spec v0.2.0 registra
+      explicitamente carry_forward_unchallenged para nova_microstructure
+      e nelo_availability (campo sign_off.carry_forward_unchallenged).
+      Mira re-assinou v0.2.0 (mira_ml_viability: FORTE com caveat sample
+      reduzido). Aria NÃO edita thesis/audits — ownership boundary
+      respeitada (Article II — Agent Authority).
+    review_pending:
+      - sable_audit_process: "PENDENTE re-audit findings 006-009 sobre v0.2.0 (registrado no spec)"
+```
+
+**Assinatura:** Aria (@architect) — 2026-04-25 BRT
