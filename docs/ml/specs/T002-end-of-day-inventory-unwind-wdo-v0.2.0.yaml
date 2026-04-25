@@ -1,0 +1,244 @@
+# Mira→Beckett Spec — T002 End-of-Day Inventory Unwind WDO
+# ==========================================================
+# Fase A (Research) output — revisão v0.2.0 sob MANIFEST R15.
+# Predecessor: v0.1.0 (imutável, preservado). Consumível por Beckett via:
+#   *run-cpcv --spec {this-file}.yaml
+# ==========================================================
+
+feature_set_id: T002-end-of-day-inventory-unwind-wdo
+version: 0.2.0
+created_at: 2026-04-21T19:00:00-03:00
+mira_signature_sha256_of_file_before_this_line: "4b5624ad6ba151c57e263f1d160d7e802354c5e164f777198755b70c59bdc3fc"
+# NOTA: SHA256 acima será recomputado por *export-spec após este arquivo ser escrito.
+# v0.2.0 é emitida sob MANIFEST R15 (semver em major==0 permite minor breaking
+# com trilha auditável). Revisão registrada em preregistration_revisions[] abaixo.
+thesis_ref: docs/research/thesis/T002-end-of-day-inventory-unwind-wdo.md
+predecessor_ref: docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.1.0.yaml
+dry_run: false  # tese real — NÃO é smoke-test
+
+# ----------------------------------------------------
+# UNIVERSE + TIMEFRAME
+# ----------------------------------------------------
+universe:
+  asset: WDOFUT
+  contract_mode: vigente
+  session_filter: continuous
+  session_hours_brt: "09:30-17:55"
+  rollover_exclusion: "D-3 a D-1"
+  post_copom_exclusion: true  # Nova constraint — remover dias pós-Copom do sample
+
+timeframe:
+  bar_unit: event-driven  # entradas em timestamps determinísticos, não em bars regulares
+  entry_timestamps_brt: ["16:55:00", "17:10:00", "17:25:00", "17:40:00"]
+  exit_timestamp_brt: "17:55:00"
+  source: aggregation_from_trades
+  timezone: BRT  # naive — MANIFEST R2
+
+# ----------------------------------------------------
+# FEATURE SET
+# ----------------------------------------------------
+feature_set:
+  - name: intraday_flow_direction
+    formula: "sign(close[t] - open_day)"
+    historical_availability: computable
+    live_only: false
+    source_owner: Nova
+    description: "Sinal do retorno acumulado do dia até t; proxy da direção do fluxo que dealers carregam"
+
+  - name: intraday_flow_magnitude
+    formula: "abs(close[t] - open_day) / ATR_20d"
+    historical_availability: computable
+    live_only: false
+    source_owner: Mira
+    description: "Magnitude normalizada do acúmulo intraday; filtro P60 rolling 126d"
+
+  - name: atr_day_ratio
+    formula: "ATR_day / ATR_20d"
+    historical_availability: computable
+    live_only: false
+    source_owner: Nova
+    description: "Vol do dia relativa à média 20d; filtro regime [P20, P80] rolling 126d"
+
+# ----------------------------------------------------
+# LABEL
+# ----------------------------------------------------
+label:
+  type: regression_window_close
+  target: "log(close[17:55] / close[t])"
+  entry_times_brt: ["16:55:00", "17:10:00", "17:25:00", "17:40:00"]
+
+label_alt:
+  type: triple-barrier
+  pt: 1.5  # take-profit = 1.5× ATR_hora
+  sl: 1.0  # stop-loss = 1× ATR_hora
+  timeout: "t → 17:55 hard stop"
+
+# ----------------------------------------------------
+# TRADING RULES (informativo, binding para Fase E porque filtros fazem parte do design)
+# ----------------------------------------------------
+trading_rules:
+  entry_conditions:
+    - "intraday_flow_magnitude > P60_rolling_126d"
+    - "atr_day_ratio between P20_rolling_126d and P80_rolling_126d"
+  direction: "fade"  # short se flow_direction > 0; long se < 0
+  position_sizing: "delegated to Riven via budget gate"
+  exit: "17:55 hard stop OR triple-barrier Fase E"
+
+# ----------------------------------------------------
+# SPLIT PRE-REGISTERED (ESSENTIAL — Popperian falsifiability)
+# Revisão v0.2.0: in_sample start shifted 2024-01-01 → 2024-07-01.
+# Hold-out virgem INTOCADO (R1 + R15(d)).
+# ----------------------------------------------------
+data_splits:
+  in_sample: "2024-07-01 to 2025-06-30"   # 12 meses
+  hold_out_virgin: "2025-07-01 to 2026-04-21"  # 10 meses — NÃO TOCAR até Fase E final
+  preregistered_at_brt: "2026-04-21T19:00:00"
+
+# ----------------------------------------------------
+# PRE-REGISTRATION REVISIONS (MANIFEST R15 append-only)
+# Cada entrada é imutável após pax_cosign_hash. Editar = forjar = merge block.
+# Schema em MANIFEST.md § 15.
+# ----------------------------------------------------
+preregistration_revisions:
+  - revision_id: PRR-20260421-1
+    timestamp_brt: "2026-04-21T19:00:00-03:00"
+    from_version: "0.1.0"
+    to_version: "0.2.0"
+    breaking_fields:
+      - data_splits.in_sample
+      - feature_set[intraday_flow_magnitude].description
+      - feature_set[atr_day_ratio].description
+      - trading_rules.entry_conditions[0]
+      - trading_rules.entry_conditions[1]
+      - n_trials.variants[T1].params
+      - n_trials.variants[T2].params
+      - n_trials.variants[T3].params
+      - n_trials.variants[T4].params
+      - n_trials.variants[T5].params
+    justification: "TimescaleDB coverage starts 2024-01-02 continuous; Jan 2023 has 6 isolated days only. P252 rolling percentiles for intraday_flow_magnitude and atr_day_ratio require ~252 business days of warm-up before in_sample start. Option (a) adopted: reduce lookback to P126 AND shift in_sample start to 2024-07-01, so warm-up window (2024-01-02 to 2024-06-30, ~126 business days) fits within available data. Hold-out 2025-07-01 to 2026-04-21 remains intact per R1. CPCV N=10 retains ~12m in-sample, adequate for k=2/45 paths. Correção 2026-04-21 Sable-Finding-006 pré-ratificação: breaking_fields expandido para incluir feature_set[atr_day_ratio].description (mudança de lookback 126d implícita) e n_trials.variants[T1-T5].params (5 variantes tiveram lookback 126d explicitado)."
+    data_constraint_evidence: "SQL: SELECT MIN(range_start), MAX(range_end) FROM timescaledb_information.chunks WHERE hypertable_name=trades AND range_start >= 2023-01-01 AND range_start < 2024-01-01; -> 6 chunks total in Jan 2023, zero in Feb-Dec 2023; continuous from 2024-01-02. Documented in docs/councils/VESPERA-DATA-PIPELINE-2026-04-21.md ADDENDUM section, Turno 5 revision."
+    pax_cosign_hash: "c34c201c612e63d0dfaf03bbd1827bf1bf2e7973fcd22b72c6a8a6a487d79e5a"
+
+# ----------------------------------------------------
+# N_TRIALS PRE-REGISTERED (Bonferroni calibration)
+# ----------------------------------------------------
+n_trials:
+  total: 5
+  bonferroni_adjusted_p_value: 0.002  # 0.01 / 5
+  variants:
+    - id: T1
+      name: "baseline"
+      params: "4 janelas, threshold P60, regime ATR [P20,P80], lookback 126d"
+    - id: T2
+      name: "threshold P50"
+      params: "4 janelas, threshold P50, regime ATR [P20,P80], lookback 126d"
+    - id: T3
+      name: "threshold P70"
+      params: "4 janelas, threshold P70, regime ATR [P20,P80], lookback 126d"
+    - id: T4
+      name: "sem regime filter"
+      params: "4 janelas, threshold P60, regime ATR sem filtro, lookback 126d"
+    - id: T5
+      name: "apenas 17:25"
+      params: "1 janela (17:25), threshold P60, regime ATR [P20,P80], lookback 126d"
+
+# ----------------------------------------------------
+# CV SCHEME (MANIFEST R6)
+# ----------------------------------------------------
+cv_scheme:
+  type: CPCV
+  n_groups: 10
+  k: 2
+  n_paths: 45  # C(10,2)
+  embargo_sessions: 1
+  purging: true
+
+# ----------------------------------------------------
+# METRICS REQUIRED
+# ----------------------------------------------------
+metrics_required:
+  primary:
+    - IC_spearman  # PRIMARY — robusto a outliers dado sample pequeno
+    - DSR
+    - PBO
+  secondary:
+    - sharpe_distribution_45paths
+    - sortino
+    - MAR
+    - max_drawdown
+    - hit_rate
+    - profit_factor
+    - ulcer_index
+    - bootstrap_ci_ic_10k  # bootstrap 10k para CI do IC (Mira)
+
+# ----------------------------------------------------
+# STRESS-REGIME BREAKDOWN (Fase E obrigatório)
+# ----------------------------------------------------
+stress_regimes:
+  - name: pre_copom
+    filter: "D-1 de reunião Copom (calendário estático)"
+  - name: pre_feriado_longo
+    filter: "D-1 de feriado BRA com mercado EUA aberto"
+  - name: high_vol
+    filter: "ATR_dia > P80"  # esperado tese FALHAR
+  - name: low_vol
+    filter: "ATR_dia < P20"  # tese não dispara (filtro regime)
+  - name: fim_de_mes
+    filter: "último dia útil do mês contábil"
+  - name: early_exit_17_50
+    filter: "saída em 17:50 em vez de 17:55 — sensitivity"
+
+# ----------------------------------------------------
+# COSTS (ownership Nova atlas)
+# ----------------------------------------------------
+costs:
+  brokerage: "TO-VERIFY via atlas Nova — default conservador R$ 0,25/contrato/lado"
+  exchange_fees: "via Nova atlas — emolumentos B3 vigentes"
+  tax_day_trade: "via Nova atlas — IR day-trade 20% sobre lucro líquido"
+  slippage_model: "Beckett default — Roll spread + 1 tick worst-case se ordem a mercado"
+  latency_profile: "DMA2: p50=20ms, p95=60ms, p99=100ms, tail=500ms (não-binding para esta tese)"
+
+# ----------------------------------------------------
+# KILL CRITERIA (ownership Kira + Riven)
+# ----------------------------------------------------
+kill_criteria_ref: docs/research/thesis/T002-end-of-day-inventory-unwind-wdo.md#5-kill-criteria-ex-ante
+
+# ----------------------------------------------------
+# CAPACITY ESTIMATE
+# ----------------------------------------------------
+capacity:
+  max_contracts_per_entry: "TO-COMPUTE Fase E via ADV WDO na janela 16:55-17:55"
+  estimated_participation_rate: "< 0.5% do volume médio da janela"
+
+# ----------------------------------------------------
+# CONTRACT MULTIPLIER (single-source — fix G005)
+# ----------------------------------------------------
+contract_multiplier_source_ref: "squads/quant-trading-squad/DOMAIN_GLOSSARY.md#wdo-mini-dólar-futuro"
+contract_multiplier_lookup_field: "Parte 1 — WDO > multiplier"
+contract_multiplier_as_of_spec: "R$10/ponto em 2026-04-21 [WEB-CONFIRMED, apenas para debug/reprodutibilidade; NÃO usar em cálculo]"
+
+# ----------------------------------------------------
+# SIGN-OFF
+# ----------------------------------------------------
+sign_off:
+  # Sign-offs ativos — agentes re-executaram análise para v0.2.0:
+  mira_ml_viability: "FORTE (com caveat de sample ~250 obs reduzido de ~400 pós-shift in_sample) — ver T002-mira-audit.md + revisão PRR-20260421-1"
+  kira_thesis_gate_A: "PASS — ver T002 thesis §9 (sample reduzido documentado em PRR-20260421-1)"
+  pax_cosign_revision: "CO-SIGNED — hash registrado em preregistration_revisions[0].pax_cosign_hash (recomputado pós-Finding-006)"
+  sable_audit_process: "PENDENTE re-audit findings 006-009 sobre v0.2.0"
+  signed_at_brt: "2026-04-21T19:00:00"
+
+  # Carry-forward opt-in — agentes cujo escopo não foi tocado por PRR-20260421-1:
+  carry_forward_unchallenged:
+    - agent: nova_microstructure
+      from_version: "0.1.0"
+      audit_ref: T002-nova-audit.md
+      reason: "PRR-20260421-1 alterou apenas lookback (P252→P126) e janela in_sample; microestrutura (tape reading, RLP, rollover, horário de pregão, constraints 1-3 de Nova) permanece invariante."
+      claimed_by: mira
+      challenged: false
+    - agent: nelo_availability
+      from_version: "0.1.0"
+      audit_ref: T002-nelo-audit.md
+      reason: "PRR-20260421-1 não tocou em features DLL-bound, callbacks, ticker, exchange, ou padrões de conexão. Disponibilidade live inalterada."
+      claimed_by: mira
+      challenged: false
