@@ -116,6 +116,72 @@ sync_point:
     - "Task #36 (Beckett CPCV Gate) sai de BLOCKED → READY"
 
 # ----------------------------------------------------------------
+# STATUS BOARD (snapshot 2026-04-25 BRT — Morgan @pm)
+# ----------------------------------------------------------------
+status:
+  last_updated_brt: "2026-04-25T00:00:00-03:00"
+  T002.0a: "Done — Pax cosign 10/10 + Quinn PASS"
+  T002.0b: "Done — adapters byte-identical + Quinn PASS"
+  T002.0c: "Done — CPCVEngine 107 tests + Quinn PASS"
+  T002.0d: "Done — vespera_metrics 101 tests + Beckett endorse + Mira spec v0.2.2 + Quinn PASS"
+  T002.0e: "Done — cost atlas wire 35 tests + Quinn PASS"
+  epic_t002_0_remaining:
+    - "Sable epic-wide coherence audit (NOT YET INVOKED)"
+    - "Beckett *mira-handshake re-run vs v0.2.0/v0.2.2 (NOT YET INVOKED)"
+    - "Beckett *run-cpcv --dry-run → expects GO_EXECUTE"
+    - "Morgan close EPIC-T002.0 status=Done"
+  notes:
+    - "All 5 stories merged via Gage (R12)."
+    - "T002.0d spec elevated to v0.2.2 during impl (Mira). Acceptable — additive metrics, no breaking change."
+    - "Beckett dry-run STILL BLOCKED on T002.1 (warm-up state) per EPIC-T002 §3 Stage D1 — see priorities below."
+
+# ----------------------------------------------------------------
+# NEXT-SESSION PRIORITIES (Morgan @pm — 2026-04-25 BRT)
+# ----------------------------------------------------------------
+next_session_priorities:
+  P1:
+    story: T002.1
+    owner_impl: "Dex (@dev)"
+    rationale: "Pax GO 10/10 already; Aria design align done; River reword done. Critical-path for EPIC-T002 Stage D1 progress. Blocks Beckett *run-cpcv dry-run because warm-up state files (state/T002/atr_20d.json, percentiles_126d.json) are inputs to backtest adapter wired in T002.0b."
+    dependencies_satisfied: [T002.0a, T002.0b, T002.0c, T002.0d, T002.0e]
+    estimate_sessions: 1.0
+  P2:
+    story: "Integration test CPCV-end-to-end (NEW — to be drafted)"
+    owner_impl: "Beckett (@backtester) drives spec; Dex implements runner-test if requested"
+    rationale: "Wires T002.0b (adapters) + T002.0c (CPCVEngine) + T002.0d (vespera_metrics) + T002.0e (cost atlas) + T002.1 warm-up state into single end-to-end smoke. Pre-condition for *run-cpcv dry-run trust. Authority: Beckett owns CPCV (per COLLABORATION_MATRIX exclusividades). River drafts story if Beckett requests separate story; otherwise Beckett executes inline as sync-point validation."
+    dependencies_satisfied: "after P1"
+    estimate_sessions: 0.5
+    decision_path: "Beckett decides — inline validation (preferred, no story) OR formal story (River draft)"
+  P3:
+    story: "EPIC-T002.0 close-out (Sable audit + Beckett dry-run + Morgan close)"
+    owner_orchestration: "Morgan (@pm)"
+    rationale: "After P1 + P2, all sync-point actions become triggerable. Sable epic-wide coherence audit is the final gate before Beckett *run-cpcv --dry-run. Closes Task #36 BLOCKED → READY."
+    estimate_sessions: 0.5
+
+deferred:
+  T001.1:
+    status: "Defer (lower priority)"
+    rationale: "Smoke-test of Q-SDC pipeline. Does NOT block EPIC-T002. Validating Q-SDC end-to-end pre-Phase-F has marginal value but consumes 1 session. Recommend: defer until after EPIC-T002.0 close-out + T002.1 merge. Pax validation pendente — no rush."
+    revisit_when: "Post EPIC-T002.0 close, before Phase E execution"
+  T002.5:
+    status: "Defer to post-D1 sync point"
+    rationale: "Stage D2 component (Phase F paper-mode telemetry + EOD reconciliation). Per EPIC-T002 §3, D2 is GATED on Beckett CPCV Fase E verdict. If K1/K2/K3 trigger, T002 dies and T002.5 is wasted work. Drafting now violates Article III (Story-Driven) by committing scope before evidence. River draft after CPCV GO."
+    revisit_when: "Post Beckett *run-cpcv → GO verdict on Fase E"
+
+# ----------------------------------------------------------------
+# CRITICAL PATH CHECKPOINT (sessions to *run-cpcv dry-run GO_EXECUTE)
+# ----------------------------------------------------------------
+critical_path_checkpoint:
+  sessions_remaining: 2.0
+  sequence:
+    - session_1: "T002.1 Dex impl + Quinn QA gate (P1)"
+    - session_2: "Sable epic audit + Beckett *mira-handshake + Beckett *run-cpcv --dry-run + Morgan close (P2 + P3)"
+  gating_factor: "T002.1 implementation quality (Quinn PASS first try OR self-heal ≤2 iterations)"
+  human_decision_points:
+    - "Pre-T002.1 impl: human authorizes Dex YOLO mode?"
+    - "Pre-dry-run: human confirms Sable findings (if any) before Beckett executes"
+
+# ----------------------------------------------------------------
 # TIMELINE ESTIMATE (best case, linear)
 # ----------------------------------------------------------------
 timeline:
