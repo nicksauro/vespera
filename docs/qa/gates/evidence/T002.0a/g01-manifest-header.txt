@@ -1,0 +1,47 @@
+================================================================================
+G01 — MANIFEST-HEADER-SCHEMA
+================================================================================
+Gate ID: G01
+Gate name: MANIFEST-HEADER-SCHEMA
+Owner / executor: Sable (squad-auditor)
+Date executed (BRT): 2026-04-25
+Story: T002.0a
+Spec: docs/qa/gates/T002.0a-sable-gates.md L20-28
+
+Input
+-----
+- File: data/manifest.csv
+- File sha256 (post MC-20260429-1): 78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72
+- Line count: 19 (1 header + 18 data rows)
+
+Procedure (per spec)
+--------------------
+head -n 1 data/manifest.csv → compare byte-exact against canonical header.
+
+Canonical header (per spec L23 + AC5 column order)
+--------------------------------------------------
+path,rows,sha256,start_ts_brt,end_ts_brt,ticker,phase,generated_at_brt
+
+Observed header (raw bytes from data/manifest.csv line 1)
+---------------------------------------------------------
+b'path,rows,sha256,start_ts_brt,end_ts_brt,ticker,phase,generated_at_brt\n'
+
+Decoded (UTF-8, trailing newline stripped)
+------------------------------------------
+'path,rows,sha256,start_ts_brt,end_ts_brt,ticker,phase,generated_at_brt'
+
+Comparison
+----------
+expected length: 70 chars
+observed length: 70 chars
+byte-exact match: True
+column order: identical (path, rows, sha256, start_ts_brt, end_ts_brt, ticker, phase, generated_at_brt)
+
+Verdict
+-------
+PASS — header byte-exact against canonical AC5 column order. No drift.
+
+Sign-off
+--------
+Sable (auditor) counter-signed 2026-04-25 BRT.
+Evidence path: docs/qa/gates/evidence/T002.0a/g01-manifest-header.txt
