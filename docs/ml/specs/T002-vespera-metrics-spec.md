@@ -7,7 +7,8 @@
 **Spec parent:** [T002 v0.2.0](T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml) §metrics_required L159-172
 **Authority:** Article IV (No Invention) — toda fórmula traceável a paper canônico citado.
 **Created:** 2026-04-25 BRT
-**Mira-signature:** PENDING
+**Spec version:** v0.2.2
+**Mira-signature:** sha256:56238dc2a56e629de10c5a57904dbc75dec47d6d23014608d8a287c89271891f
 
 ---
 
@@ -56,7 +57,7 @@ class MetricsResult:
     n_trials_used: int                       # source-of-truth de docs/ml/research-log.md (AC12.1)
     n_trials_source: str                     # "docs/ml/research-log.md@<git-sha>"
     seed_bootstrap: int                      # PCG64 seed
-    spec_version: str                        # "T002-v0.2.0"
+    spec_version: str                        # "T002-v0.2.2"
     computed_at_brt: str                     # ISO timestamp BRT
 ```
 
@@ -444,23 +445,27 @@ cv_results_matrix = np.array([
 
 **Computação manual (Dex deve reproduzir bit-a-bit):**
 
-| s | J_s^IS | J_s^OOS | t* (argmax IS) | R^OOS rank de t* (asc, method='min') | λ_s | overfit (λ ≤ 0)? |
-|---|--------|---------|----------------|---------------------------------------|-----|------------------|
-| 1 | {0,1}  | {2,3}   | var 0 (mean=9.5) | rank 1 (var 0 OOS mean = 0.75, pior)   | log(1/4) ≈ -1.386 | YES |
-| 2 | {0,2}  | {1,3}   | var 0 (mean=5.5, empate vs var1; argmin idx → var 0) | OOS means: var0=(9+0.5)/2=4.75, var1=(7+2)/2=4.5, var2=(2+8)/2=5.0, var3=(0.5+10)/2=5.25 → asc: [var1, var0, var2, var3] → rank(var0)=2 | log(2/3) ≈ -0.405 | YES |
-| 3 | {0,3}  | {1,2}   | var 0 (IS mean=5.25 vs var1=5.0, var2=5.0, var3=5.0; argmax → var 0) | OOS means: var0=(9+1)/2=5.0, var1=(7+3)/2=5.0, var2=(2+7)/2=4.5, var3=(0.5+9)/2=4.75; asc: [var2, var3, var0, var1] → rank(var0)=3 | log(3/2) ≈ 0.405 | NO |
-| 4 | {1,2}  | {0,3}   | var 0 (IS mean=5.0, empate; argmin idx → var 0) | OOS means: var0=(10+0.5)/2=5.25, var1=(8+2)/2=5.0, var2=(3+8)/2=5.5, var3=(1+10)/2=5.5; asc: [var1, var0, var2, var3 (empate var2 e var3 → rank-min=3 para ambos)] → rank(var0)=2 | log(2/3) ≈ -0.405 | YES |
-| 5 | {1,3}  | {0,2}   | var 3 (IS mean=5.25; var0=4.75, var1=4.5, var2=5.0, var3=5.25 → argmax = var 3) | OOS means: var0=(10+1)/2=5.5, var1=(8+3)/2=5.5, var2=(3+7)/2=5.0, var3=(1+7)/2=4.0; asc: [var3, var2, var0, var1 (empate var0 e var1 → rank-min=3)] → rank(var3)=1 | log(1/4) ≈ -1.386 | YES |
-| 6 | {2,3}  | {0,1}   | var 3 (IS mean=9.5) | OOS means: var0=(10+9)/2=9.5, var1=(8+7)/2=7.5, var2=(3+2)/2=2.5, var3=(1+0.5)/2=0.75; asc → rank(var3)=1 | log(1/4) ≈ -1.386 | YES |
+> **Correção v0.2.1:** O walkthrough da v0.2.0 continha erros aritméticos nas IS means de s=2/3/4 (média de pares 0+2, 0+3, 1+2 dos folds — vide tabela). O erro mais material foi em s=3, onde var2/var3 IS means foram listadas como 5.0 mas o correto é 5.5 (var2=(3+8)/2 e var3=(1+10)/2). Isso flipou o argmax IS de `var 0` para `var 2` e mudou o veredito de NO→YES overfit. Recomputado deterministicamente via `scipy.stats.rankdata(method='min')` + `argmax` first-occurrence — toda partição overfita. Convenção §6.4 NÃO mudou; apenas a aritmética do walkthrough.
 
-**PBO = 5 / 6 ≈ 0.8333**
+| s | J_s^IS | J_s^OOS | IS means [v0,v1,v2,v3] | t* (argmax IS, first-idx) | OOS means [v0,v1,v2,v3] | ranks (asc, method='min') | rank(t*) | λ_s | overfit (λ ≤ 0)? |
+|---|--------|---------|------------------------|---------------------------|--------------------------|---------------------------|----------|-----|------------------|
+| 1 | {0,1}  | {2,3}   | [9.5, 7.5, 2.5, 0.75]    | var 0 (=9.5)               | [0.75, 2.5, 7.5, 9.5]      | [1, 2, 3, 4]                | 1 | log(1/4) ≈ -1.3863 | YES |
+| 2 | {0,2}  | {1,3}   | [5.5, **5.5**, **5.0**, **5.0**] | var 0 (empate v1; argmax → menor índice) | [4.75, 4.5, 5.0, 5.25]    | [2, 1, 3, 4]                | 2 | log(2/3) ≈ -0.4055 | YES |
+| 3 | {0,3}  | {1,2}   | [5.25, 5.0, **5.5**, **5.5**] | **var 2** (empate v3; argmax → menor índice) | [5.0, 5.0, 4.5, 4.75]   | [3, 3, 1, 2]                | 1 | log(1/4) ≈ -1.3863 | YES |
+| 4 | {1,2}  | {0,3}   | [5.0, 5.0, **4.5**, **4.75**] | var 0 (empate v1; argmax → menor índice) | [5.25, 5.0, 5.5, 5.5]    | [2, 1, 3, 3]                | 2 | log(2/3) ≈ -0.4055 | YES |
+| 5 | {1,3}  | {0,2}   | [4.75, 4.5, 5.0, 5.25]   | var 3 (=5.25)              | [5.5, 5.5, 5.0, 5.0]       | [3, 3, 1, 1]                | 1 | log(1/4) ≈ -1.3863 | YES |
+| 6 | {2,3}  | {0,1}   | [0.75, 2.5, 7.5, 9.5]    | var 3 (=9.5)               | [9.5, 7.5, 2.5, 0.75]      | [4, 3, 2, 1]                | 1 | log(1/4) ≈ -1.3863 | YES |
+
+**PBO = 6 / 6 = 1.0**
+
+Todas as 6 partições resultam em λ_s ≤ 0 (overfit). A construção é uma anti-correlação **perfeita** IS↔OOS sob essa convenção de tie-break (argmax IS first-index + `rankdata(method='min')` ascending): em toda partição balanceada, a melhor variante in-sample acaba entre as piores out-of-sample.
 
 ```python
-expected   = 0.8333333333
-tolerância = 1e-4   # tie-breaking determinístico → exato em scipy ≥ 1.10
+expected   = 1.0
+tolerância = 1e-12   # determinístico em scipy ≥ 1.10 com convenção §6.4
 ```
 
-> **Nota T11:** este toy substitui o "2×4 trivial PBO=1.0" originalmente no AC4 da story T002.0d. Proponho a Beckett/Pax que AC4 seja atualizado para refletir T11-FINAL `expected = 0.8333 ± 1e-4`. A construção 2×4 trivial só atinge PBO=1.0 com `T=2` variantes — caso degenerado onde o rank é binário (1 ou 2) e a fórmula λ = log(rank/(T+1-rank)) tem só 2 valores possíveis. Manter como T12 abaixo para sanity.
+> **Nota histórica:** A v0.2.0 reportava PBO=5/6≈0.8333 com s=3 marcado como NO overfit. Esse valor era resultado de IS means errados em s=3 (var2 e var3 listados como 5.0, devem ser 5.5). Com a aritmética correta, s=3 também overfita e PBO=1.0. Coincidentemente, T11 e T12 agora compartilham PBO=1.0 (anti-correlação perfeita); mantemos T11 (T=4 variantes, N=4 folds) como caso não-degenerado pois testa argmax tie-breaking real (s=2,3,4 têm empates em IS) e rank tie-breaking real (`method='min'` em s=2..5 OOS). T12 (T=2) permanece como sanity trivial.
 
 ### 6.6 Toy benchmark T12 (matrix degenerate — PBO=1.0 trivial)
 
@@ -704,7 +709,7 @@ hit_rate   = 4/7 ≈ 0.5714
 
 - [ ] Cross-validar T9 (DSR) contra `mlfinlab.backtest_statistics.statistics.deflated_sharpe_ratio` em commit explícito; reportar discrepâncias.
 - [ ] Validar convenção LOCKED de rank em PBO (§6.4): `scipy.stats.rankdata(method='min')` para tie-break em rank OOS; argmax IS por menor índice — se discordar, propor convenção alternativa em sign-off ANTES de Dex implementar.
-- [ ] Validar T11 (PBO=0.8333) e T12 (PBO=1.0 trivial) — replicar manualmente conforme §6.5 e §6.6.
+- [ ] Validar T11 (PBO=1.0, anti-correlação perfeita pós-v0.2.1 walkthrough fix) e T12 (PBO=1.0 trivial T=2) — replicar manualmente conforme §6.5 e §6.6.
 - [ ] Confirmar shape de `BacktestResult` (paralelo) — `MetricsResult` consome `pnl_series` (per-bar returns) e `trades` (per-trade pnl) de cada `BacktestResult`. Acordar em handshake.
 - [ ] Validar `to_markdown()` schema em `T002-cpcv-report.md` template (Beckett owns).
 
@@ -718,6 +723,20 @@ hit_rate   = 4/7 ≈ 0.5714
 
 - [ ] Após Beckett sign-off, recompute hash SHA256 deste arquivo e atualizar `Mira-signature` no header.
 - [ ] Atualizar `docs/ml/research-log.md` com `n_trials_cumulative` (gap T0 da story T002.0d) — **separado deste documento**, não escopo aqui.
+
+---
+
+## 15. Revision History
+
+| Version | Date (BRT) | Author | Type | Reason | Sections changed | mira_signature |
+|---------|------------|--------|------|--------|------------------|----------------|
+| v0.2.0  | 2026-04-25 | Mira   | minor (initial) | AC0 gate spec — fórmulas + toy benchmarks + bibliografia | (initial release) | (sha pre-issue) |
+| v0.2.1  | 2026-04-25 | Mira   | patch (correction) | **Article IV escalation by Dex (@dev) durante T002.0d implementation.** Walkthrough §6.5 continha erros aritméticos nas IS means de s=2/3/4 (médias de pares de folds calculadas erroneamente — em particular s=3 listava var2=var3=5.0 quando o correto é 5.5). Sob a convenção LOCKED §6.4 (`rankdata(method='min')` + `argmax` first-index), esse erro flipava o argmax IS de var 0 para var 2 em s=3, mudando o veredito de overfit NO→YES e o PBO final de 5/6 (≈0.8333) para 6/6 (=1.0). **Convenção §6.4 NÃO mudou**; apenas a aritmética do walkthrough e o expected de T11 (PBO=1.0 com tolerância 1e-12, não 0.8333±1e-4). | §6.5 (walkthrough table + nota histórica + expected); frontmatter (Spec version v0.2.0→v0.2.1, Mira-signature recomputed) | (sha pre-update → sha post-update; ver header) |
+| v0.2.2  | 2026-04-25 | Mira   | patch (errata, residual sweep) | **Quinn (@qa) finding em T002.0d gate review.** Cross-sweep de referências stale a "PBO=0.8333" pós v0.2.1 fix. Encontrada 1 ocorrência residual no Beckett checklist (§14, linha 712) que ainda dizia "Validar T11 (PBO=0.8333) e T12 (PBO=1.0 trivial)" — resíduo da v0.2.0 não atualizado no patch v0.2.1. Atualizado para refletir T11=1.0 (anti-correlação perfeita pós-walkthrough fix) e T12=1.0 trivial T=2. Outras ocorrências de "0.8333" / "5/6" (linhas 468 nota histórica §6.5, 734 revision entry v0.2.1, 738 crédito Article IV) são contextualmente corretas — narram a divergência histórica e foram preservadas. **Convenção §6.4 e walkthrough §6.5 NÃO mudaram (corretos pós-v0.2.1).** Adicionalmente, flagged para Dex: `tests/vespera_metrics/test_pbo.py` docstring lines 4-5 carregam mesmo erro stale ("PBO=0.8333 instead of 1.0 trivial" — invertido); code assertion linha 54 está correta; cleanup cosmético de docstring é Dex authority (não Mira). | §1.1 (`spec_version` "T002-v0.2.1"→"T002-v0.2.2"); §14 Beckett checklist (linha 712 errata); frontmatter (v0.2.1→v0.2.2, Mira-signature recomputed) | (sha pre-update → sha post-update; ver header) |
+
+**Article IV preservado:** correção é cosmética/aritmética. Toda fórmula continua traceável a Bailey-Borwein-Lopez de Prado-Zhu (2014) §3 eq. (6-8) e AFML Ch.11 §11.5. Nenhuma feature/decisão inventada.
+
+**Crédito Article IV escalation:** Dex (@dev) detectou a divergência formula-vs-walkthrough durante T002.0d implementation (101/101 tests pass, T11 formula-faithful=1.0 contradiz spec=0.8333) e escalou em vez de improvisar. Comportamento exemplar para Article IV (No Invention).
 
 ---
 
