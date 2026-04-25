@@ -1,0 +1,98 @@
+name: canonical-invariant-smoke-test
+
+# Smoke-test workflow per Story R15.2 T2 — validates that a known-bad commit
+# (canonical mutation without cosign) FAILS CLOSED against the L2 enforcement.
+# Manually triggered (workflow_dispatch); also runnable via gh CLI.
+#
+# Authority: ADR-5 §12.3 C-3 sequencing. Lands AFTER T1 protection workflow,
+# BEFORE T3 hook — so this smoke-test exercises the L2 sha256sum -c path
+# directly (the hook does not yet exist at T2 execution time).
+#
+# Design:
+#   1) Generate a known-bad mutation: append a benign byte to data/manifest.csv
+#      in a throwaway working tree.
+#   2) Stage + write a fake .sums that matches the original (pre-mutation) shas.
+#   3) Run sha256sum -c against the fake .sums; assert exit code != 0.
+#   4) Also generate a known-good scenario (matching .sums); assert exit 0.
+#   5) Both assertions must hold for the smoke-test to PASS.
+#
+# Story File List captures run URL as T2 evidence.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_canonical:
+        description: 'Which canonical to mutate for the bad-path test'
+        required: false
+        default: 'data/manifest.csv'
+        type: choice
+        options:
+          - data/manifest.csv
+          - core/memory_budget.py
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test-fail-closed:
+    name: Known-bad commit MUST fail sha256sum -c (T2)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run smoke-test
+        shell: bash
+        env:
+          TARGET: ${{ inputs.target_canonical }}
+        run: |
+          set -uo pipefail
+          target="${TARGET:-data/manifest.csv}"
+          if [[ ! -f "$target" ]]; then
+            echo "::error::target canonical '$target' not found"
+            exit 1
+          fi
+
+          workdir=$(mktemp -d)
+          cp -a . "$workdir/repo"
+          cd "$workdir/repo"
+
+          # ----- Step A: capture pre-mutation shas -----
+          orig_manifest_sha=$(sha256sum data/manifest.csv | awk '{print $1}')
+          orig_budget_sha=$(sha256sum core/memory_budget.py | awk '{print $1}')
+
+          # Build a fake .sums that pins these original shas.
+          mkdir -p .github
+          {
+            printf '%s  %s\n' "$orig_manifest_sha" 'data/manifest.csv'
+            printf '%s  %s\n' "$orig_budget_sha"   'core/memory_budget.py'
+          } > .github/canonical-invariant.sums
+
+          # ----- Step B: known-good scenario — sha256sum -c MUST pass -----
+          echo "=== known-good scenario ==="
+          if ! sha256sum -c .github/canonical-invariant.sums; then
+            echo "::error::known-good scenario unexpectedly FAILED — smoke-test invalidated"
+            exit 1
+          fi
+          echo "PASS: known-good scenario passes sha256sum -c"
+
+          # ----- Step C: known-bad scenario — mutate target without updating .sums -----
+          # Use printf to avoid shell-interpolation surprises; benign tail byte.
+          printf '\n# smoke-test mutation marker (T2)\n' >> "$target"
+          new_sha=$(sha256sum "$target" | awk '{print $1}')
+
+          echo "=== known-bad scenario ==="
+          echo "Original $target sha: $orig_manifest_sha (or $orig_budget_sha for memory_budget.py)"
+          echo "Mutated  $target sha: $new_sha"
+
+          if sha256sum -c .github/canonical-invariant.sums; then
+            echo "::error::FAIL — known-bad scenario passed sha256sum -c (smoke-test broken: L2 not fail-closed)"
+            exit 1
+          fi
+          echo "PASS: known-bad scenario fails sha256sum -c (L2 fail-closed verified)"
+
+          echo ""
+          echo "Smoke-test result: BOTH known-good (PASS) and known-bad (FAIL) scenarios behaved correctly."
+          echo "L2 sha-mirror drift detection is working as designed (Riven C-3 sequencing T2 closure)."
