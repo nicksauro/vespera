@@ -1,0 +1,13 @@
+{
+  "timestamp_utc": "2026-04-24T11:53:26.920647+00:00",
+  "phase": "retry5-quiesce-post",
+  "virtual_memory": {
+    "total": 17143058432,
+    "available": 9558282240,
+    "used": 7584776192,
+    "percent": 44.2,
+    "free": 9558282240
+  },
+  "sentinel_restored": true,
+  "sentinel_accepting_connections": true
+}

@@ -1,0 +1,13 @@
+{
+  "timestamp_utc": "2026-04-24T11:49:16.067305Z",
+  "phase": "retry5-quiesce-pre",
+  "virtual_memory": {
+    "total": 17143058432,
+    "available": 10657693696,
+    "used": 6485364736,
+    "percent": 37.8,
+    "free": 10657693696
+  },
+  "ra_id": "RA-20260426-1",
+  "supersedes": "RA-20260425-1 (CONSUMED retry #4)"
+}
