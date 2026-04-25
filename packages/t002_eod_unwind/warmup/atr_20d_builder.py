@@ -5,7 +5,7 @@ rolling 20-day average. Persists state to disk for fast startup.
 
 Design reference:
 - docs/architecture/T002-end-of-day-inventory-unwind-design.md §3.1
-- docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.1.0.yaml feature_set[1]
+- docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml feature_set[1]
 
 MANIFEST:
 - R2: all timestamps BRT-naive

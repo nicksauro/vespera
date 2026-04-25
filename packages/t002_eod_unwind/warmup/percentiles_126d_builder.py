@@ -1,6 +1,6 @@
-"""Percentiles_252d rolling builder for T002 warm-up.
+"""Percentiles_126d rolling builder for T002 warm-up.
 
-Computes rolling percentiles (P20, P60, P80) over 252 valid business days
+Computes rolling percentiles (P20, P60, P80) over 126 valid business days
 for two series:
 
   1. magnitude     = |close[16:55] - open_day| / ATR_20d_of_that_day
@@ -10,9 +10,17 @@ These percentiles gate signal emission: the strategy fires only when
 magnitude > P60 AND atr_day_ratio is between P20 and P80 on the current
 day (computed against history-only percentiles, shifted by 1 day).
 
+Lookback rationale (P126 vs P252): TimescaleDB Sentinel coverage starts
+2024-01-02 continuous; Jan 2023 has 6 isolated days only. P252 from
+2024-01-01 in_sample start was structurally infeasible. PRR-20260421-1
+chose P126 to fit the warm-up window 2024-01-02..2024-06-30 (~126
+business days) within available data while preserving the 12-month
+in-sample window 2024-07-01..2025-06-30 and the virgin hold-out
+2025-07-01..2026-04-21. Spec v0.2.0 (Mira+Pax cosigned).
+
 Design reference:
 - docs/architecture/T002-end-of-day-inventory-unwind-design.md §3.2
-- docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.1.0.yaml trading_rules
+- docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml trading_rules
 
 MANIFEST:
 - R2 BRT naive timestamps
@@ -53,7 +61,7 @@ class PercentileBands:
 
 
 @dataclass(frozen=True)
-class Percentiles252dState:
+class Percentiles126dState:
     as_of_date: date
     magnitude: PercentileBands
     atr_day_ratio: PercentileBands
@@ -70,7 +78,7 @@ class Percentiles252dState:
         }
 
     @classmethod
-    def from_json(cls, data: Mapping) -> "Percentiles252dState":
+    def from_json(cls, data: Mapping) -> "Percentiles126dState":
         return cls(
             as_of_date=date.fromisoformat(data["as_of_date"]),
             magnitude=PercentileBands.from_json(data["magnitude"]),
@@ -80,10 +88,10 @@ class Percentiles252dState:
         )
 
 
-class Percentiles252dBuilder:
-    """Builds 252-day rolling percentiles from per-day metrics."""
+class Percentiles126dBuilder:
+    """Builds 126-day rolling percentiles from per-day metrics."""
 
-    WINDOW: int = 252
+    WINDOW: int = 126
 
     def __init__(self, calendar) -> None:
         self._cal = calendar
@@ -93,7 +101,7 @@ class Percentiles252dBuilder:
         metrics: Sequence[DailyMetrics],
         as_of_date: date,
         now_brt: datetime,
-    ) -> Percentiles252dState:
+    ) -> Percentiles126dState:
         window = self._select_window(metrics, as_of_date)
         if len(window) < self.WINDOW:
             raise ValueError(
@@ -101,7 +109,7 @@ class Percentiles252dBuilder:
             )
         magnitudes = sorted(m.magnitude for m in window)
         atr_ratios = sorted(m.atr_day_ratio for m in window)
-        return Percentiles252dState(
+        return Percentiles126dState(
             as_of_date=as_of_date,
             magnitude=PercentileBands(
                 p20=self._percentile(magnitudes, 20),
@@ -144,11 +152,11 @@ class Percentiles252dBuilder:
             sorted_values[low_idx + 1] - sorted_values[low_idx]
         )
 
-    def persist(self, state: Percentiles252dState, path: Path) -> None:
+    def persist(self, state: Percentiles126dState, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as fh:
             json.dump(state.to_json(), fh, indent=2)
 
-    def load(self, path: Path) -> Percentiles252dState:
+    def load(self, path: Path) -> Percentiles126dState:
         with path.open("r", encoding="utf-8") as fh:
-            return Percentiles252dState.from_json(json.load(fh))
+            return Percentiles126dState.from_json(json.load(fh))
