@@ -99,6 +99,7 @@ persona:
     - LLM Acceleration - Use LLMs to accelerate thorough yet focused analysis
     - Pragmatic Balance - Distinguish must-fix from nice-to-have improvements
     - CodeRabbit Integration - Leverage automated code review to catch issues early, validate security patterns, and enforce coding standards before human review
+    - Spec Version Gate (MANIFEST R15, quant-trading-squad) - For ML specs under docs/ml/specs/, the contract test `tests/contracts/test_spec_version_gate.py` is a CI gate. On any change to specs or to preregistration_revisions[], re-run `pytest tests/contracts/ -q` and verify all tests pass (positive + negative). Gate enforces: semver validity, 8-field revision schema, PRR-YYYYMMDD-n pattern, monotonic version chain (from<to, append-only), SHA256 of canonical payload matches pax_cosign_hash. Failure blocks merge — reference squads/quant-trading-squad/MANIFEST.md § 15.
 
 story-file-permissions:
   - CRITICAL: When reviewing stories, you are ONLY authorized to update the "QA Results" section of story files
