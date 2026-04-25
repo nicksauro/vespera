@@ -1,0 +1,24 @@
+# CODEOWNERS — R15.2 canonical-invariant-hardening enforcement
+#
+# Story:    docs/stories/R15.2-canonical-invariant-hardening-impl.story.md (AC8)
+# Authority: ADR-5 (Aria RATIFY + Riven CONDITIONAL_COSIGN + Dex COSIGNED).
+#
+# Lines below codify L3 enforcement (human review required for any change to
+# enforcement infrastructure). L1 = pre-commit hook, L2 = CI required check.
+# Branch-protection toggle (T6) is Gage @devops R12 exclusive scope.
+#
+# Note: usernames shown are the AIOX agent IDs. Replace with actual GitHub
+# handles or team mentions (e.g. @org/team-risk) before T6 if needed; the
+# semantic intent is the binding constraint for review-routing.
+
+# L1 hook tree — Dex (impl) + Riven (R10/R15 sentinel custodial review)
+.githooks/                                       @dev @risk-manager
+
+# L2 CI workflows for canonical-invariant — Dex (impl) + Riven (custodial) + Gage (branch-protection scope)
+.github/workflows/canonical-invariant-*.yml      @dev @risk-manager @devops
+
+# Sha-mirror canonical surface — Dex + Riven (any drift here is custodial)
+.github/canonical-invariant.sums                 @dev @risk-manager
+
+# .gitattributes — Dara (canonical-producer custodian) + Riven (R-2 -text regression check)
+/.gitattributes                                  @data-engineer @risk-manager
