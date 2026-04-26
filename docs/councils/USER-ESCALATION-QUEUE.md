@@ -51,6 +51,17 @@
   4. (Riven/T8) Hold ESC-002 progression
   5. (Dara) Lesson: chunk-metadata queries must be paired with `COUNT(DISTINCT date_trunc('day'))` before any continuity claim
 
+#### Update 2026-04-26 BRT — Docker re-down (post user restart)
+
+- User restarted Docker; `docker ps` initially showed container UP 19s.
+- `docker exec` immediately failed with 500 on dockerDesktopLinuxEngine pipe.
+- Postgres logs showed recovery + ready, query `SELECT ... GROUP BY year` ran in background but timed out (~10min) producing zero output.
+- Dara second-attempt audit: `com.docker.service` (Windows) found STOPPED, all Docker API endpoints returning 500 across 1.53 + 1.47.
+- Dara honored Article IV — aborted clean, no re-extrapolation, doc `docs/audits/AUDIT-20260426-DB-CONTINUITY.md` (status ABORTED — DOCKER_DAEMON_DOWN_500).
+- ESC-001 + ESC-002 status UNCHANGED.
+- T002.0g T8 Riven dual-sign + T10 Beckett T11.bis remain HOLD.
+- Operational follow-up needed: `com.docker.service` restart on host before audit can proceed.
+
 ---
 
 ### ESC-001 — T002.0g coverage gap as_of=2024-06-30 (manifest pré-2024 ausente)
