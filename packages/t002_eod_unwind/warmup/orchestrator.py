@@ -1,18 +1,26 @@
-"""Warm-up state orchestrator — T002.0g (Story `docs/stories/T002.0g.story.md`).
+"""Warm-up state orchestrator — T002.0g + T002.0h streaming patch.
+
+Story: `docs/stories/T002.0h.story.md` (post-T002.0g streaming refactor —
+honors ADR-1 v3 CAP_v3 8.4 GiB via per-day online reduction).
 
 Connects parquet trades (T002.0b adapter) ⇒ daily OHLC ⇒ ATR_20d builder
 + Percentiles_126d builder ⇒ canonical JSON state files under
 ``state/T002/`` consumable by ``WarmUpGate`` and the CPCV harness.
 
-Authoritative authorities (T0 handshakes 2026-04-26 BRT):
+Authoritative authorities (T0 handshakes 2026-04-26 BRT — T002.0h):
 
 - **Aria (architecture)** — Module + thin CLI; ``state/T002/`` canonical;
-  manifest schema with ``orchestrator_version``.
+  manifest schema with ``orchestrator_version``. T002.0h: outer per-day
+  loop pattern; per-day O(1) accumulator; Trade objects discarded
+  post-update; builder API immutable (``ATR20dBuilder`` /
+  ``Percentiles126dBuilder`` pure-compute).
 - **Mira (anti-leak + schema)** — Window strict ``[D-146bd, D-1]``;
   current day NEVER included; ``calendar: CalendarData`` MUST be passed
   by the caller (no internal instantiation — leak vector); 146 = 126
   P126 lookback + 20 ATR_20 aux input; ``state_content_hash`` excludes
-  ``computed_at_brt`` for AC7.
+  ``computed_at_brt`` for AC7. T002.0h: ascending iteration ENFORCED
+  (D-1 strictly before D); rolling deques 20/126 orchestrator-managed;
+  builder receives deque snapshots (pure compute, no state across calls).
 - **Beckett (R6 CPCV gate)** — ``COPY`` (not symlink) on Windows for
   ``state/T002/atr_20d.json`` ↔ ``state/T002/atr_20d_{date}.json``.
 - **Dara (parquet source + manifest)** — ``feed_parquet.load_trades``
@@ -22,9 +30,14 @@ Authoritative authorities (T0 handshakes 2026-04-26 BRT):
   the adapter (``_verify_integrity`` per call).
 - **Riven (defense-in-depth)** — ``assert_holdout_safe(start, end)``
   fires BEFORE adapter open; manifest.json append-only JSONL pinned in
-  ``.github/canonical-invariant.sums``.
+  ``.github/canonical-invariant.sums``. T002.0h: peak-RSS regression
+  test (``tests/warmup_orchestrator/test_streaming_memory.py``) asserts
+  ``< 500 MB`` honoring ADR-1 v3 CAP_v3 8.4 GiB (7.9 GiB headroom).
 
-Anti-Article-IV Guards (story §Anti-Article-IV Guards):
+Anti-Article-IV Guards (story T002.0g §Anti-Article-IV Guards +
+T002.0h §Anti-Article-IV Guards):
+
+T002.0g (preserved):
 1. NO neutral PercentilesState fallback — fail-closed with
    ``InsufficientCoverage`` listing window edges + missing dates.
 2. NO silent path switch on write fail — manifest abort.
@@ -32,8 +45,17 @@ Anti-Article-IV Guards (story §Anti-Article-IV Guards):
 4. NO DLL/TimescaleDB re-fetch — parquet only via ``ParquetSource``.
 5. NO determinism check skip — sort_keys + canonical float repr.
 
+T002.0h (added — fail-closed per Pax 10/10 GO):
+1. NO timeout extend to mask memory bug — fix root cause (single-pass).
+2. NO raise CAP_v3 8.4 GiB — invariant immutable (ADR-1 v3).
+3. NO subsample dataset — fixture is real-scale by design.
+4. NO builder API mutation — Mira pure-compute contract preserved.
+5. NO skip ascending iteration — Mira anti-leak shifted-by-1 broken
+   if reordered.
+
 AC mapping (story §Acceptance criteria):
 
+T002.0g (preserved):
 - AC1  parquet source + adapter REUSE (manifest SHA re-check delegated).
 - AC2  strict ``[D-146bd, D-1]`` anti-leak window.
 - AC3  ``assert_holdout_safe`` fires BEFORE adapter open.
@@ -46,6 +68,16 @@ AC mapping (story §Acceptance criteria):
 - AC10 streaming per as_of_date (R4 mitigation).
 - AC11 CLI exposed via ``scripts/run_warmup_state.py`` (T2).
 - AC12 integration test confirms ``WarmUpGate.check`` ⇒ READY_TO_TRADE.
+
+T002.0h (added):
+- AC1  ``_aggregate_day_streaming`` single-pass O(1) accumulator.
+- AC2  Outer per-day loop ⇒ trade objects discarded post-aggregation.
+- AC3  ``_build_atr_state_from_ohlcs`` re-synthesis bounded to FINAL
+       20-OHLC deque snapshot (≤80 trades total — was 146×N).
+- AC4  Iteration ascending strictly (D-1 before D).
+- AC5  Rolling deques 20/126 orchestrator-managed; builder API unchanged.
+- AC6  ``test_streaming_memory.py`` peak < 500 MB.
+- AC7  Quinn fixture parametrized ``n_days ∈ {21, 127, 365}``.
 """
 
 from __future__ import annotations
@@ -54,6 +86,7 @@ import hashlib
 import json
 import logging
 import shutil
+from collections import deque
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -317,11 +350,108 @@ def inspect_tradetype_filter(trade_sample: Trade | None) -> TradeFilterDecision:
 # =====================================================================
 # AC4 — daily OHLC + DailyMetrics extraction from raw trades
 # =====================================================================
+def _aggregate_day_streaming(
+    day: date,
+    trades: Iterable[Trade],
+    close_at_time: time,
+) -> tuple[DailyOHLC, float] | None:
+    """T002.0h AC1 — single-pass O(1) accumulator for ONE business day.
+
+    Streams trades for ``day`` and returns ``(DailyOHLC, close_at_price)``
+    or ``None`` if no trades were observed on ``day``. Trade objects are
+    NOT retained — only the running aggregator state
+    ``{open, high, low, close, volume, last_close_at_<=16:55, ts_min}``.
+
+    Anti-leak invariant (Mira T0): trades with ``tr.ts.date() != day`` are
+    SKIPPED (defensive — caller is expected to pass a per-day stream, but
+    parquet files boundaries can leak ±1ms across day edges). The
+    ``close_at`` price is the LAST observed trade with
+    ``tr.ts.time() <= close_at_time`` (anti-leakage pattern from
+    ``SessionState.snapshot_at`` — close_at_t never reads a trade with
+    ts > t). Iteration order WITHIN the day does not need to be sorted
+    since aggregation is order-invariant for high/low/volume; for
+    open/close/close_at we track ``ts_min``/``ts_max`` per category.
+
+    Memory profile: per-day O(1) state (~7 floats + 2 timestamps + 1
+    int). Trade object lifetime = single iteration (immediately
+    eligible for GC).
+
+    Anti-Article-IV Guard #4 (T002.0h) preserved: builder API NOT
+    touched — this helper is orchestrator-internal.
+    """
+    open_price: float | None = None
+    open_ts: datetime | None = None
+    close_price: float | None = None
+    close_ts: datetime | None = None
+    high_price: float = float("-inf")
+    low_price: float = float("inf")
+    volume: int = 0
+    close_at_price: float | None = None
+    close_at_ts: datetime | None = None
+    saw_any: bool = False
+
+    for tr in trades:
+        # Defensive day-boundary filter (parquet row-group leakage).
+        if tr.ts.date() != day:
+            continue
+        saw_any = True
+        price = tr.price
+        if price > high_price:
+            high_price = price
+        if price < low_price:
+            low_price = price
+        volume += tr.qty
+        ts = tr.ts
+        if open_ts is None or ts < open_ts:
+            open_ts = ts
+            open_price = price
+        if close_ts is None or ts > close_ts:
+            close_ts = ts
+            close_price = price
+        if ts.time() <= close_at_time:
+            if close_at_ts is None or ts > close_at_ts:
+                close_at_ts = ts
+                close_at_price = price
+        # Trade object goes out of scope at next loop iteration — no
+        # retention beyond the running aggregator state.
+
+    if not saw_any:
+        return None
+
+    # mypy: open_price/close_price are assigned iff saw_any.
+    assert open_price is not None and close_price is not None
+    if close_at_price is None:
+        # No trade at/before 16:55 for this day — fall back to OPEN price
+        # (spec-compatible with prior behavior; safe because magnitude
+        # denominator is ATR_20d > 0 unless degenerate).
+        close_at_price = open_price
+    return (
+        DailyOHLC(
+            day=day,
+            open=open_price,
+            high=high_price,
+            low=low_price,
+            close=close_price,
+            volume_contracts=volume,
+        ),
+        close_at_price,
+    )
+
+
 def _aggregate_daily_with_close_at(
     trades: Iterable[Trade],
     close_at_time: time,
 ) -> tuple[list[DailyOHLC], dict[date, float]]:
     """Aggregate trades into ``(DailyOHLC list, close_at_time map)``.
+
+    .. deprecated:: T002.0h
+        This helper RETAINS trade objects in per-day buckets — incompatible
+        with ADR-1 v3 CAP_v3 8.4 GiB on real-scale (146bd × 850k trades/day
+        ≈ 3.7 GB residente). The orchestrator now uses the per-day
+        streaming path (``_aggregate_day_streaming``) inside an outer
+        per-day loop. This function is kept ONLY for backward-compatible
+        unit-test coverage of the legacy aggregation logic — production
+        code path is the streaming variant.
 
     The ``close_at_time`` map is keyed by ``date`` and holds the last
     trade price with ``trade.ts.time() <= close_at_time`` (anti-leakage
@@ -364,6 +494,36 @@ def _aggregate_daily_with_close_at(
             close_at = prices[0]
         close_at_map[day] = close_at
     return ohlcs, close_at_map
+
+
+def _atr_from_ohlc_window(window: Sequence[DailyOHLC]) -> float:
+    """T002.0h AC5 helper — compute ATR over a window of ``DailyOHLC``.
+
+    Mirrors ``ATR20dBuilder._compute_atr`` arithmetic exactly (true range
+    chained over consecutive OHLCs; first day's TR = high - low).
+    Orchestrator-internal — DOES NOT mutate the builder API (Guard #4).
+
+    Used by the streaming per-day loop to compute the rolling ATR_20
+    denominator for each day's DailyMetrics. The window passed in is a
+    snapshot of the rolling 20-day deque taken BEFORE the current day's
+    OHLC is appended (anti-leak: current day excluded from its own
+    rolling denominator).
+    """
+    if not window:
+        return 0.0
+    true_ranges: list[float] = []
+    for i, day in enumerate(window):
+        if i == 0:
+            true_ranges.append(day.high - day.low)
+        else:
+            prev_close = window[i - 1].close
+            tr = max(
+                day.high - day.low,
+                abs(day.high - prev_close),
+                abs(day.low - prev_close),
+            )
+            true_ranges.append(tr)
+    return sum(true_ranges) / len(true_ranges)
 
 
 def _build_daily_metrics(
@@ -556,6 +716,23 @@ class OrchestratorResult:
     tradetype_decision: TradeFilterDecision
 
 
+def _enumerate_valid_sample_days(
+    window_start: date, window_end: date, calendar: CalendarData
+) -> list[date]:
+    """Return all calendar-valid sample days in ``[window_start, window_end]``
+    in STRICTLY ASCENDING order.
+
+    Mira T0 / T002.0h AC4 anti-leak invariant: D-1 always before D.
+    """
+    days: list[date] = []
+    cur = window_start
+    while cur <= window_end:
+        if calendar.is_valid_sample_day(cur):
+            days.append(cur)
+        cur += timedelta(days=1)
+    return days
+
+
 def orchestrate_warmup_state(
     *,
     as_of_dates: Sequence[date],
@@ -583,6 +760,26 @@ def orchestrate_warmup_state(
     Aria T0 + Beckett T0 + AC5: per-as_of_date dated outputs PLUS a COPY
     of the LAST date's state to ``state/T002/{atr_20d,percentiles_126d}.json``
     (consumer default for ``WarmUpGate``).
+
+    T002.0h streaming refactor (AC1-AC5):
+        For each as_of_date, we iterate the valid_sample_days ASCENDING
+        and call ``source.load_trades(day_start, day_end, ticker)`` PER
+        DAY. The day's trades stream through ``_aggregate_day_streaming``
+        (single-pass O(1) state) producing one ``DailyOHLC`` + one
+        ``close_at`` price. The trade generator is then dropped — no
+        per-day list retention. We maintain TWO rolling deques:
+
+          - ``ohlc_deque`` (maxlen=20)   — for the rolling ATR_20 used by
+            DailyMetrics computation AND the FINAL ATR_20d state at
+            ``as_of - 1``.
+          - ``metrics_deque`` (maxlen=126) — for the FINAL Percentiles
+            state at ``as_of - 1``.
+
+        Per-day memory: O(1) accumulator + 1× day's trade stream
+        (consumed and discarded in-loop). Total residente: O(20 + 126)
+        across days. ADR-1 v3 CAP_v3 8.4 GiB compliance: peak < 500 MB
+        on real-scale 146bd × ≥50k trades/day (asserted by
+        ``tests/warmup_orchestrator/test_streaming_memory.py``).
     """
     if not as_of_dates:
         raise ValueError("as_of_dates must be non-empty")
@@ -616,7 +813,8 @@ def orchestrate_warmup_state(
     stamps: list[DeterminismStamp] = []
     last_dec: TradeFilterDecision | None = None
 
-    # AC10 — streaming PER as_of_date (R4 mitigation).
+    # T002.0g AC10 + T002.0h AC1-AC5: streaming PER as_of_date AND
+    # per-day inside each as_of (R4 mitigation extended for memory cap).
     for as_of in sorted_dates:
         # AC2 — anti-leak window strict [D-146bd, D-1].
         window_start, window_end = compute_window(as_of, calendar)
@@ -624,82 +822,162 @@ def orchestrate_warmup_state(
         # AC3 — Riven defense-in-depth BEFORE adapter open.
         holdout_assert(window_start, window_end)
 
-        # Convert window edges to BRT-naive datetimes spanning the trading day.
-        # Adapter contract: start inclusive, end exclusive. End_brt is start
-        # of the day AFTER window_end so trades ON window_end are included.
-        start_brt = datetime.combine(window_start, time(0, 0, 0))
-        end_brt = datetime.combine(window_end + timedelta(days=1), time(0, 0, 0))
-
-        # AC1 — load trades via adapter (parquet primary; manifest SHA
-        # re-check delegated per Dara T0).
-        trades_iter = source.load_trades(start_brt, end_brt, ticker)
-
-        # Materialize once into list — the OHLC aggregation needs to bucket
-        # by day before either builder runs. Streaming into ``buckets``
-        # keeps memory bounded by the daily-distinct-trade count.
-        ohlcs, close_at_map = _aggregate_daily_with_close_at(
-            trades_iter, CLOSE_AT_TIME_BRT
+        # T002.0h AC4: enumerate valid sample days STRICTLY ASCENDING.
+        # Mira anti-leak invariant: D-1 ALWAYS processed before D so the
+        # 20-day rolling ATR for day D excludes day D itself (the
+        # ``ohlc_deque`` snapshot taken at the START of day D's metrics
+        # computation contains only days strictly before D).
+        valid_days = _enumerate_valid_sample_days(
+            window_start, window_end, calendar
         )
 
-        # AC4 — tradeType inspection (Guard #4 escalation if adapter
-        # discards). We probe a single OHLC's underlying — the adapter
-        # already discarded the field, so the probe always returns
-        # "escalated_adapter_gap" for parquet source today. Future-proof
-        # via runtime hasattr check.
-        sample_trade: Trade | None = None
-        if ohlcs:
-            # Re-fetch a tiny window of trades from the same source just to
-            # peek a Trade record's attributes — but the iterator is one-shot.
-            # We approximate by inspecting the (post-cast) Trade dataclass:
-            #   FeedParquetSource always produces warmup.atr_20d_builder.Trade
-            #   which has only (ts, price, qty) — no tradeType.
-            sample_trade = Trade(
-                ts=datetime.combine(ohlcs[0].day, time(9, 0, 0)),
-                price=ohlcs[0].open,
-                qty=1,
-            )
-        decision = inspect_tradetype_filter(sample_trade)
-        last_dec = decision
-        if decision.status == "escalated_adapter_gap":
-            logger.warning("[T002.0g.AC4] %s", decision.note)
+        # T002.0h AC5: rolling deques orchestrator-managed (NOT
+        # builder-managed). Builder API stays pure-compute via deque
+        # snapshots passed to its public ``build`` method (Guard #4).
+        #
+        # ``ohlc_deque``: rolling 20 most-recent OHLCs (ascending by day),
+        # used both for per-day DailyMetrics ATR_20 denominator AND for
+        # the FINAL ATR_20d state passed to ATR20dBuilder.build via
+        # ``_build_atr_state_from_ohlcs`` (synthesizes ≤80 trades total —
+        # a constant, not a function of the lookback window).
+        #
+        # ``metrics_deque``: rolling 126 most-recent DailyMetrics
+        # (ascending by day), used for the FINAL Percentiles state
+        # passed to Percentiles126dBuilder.build (no synthesis needed —
+        # builder accepts DailyMetrics directly).
+        # Use literal window sizes (20/126) so tests that patch
+        # ``sut.ATR20dBuilder``/``sut.Percentiles126dBuilder`` with
+        # side_effect callables don't break attribute access.
+        ohlc_deque: deque[DailyOHLC] = deque(maxlen=20)
+        metrics_deque: deque[DailyMetrics] = deque(maxlen=126)
+        # Mira ascending-order assertion: track last day processed.
+        last_day_processed: date | None = None
+        # AC4 tradeType decision — set once per as_of after first day with
+        # any trades; structurally identical across the run for parquet
+        # source today (adapter discards tradeType uniformly).
+        decision: TradeFilterDecision | None = None
+        days_with_trades = 0
 
-        # Build ATR_20d state (uses ALL valid sample days < as_of).
-        # Builder accepts trades — re-construct from OHLCs (price = open
-        # for synthesis preserves daily aggregation; we already have
-        # OHLCs so use them via internal API).
-        # NOTE: ATR20dBuilder.build() expects trades; we already aggregated.
-        # Use the builder's window selector + ATR compute via wrapper.
-        # Guard #1: convert builder's "insufficient history" ValueError into
-        # the canonical ``InsufficientCoverage`` so callers see fail-closed
-        # signal rather than ambiguous ValueError.
+        for day in valid_days:
+            # T002.0h AC4 anti-leak guard: ascending-order assertion.
+            # Defense-in-depth: ``_enumerate_valid_sample_days`` already
+            # returns ascending; this assertion catches future regressions.
+            if last_day_processed is not None and day <= last_day_processed:
+                raise AssertionError(
+                    f"T002.0h AC4 anti-leak violation: day={day.isoformat()} "
+                    f"<= last_day_processed={last_day_processed.isoformat()}; "
+                    "Mira ascending-iteration invariant broken (D-1 MUST "
+                    "strictly precede D)."
+                )
+            last_day_processed = day
+
+            # T002.0h AC2: per-day stream. Adapter contract: start
+            # inclusive, end exclusive; end_brt is start of NEXT day so
+            # trades ON ``day`` are fully captured.
+            day_start_brt = datetime.combine(day, time(0, 0, 0))
+            day_end_brt = datetime.combine(day + timedelta(days=1), time(0, 0, 0))
+            trades_iter = source.load_trades(day_start_brt, day_end_brt, ticker)
+
+            # T002.0h AC1: single-pass O(1) accumulator. Trade objects
+            # are discarded as the generator is consumed — NO per-day
+            # list retention. Returns ``None`` if no trades on ``day``
+            # (skipped — calendar said valid but data was empty).
+            agg = _aggregate_day_streaming(day, trades_iter, CLOSE_AT_TIME_BRT)
+            # CRITICAL: drop the iterator reference so the generator is
+            # eligible for GC (parquet row-batches release memory).
+            del trades_iter
+            if agg is None:
+                continue
+            day_ohlc, close_at_price = agg
+            days_with_trades += 1
+
+            # AC4 tradeType inspection — once per as_of (the cast Trade
+            # dataclass shape is invariant for FeedParquetSource).
+            if decision is None:
+                sample_trade = Trade(
+                    ts=datetime.combine(day_ohlc.day, time(9, 0, 0)),
+                    price=day_ohlc.open,
+                    qty=1,
+                )
+                decision = inspect_tradetype_filter(sample_trade)
+                if decision.status == "escalated_adapter_gap":
+                    logger.warning("[T002.0g.AC4] %s", decision.note)
+
+            # T002.0h AC5: emit DailyMetrics for this day BEFORE pushing
+            # day_ohlc onto the deque (anti-leak: ATR_20 denominator must
+            # exclude THIS day). Skip days where the rolling deque hasn't
+            # yet filled to 20 (insufficient prior history); skip days
+            # where ATR_20 is degenerate (<=0). Use literal 20 so tests
+            # patching ``sut.ATR20dBuilder`` don't break attribute access.
+            if len(ohlc_deque) >= 20:
+                atr_20 = _atr_from_ohlc_window(list(ohlc_deque))
+                if atr_20 > 0.0:
+                    magnitude = abs(close_at_price - day_ohlc.open) / atr_20
+                    atr_day = day_ohlc.high - day_ohlc.low
+                    atr_day_ratio = atr_day / atr_20
+                    metrics_deque.append(
+                        DailyMetrics(
+                            day=day_ohlc.day,
+                            magnitude=magnitude,
+                            atr_day_ratio=atr_day_ratio,
+                        )
+                    )
+
+            # NOW push today's OHLC. Subsequent days will see this in
+            # their prior-window snapshot (D will be in window for D+1's
+            # ATR_20 denominator — correct anti-leak semantics).
+            ohlc_deque.append(day_ohlc)
+
+        # Resolve tradetype decision for manifest (default if no trades
+        # observed at all — fall through to applied/no-trades).
+        if decision is None:
+            decision = TradeFilterDecision(
+                status="applied", note="no trades observed in window"
+            )
+        last_dec = decision
+
+        # T002.0h AC3 + AC5: build FINAL state from rolling deques. The
+        # builder API is UNCHANGED — we pass deque snapshots via
+        # ``list(deque)``. ATR builder still requires trades, so we use
+        # the bounded ``_build_atr_state_from_ohlcs`` re-synthesis on
+        # the FINAL 20-OHLC snapshot only (≤80 trades — a CONSTANT,
+        # NOT 146×N like the legacy bulk-aggregation path that triggered
+        # the T11.bis HALT).
+        ohlc_snapshot = list(ohlc_deque)
+        metrics_snapshot = list(metrics_deque)
+
+        # Guard #1: convert builder's "insufficient history" ValueError
+        # into canonical ``InsufficientCoverage``.
         try:
             atr_state = _build_atr_state_from_ohlcs(
-                atr_builder, ohlcs, as_of, now_brt()
+                atr_builder, ohlc_snapshot, as_of, now_brt()
             )
         except ValueError as exc:
             raise InsufficientCoverage(
                 f"as_of={as_of.isoformat()} ATR_20d build failed: {exc}; "
-                f"window=[{window_start.isoformat()}, {window_end.isoformat()}]. "
+                f"window=[{window_start.isoformat()}, {window_end.isoformat()}]; "
+                f"days_with_trades={days_with_trades}; "
+                f"ohlc_deque_len={len(ohlc_snapshot)}. "
                 "Anti-Article-IV Guard #1: NO neutral fallback — escalate "
                 "to upstream data coverage."
             ) from exc
         _assert_roundtrip_atr(atr_state)
 
-        # Build Percentiles_126d state (uses DailyMetrics derived from
-        # OHLCs + close_at_map + rolling 20d ATR per day).
-        daily_metrics = _build_daily_metrics(ohlcs, close_at_map, calendar)
         # Guard #1 — convert "insufficient" detection to canonical fail-closed.
-        pct_window = 126
-        if len(daily_metrics) < pct_window:
+        # Use literal 126 (matches Percentiles126dBuilder.WINDOW) so tests
+        # patching ``sut.Percentiles126dBuilder`` don't break this check.
+        pct_window_required = 126
+        if len(metrics_snapshot) < pct_window_required:
             raise InsufficientCoverage(
-                f"as_of={as_of.isoformat()}: only {len(daily_metrics)} "
-                f"valid DailyMetrics (need {pct_window}); "
-                f"window=[{window_start.isoformat()}, {window_end.isoformat()}]. "
+                f"as_of={as_of.isoformat()}: only {len(metrics_snapshot)} "
+                f"valid DailyMetrics (need {pct_window_required}); "
+                f"window=[{window_start.isoformat()}, {window_end.isoformat()}]; "
+                f"days_with_trades={days_with_trades}. "
                 "Anti-Article-IV Guard #1: NO neutral fallback — escalate "
                 "to upstream data coverage."
             )
         try:
-            pct_state = pct_builder.build(daily_metrics, as_of, now_brt())
+            pct_state = pct_builder.build(metrics_snapshot, as_of, now_brt())
         except ValueError as exc:
             raise InsufficientCoverage(
                 f"as_of={as_of.isoformat()} Percentiles_126d build failed: {exc}; "
@@ -776,13 +1054,23 @@ def _build_atr_state_from_ohlcs(
 ) -> ATR20dState:
     """Wrapper that runs ``ATR20dBuilder.build`` from pre-aggregated OHLCs.
 
-    The builder's public API takes ``trades`` — for the orchestrator we've
-    already aggregated to ``DailyOHLC``. We synthesize one trade per OHLC
+    T002.0h AC3 NOTE — The legacy callsite (T002.0g) passed the FULL
+    146-day OHLC list, causing the builder's ``_aggregate_daily`` to
+    re-process 4 × N synthesized trades. The streaming refactor (T002.0h)
+    now passes ONLY the FINAL 20-OHLC snapshot from the rolling
+    ``ohlc_deque``, so trade synthesis is bounded to ≤80 trades total —
+    a CONSTANT, not a function of the lookback window. This eliminates
+    the duplication-of-peak that contributed to the T11.bis HALT.
+
+    The builder's public API takes ``trades`` (Mira pure-compute,
+    Guard #4 immutable); we therefore synthesize one trade per OHLC
     quad (open, high, low, close) so the builder's ``_aggregate_daily``
-    preserves the same OHLC. Order matters: the timestamps are anchored
+    reproduces the same OHLC. Order matters: the timestamps are anchored
     at session open (09:30) for open, then high/low/close intercalated
     inside the session — bucket by date is ts.date() so any time within
-    the day works for grouping.
+    the day works for grouping. The builder's window selector restricts
+    output to the LAST 20 valid days < as_of_date — matching the deque
+    snapshot exactly.
     """
     trades: list[Trade] = []
     for o in ohlcs:
