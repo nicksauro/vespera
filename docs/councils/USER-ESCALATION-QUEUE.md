@@ -96,7 +96,11 @@
 - **Authority:** Nova (@market-microstructure, B3 trading day expertise)
 - **Action:** Nova investigates whether 2024-12-24 should be excluded from valid sample days; if YES, Pax errata in calendar config; if calendar fix changes lookback window math, Mira anti-leak re-validation needed
 - **Independent of ESC-004 wall-time:** This calendar fix solves InsufficientCoverage HALT specifically, NOT wall-time issue
-- **Status:** Informational — escalation queue for Nova investigation post-T002.0h closure
+- **Status:** PARTIALLY_RESOLVED (2026-04-26 BRT)
+  - **Resolved:** Pax errata applied — `2024-12-24` added to `br_holidays` em `config/calendar/2024-2027.yaml` (treated as full-exclusion; `is_business_day()` → `is_valid_sample_day()` excludes via `br_holidays` membership). Calendar `version` bumped to `2026-04-26`. Inline YAML comment cita Nova confirmation + ESC-005.
+  - **Schema gap (NOT auto-fixed):** Loader (`packages/t002_eod_unwind/warmup/calendar_loader.py`) only consumes `copom_meetings`/`br_holidays`/`wdo_expirations`/`pre_long_weekends_br_with_us_open`. NO `half_day` field, NO `excluded_from_lookback` flag. Adding such fields silently ignored — would require code change (out of scope for this errata; escalate as separate story).
+  - **Open (tracked, NOT in scope):** Full B3 half-day audit (other historical Christmas Eves, Sextas pré-Carnaval que B3 fechou cedo, Ano Novo véspera, etc.) — recommend new story (e.g., `T002.0i` or governance audit) com Nova como owner para enriquecer schema com `half_day` + `excluded_from_lookback` + auditar 2024-2027.
+  - **Dex Option B re-run unblocked:** lookback math agora exclui `2024-12-24`; `days_with_trades` esperado deve alinhar com calendar truth.
 
 
 ---

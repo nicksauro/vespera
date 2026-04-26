@@ -16,8 +16,8 @@
 # - Datas "pré-vencimento" = D-3, D-2, D-1 antes de wdo_expirations (rollover exclusion)
 # - Este arquivo é versionado; qualquer alteração passa por PR com review de Nova + Sable
 
-version: "2026-04-21"
-last_updated_brt: "2026-04-21T18:45:00"
+version: "2026-04-26"
+last_updated_brt: "2026-04-26T00:00:00"
 maintainer_human: "humano projeto algotrader"
 auditor: "Sable (@squad-auditor)"
 
@@ -73,6 +73,7 @@ br_holidays:
   - "2024-11-02"  # Finados
   - "2024-11-15"  # Proclamação da República
   - "2024-11-20"  # Consciência Negra (feriado nacional desde 2024)
+  - "2024-12-24"  # B3 half-day Christmas Eve — Nova confirmed 2026-04-26 BRT; empirical parquet 0 trades; ESC-005 fix (treated as full-exclusion until schema supports half_day flag)
   - "2024-12-25"  # Natal
   # 2025
   - "2025-01-01"
