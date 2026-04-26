@@ -69,6 +69,38 @@
 
 ---
 
+### ESC-004 — T002.0h Option C insufficient (wall-time 6m22s vs amended < 60s budget)
+
+- **Date:** 2026-04-26 BRT
+- **Scope:** T002.0h streaming refactor wall-time mitigation
+- **Trigger:** Dex empirical run post Option C (cached ParquetFile handles) — 6m22s, exit 0 (clean InsufficientCoverage HALT)
+- **Cache effectiveness empirically validated:** 138 hits + 8 misses (94%, 18:1 metadata amortization) — helped MAS NÃO eliminate per-row-group I/O
+- **Root cause:** Per-day row-group reads + Python materialization (`pf.read_row_group` + `to_numpy.tolist` + `map(Trade)`) AC2-bounded. Cache amortizes metadata only.
+- **Mini-council consensus** (pre-empirical) escolheu Option C como "least invasive first" with Option B as fallback. Empirical proved C insufficient.
+- **Three mitigation options surfaced:**
+  - **(B) Per-month outer loop** — orchestrator chunks ~21 days into single ParquetFile open per month, internal per-day bucket. Mira sign-off REQUIRED (AC2 literal interpretation amend). Estimated ~4-5h Dex.
+  - **(D) Calendar fix 2024-12-24** — SEPARATE concern, addresses InsufficientCoverage but NOT wall-time. Nova authority (B3 reduced-trading days).
+  - **(E) Numpy-direct Trade construction** — adapter (T002.0b) modification, bypasses Python materialization. R15 question (T002.0b is Done). Estimated ~3-4h Dex + R15 amendment overhead.
+- **Mini-council convocado:** Aria + Mira + Beckett + Nova (4 agents)
+- **Status:** HALT-ESCALATE — autonomous mode dispatching mini-council to converge on B/D/E selection.
+
+---
+
+### ESC-005 — Calendar 2024-12-24 valid-sample-day assumption refuted (orthogonal to ESC-004)
+
+- **Date:** 2026-04-26 BRT
+- **Scope:** Calendar/data integrity — `config/calendar/2024-2027.yaml` (or similar)
+- **Trigger:** Dex Option C empirical run revealed `2024-12-24` marked as valid sample day em calendar BUT parquet has 0 trades on that date
+- **Empirical:** `days_with_trades=145 vs expected 146` for as_of=2025-05-31 lookback window — 2024-12-24 missing trades
+- **Hypothesis:** B3 reduced-trading day (Christmas Eve early-close OR full holiday) not modeled in current calendar
+- **Authority:** Nova (@market-microstructure, B3 trading day expertise)
+- **Action:** Nova investigates whether 2024-12-24 should be excluded from valid sample days; if YES, Pax errata in calendar config; if calendar fix changes lookback window math, Mira anti-leak re-validation needed
+- **Independent of ESC-004 wall-time:** This calendar fix solves InsufficientCoverage HALT specifically, NOT wall-time issue
+- **Status:** Informational — escalation queue for Nova investigation post-T002.0h closure
+
+
+---
+
 ### ESC-002 — TimescaleDB hold-out window exposure (UNVERIFIED DB density / L2 CI gate CONFIRMED ACTIVE)
 
 **Update 2026-04-26 BRT — Gage proxy empirical gh api check:**
