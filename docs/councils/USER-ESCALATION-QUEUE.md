@@ -32,6 +32,41 @@
   - DB-side guard view JUSTIFIED before any CPCV dry-run that involves DB queries
 - **Follow-up needed:** ONE defensive query against `chunk_compression_stats` to disambiguate compressed-with-data vs genuinely empty. (Dispatching Dara now.)
 
+#### Update 2026-04-26 BRT — Dara §4 + Riven mini-council finalization
+
+- **Dara §4 confirmed:** 23/23 hold-out trades chunks `is_compressed=true`; trades hypertable 53 GB total payload. `pg_relation_size=0` is canonical TimescaleDB compressed-chunk signature. **Hold-out window CONTAINS real data (compressed).**
+- **Riven mini-council Q2 verdict:** **ESC-002_LAYERED_SAFE_SUFFICIENT_NO_NEW_STORY**
+  - L1 (5 fail-closed `assert_holdout_safe` call-sites + Guard #1 silent-fallback removal) — CONFIRMED
+  - L2 (CI gate active-blocking + enforce_admins=true) — CONFIRMED
+  - L3 (DB density confirmed by Dara §4) — present + protected by L1+L2
+  - DB-side guard view (potential T002.0i) JUSTIFIED as proactive defense BUT NOT prerequisite
+  - T002.0g orchestrator never queries DB (parquet primary, AC1)
+- **ESC-002 status: CLOSEABLE — defense-in-depth empirically validated. No new story T002.0i required for safety; only as future hardening if user prefers belt-and-suspenders.**
+
+---
+
+### ESC-003 — T002.0g orchestrator memory-budget gap (NEW, real T11.bis blocker)
+
+- **Date:** 2026-04-26 BRT
+- **Scope:** T002.0g warmup state orchestrator runtime/perf
+- **Trigger:** Beckett T11.bis HALT 2026-04-26 BRT — RSS 1.95→4.10→6.09 GB em 90s, SIGTERM kill em 120s, exit 124, 0 JSONs persisted
+- **Root cause (Aria + Dex confirmed):** `orchestrator.py:640-642` (`_aggregate_daily_with_close_at`) feeds `:334-336` (`buckets.setdefault(day, []).append(tr)`) — retains ALL Trade objects per day for full 146bd window before aggregating. 365d × ~850k trades/day × ~120B/Trade ≈ 3.7 GB residente.
+- **Riven HOLD condition #1 RETRACTED:** "depends on Docker engine restoration" — INCORRECT; T002.0g orchestrator parquet-only, zero Docker dep. Real blocker is design.
+- **Mini-council 5/5 CONVERGENT:** APPROVE_OPTION_A_NEW_STORY_T002.0h (streaming aggregation patch)
+  - Aria: per-day chunked outer loop, builder API stays pure, R15 forbids amend Done T002.0g
+  - Mira: ANTI_LEAK_PRESERVED_UNDER_CHUNKED conditional on (a) ascending iteration, (b) deques 20/126 reusing batch API, (c) Quinn fixture n_days≥127
+  - Dex: ~150 LoC fix scope, ~1 session 8h estimate, builder API NO change, spec UNTOUCHED
+  - Riven: T002.0h DoD MUST include real-scale memory regression test + ADR-1 v3 CAP_v3 explicit compliance
+  - Beckett: smaller smoke window first + repeat per revision + Quinn fixture upgrade > Beckett pre-merge gate
+- **Action items:**
+  1. River drafte T002.0h (Wave W6 sequential post-T002.0g)
+  2. Pax validate
+  3. Dex impl (~1 session)
+  4. Quinn re-QA with real-scale fixture
+  5. Beckett T11.bis re-run as exit gate
+  6. Article IV explicit AC: "Dex MUST NOT extend timeout, raise cap, or subsample to mask bug"
+- **Status:** Council adopted Option A autonomously per autonomous mandate; River drafting now.
+
 ---
 
 ### ESC-002 — TimescaleDB hold-out window exposure (UNVERIFIED DB density / L2 CI gate CONFIRMED ACTIVE)
