@@ -53,6 +53,18 @@ T002.0h (added — fail-closed per Pax 10/10 GO):
 5. NO skip ascending iteration — Mira anti-leak shifted-by-1 broken
    if reordered.
 
+T002.0h AC8 amendment 2026-04-26 BRT (Option C cached file handles):
+   ``FeedParquetSource`` accepts an optional ``handle_cache``
+   (``ParquetHandleCache`` from ``warmup/_parquet_handle_cache.py``).
+   ``orchestrate_warmup_state`` auto-attaches one when the source is a
+   ``FeedParquetSource`` lacking a cache. The cache amortizes
+   ``pyarrow.parquet.ParquetFile`` opens 6:1 (~110 per-day calls → ~6
+   distinct monthly files for a 146bd lookback) AND memoizes the
+   adapter's manifest parse single-shot. Anti-leak NEUTRAL — cache is
+   order-agnostic; orchestrator's ascending iteration assertion remains
+   the canonical invariant. Adapter (``feed_parquet.py``) is UNTOUCHED
+   (R15 immutability of T002.0b).
+
 AC mapping (story §Acceptance criteria):
 
 T002.0g (preserved):
@@ -92,6 +104,7 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Callable, Iterable, Protocol, Sequence
 
+from packages.t002_eod_unwind.warmup._parquet_handle_cache import ParquetHandleCache
 from packages.t002_eod_unwind.warmup.atr_20d_builder import (
     ATR20dBuilder,
     ATR20dState,
@@ -160,9 +173,20 @@ class FeedParquetSource:
     """Default ``ParquetSource`` impl backed by ``feed_parquet.load_trades``.
 
     Article IV-A REUSE — does not duplicate adapter logic.
+
+    T002.0h AC8 amendment (Option C cached file handles, 2026-04-26 BRT):
+    when a ``ParquetHandleCache`` is provided via ``handle_cache`` (or
+    auto-instantiated by ``orchestrate_warmup_state``), the per-day
+    ``load_trades`` calls reuse a single ``ParquetFile`` instance per
+    monthly partition — amortizing parquet open + metadata-scan cost
+    6:1 (~110 per-day calls → ~6 distinct monthly files for a 146bd
+    lookback). NEUTRAL w.r.t. anti-leak (Mira): cache is order-agnostic
+    and does NOT change ``load_trades`` semantics; orchestrator still
+    iterates D-1 strictly before D.
     """
 
     ticker: str = "WDO"
+    handle_cache: ParquetHandleCache | None = None
 
     def load_trades(
         self,
@@ -171,6 +195,7 @@ class FeedParquetSource:
         ticker: str,
     ) -> Iterable[Trade]:
         # Lazy import — keeps test mocks free of pyarrow import cost.
+        from packages.t002_eod_unwind.adapters import feed_parquet as _fp
         from packages.t002_eod_unwind.adapters.feed_parquet import (
             load_trades as _load_trades,
         )
@@ -178,8 +203,72 @@ class FeedParquetSource:
         # Adapter yields ``packages.t002_eod_unwind.core.session_state.Trade``;
         # ATR builder expects ``packages.t002_eod_unwind.warmup.atr_20d_builder.Trade``
         # — same shape (ts, price, qty). Cast on the fly.
-        for tr in _load_trades(start_brt, end_brt, ticker):
-            yield Trade(ts=tr.ts, price=tr.price, qty=tr.qty)
+        if self.handle_cache is None:
+            # Backward-compat path — no cache; call adapter directly.
+            for tr in _load_trades(start_brt, end_brt, ticker):
+                yield Trade(ts=tr.ts, price=tr.price, qty=tr.qty)
+            return
+
+        # T002.0h AC8 — patch the adapter's ``pq.ParquetFile`` symbol
+        # (used in ``_iter_parquet_rows``) to route through the cache.
+        # The patch is scoped to this generator's lifetime via
+        # try/finally so concurrent (mock-source) tests are unaffected.
+        # We also cache the manifest row list so 110 per-day calls don't
+        # re-parse data/manifest.csv each time (Beckett wall-time
+        # diagnostic step #1).
+        cache = self.handle_cache
+        import pyarrow.parquet as _pq  # type: ignore[import-untyped]
+
+        original_parquet_file = _pq.ParquetFile
+
+        # Capture the REAL opener on the cache BEFORE we patch the
+        # module-level symbol — otherwise ``cache._open_parquet`` would
+        # recurse through the patched shim back into ``cache.get``.
+        # Idempotent: only set on first patch.
+        if cache._real_opener is None:
+            cache._real_opener = original_parquet_file
+
+        class _CachedParquetFile:
+            """Constructor shim — returns a cached handle for ``path``."""
+
+            def __new__(cls, path, *args, **kwargs):  # type: ignore[no-untyped-def]
+                # ``cache.get(path)`` returns the same ``ParquetFile``
+                # instance for the same path until LRU eviction. The
+                # adapter only reads metadata + row groups (no mutation)
+                # so sharing the handle across calls is safe.
+                return cache.get(Path(path))
+
+        _pq.ParquetFile = _CachedParquetFile  # type: ignore[misc]
+
+        # Manifest cache — Beckett wall-time diagnostic step #1: the
+        # adapter re-parses ``data/manifest.csv`` (+ PREVIEW) on every
+        # ``load_trades`` call. For 110 per-day calls this is O(110 ×
+        # CSV parse). Memoize at the cache instance so this run parses
+        # the manifest exactly once.
+        original_load_manifest = _fp._load_manifest_with_fallback
+
+        def _cached_manifest_loader():  # type: ignore[no-untyped-def]
+            return cache.get_manifest(original_load_manifest)
+
+        _fp._load_manifest_with_fallback = _cached_manifest_loader  # type: ignore[assignment]
+
+        # Also patch the symbol bound in the adapter module's local
+        # namespace if it was imported at module scope (defensive — the
+        # current adapter does ``import pyarrow.parquet as pq`` lazily
+        # inside ``_iter_parquet_rows``, so the module-level patch above
+        # is sufficient. This block is a no-op for the current adapter
+        # but stays as a defense for future refactors.)
+        adapter_pq_attr = getattr(_fp, "pq", None)
+        try:
+            for tr in _load_trades(start_brt, end_brt, ticker):
+                yield Trade(ts=tr.ts, price=tr.price, qty=tr.qty)
+        finally:
+            _pq.ParquetFile = original_parquet_file  # type: ignore[misc]
+            _fp._load_manifest_with_fallback = original_load_manifest  # type: ignore[assignment]
+            if adapter_pq_attr is not None:
+                # Adapter may have imported pq at module scope in the
+                # future; restore that binding too.
+                _fp.pq = adapter_pq_attr  # type: ignore[attr-defined]
 
 
 # =====================================================================
@@ -785,6 +874,26 @@ def orchestrate_warmup_state(
         raise ValueError("as_of_dates must be non-empty")
     sorted_dates = sorted(set(as_of_dates))
 
+    # T002.0h AC8 amendment (Option C): auto-attach a ParquetHandleCache
+    # to a FeedParquetSource that doesn't already have one. Mock sources
+    # used by tests are unaffected (they don't carry a ``handle_cache``
+    # attribute and use their own iteration semantics). NEUTRAL w.r.t.
+    # anti-leak (Mira): cache is order-agnostic; orchestrator still
+    # iterates D-1 strictly before D (runtime assertion preserved).
+    # Set env ``T002_OPTC_DISABLE=1`` to opt out (e.g. when measuring
+    # against the uncached baseline for empirical wall-time diagnostics).
+    import os as _os
+
+    if (
+        isinstance(source, FeedParquetSource)
+        and source.handle_cache is None
+        and _os.environ.get("T002_OPTC_DISABLE", "0") != "1"
+    ):
+        source = FeedParquetSource(
+            ticker=source.ticker,
+            handle_cache=ParquetHandleCache(max_handles=6),
+        )
+
     # Resolve holdout assertion (Riven T0 — defense-in-depth).
     if holdout_assert is None:
         # Lazy import to keep tests insulated.
@@ -1102,6 +1211,7 @@ __all__ = [
     "ManifestWriteError",
     "ORCHESTRATOR_VERSION",
     "OrchestratorResult",
+    "ParquetHandleCache",
     "ParquetSource",
     "TradeFilterDecision",
     "WARMUP_VALID_DAYS_REQUIRED",
