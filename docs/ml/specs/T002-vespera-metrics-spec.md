@@ -696,7 +696,7 @@ hit_rate   = 4/7 ≈ 0.5714
 | Agente | Validação | Status |
 |--------|-----------|--------|
 | Mira | autoria + matemática + bibliografia | ASSINADO (este doc) |
-| Beckett | toy numerics cross-validados contra Bailey-LdP 2014 + AFML Ch.11 + (mlfinlab onde aplicável) | PENDENTE — sign-off comment na story T002.0d |
+| Beckett | toy numerics cross-validados contra Bailey-LdP 2014 + AFML Ch.11 + (mlfinlab onde aplicável); pre-flight Mira-handshake (spec→impl, atlas→engine-config, CPCV defaults, dataset readiness) | ASSINADO 2026-04-25 BRT — `docs/backtest/T002-pbo-beckett-validation.md` (PBO §6.4-§6.5 endorse) + `docs/backtest/T002-mira-handshake-2026-04-25.md` (handshake; verdict HANDSHAKE_OK_FOR_DRY_RUN) |
 | Kira | alignment kill criteria (K1: DSR>0; K2: PBO<0.4; K3: IC decay) | PENDENTE |
 | Dex | implementação byte-exact contra toy benchmarks | PENDENTE — após AC0 gate |
 | Pax | `*validate-story-draft` T002.0d → GO | PENDENTE |

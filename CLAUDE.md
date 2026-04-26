@@ -27,3 +27,7 @@
 ## Checkpoint MC-29-1 D3+D4 fechado (2026-04-25)
 
 @C:\Users\Pichau\.claude\projects\C--Windows-system32\memory\project_vespera_mc29_1_complete.md
+
+## Protocolo CPCV dry-run (memory governance)
+
+@C:\Users\Pichau\.claude\projects\C--Windows-system32\memory\feedback_cpcv_dry_run_memory_protocol.md
