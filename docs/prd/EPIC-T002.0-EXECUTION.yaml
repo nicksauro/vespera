@@ -154,12 +154,69 @@ waves:
           - "Article III (Story-Driven) — T002.0f formalizada antes de qualquer code change"
           - "Article V (Quality First) — QA Gate Quinn obrigatório; sem auto-approve"
 
+  - wave: W5
+    label: "Warmup State Orchestrator: materialize ATR_20d + Percentiles_126d JSON for CPCV pre-flight"
+    parallel: false
+    depends_on_waves: [W4]
+    stories:
+      - id: T002.0g
+        title: "Warmup State Orchestrator"
+        status: "Done (code+QA+custodial PASS 2026-04-26 BRT — Autonomous Session); T10 T11.bis HOLD pending Docker"
+        owner: "Dex (@dev) impl — drafted by River (@sm)"
+        reviewers: ["Aria", "Mira", "Beckett", "Dara"]
+        qa: "Quinn (@qa) + Riven (@risk-manager) DUAL-SIGN custodial cosign"
+        validator: "Pax (@po)"
+        depends_on: [T002.0a, T002.0b, T002.1, T002.0f]
+        gated_by: ["River draft", "Pax 10/10 GO", "Quinn QA PASS", "Riven DUAL-SIGN PARTIAL"]
+        estimate_sessions: 3.5
+        estimate_breakdown:
+          t0_handshakes: 0.5
+          dex_implementation: 2.0
+          quinn_qa: 0.5
+          riven_cosign_and_beckett_buffer: 0.5
+        scope:
+          - "packages/t002_eod_unwind/warmup/orchestrator.py — orchestrate_warmup_state(as_of_dates, source, output_dir, calendar) + helpers"
+          - "scripts/run_warmup_state.py — argparse CLI + MemoryPoller (REUSE T002.0f T3 pattern) + hold-out lock pre-flight + exit codes 0/1/2"
+          - "Path lift atomic (R15 non-breaking): cpcv_harness.py:94-95 + run_cpcv_dry_run.py:117-118 defaults data/warmup/ → state/T002/"
+          - "Guard #1 silent-fallback removal em run_cpcv_dry_run.py:503-548 (_load_warmup_state agora fail-closed)"
+          - "state/T002/manifest.json append-only JSONL audit trail + determinism_stamp.json (state_content_hash)"
+          - "Anti-leak STRICT [D-146 valid_business_days, D-1] (146 = 126 P126 + 20 ATR_20 aux)"
+          - "tradeType filter {2,3} via Guard #4 escalation (orchestrator emite tradetype_filter_status='escalated_adapter_gap' + USER-ESCALATION-PENDING WARN log)"
+        deliverables:
+          - "packages/t002_eod_unwind/warmup/orchestrator.py (638 LoC NEW)"
+          - "scripts/run_warmup_state.py (343 LoC NEW)"
+          - "tests/warmup_orchestrator/test_orchestrator.py (20 tests PASS, AC1-AC10 + Guard #1 + Mira T0 calendar)"
+          - "tests/scripts/test_run_warmup_state.py (11 tests PASS, AC11 CLI + AC10 poller + DoD grep)"
+          - "tests/contracts/test_warmup_orchestrator_contracts.py (7 PASS + 1 SKIP, AC9 manifest pin + AC12 gate end-to-end)"
+          - "MODIFIED: packages/t002_eod_unwind/cpcv_harness.py L94-97 path lift"
+          - "MODIFIED: scripts/run_cpcv_dry_run.py L117-121 path lift + L77-79 unused import + L503-548 Guard #1 fail-closed"
+          - "MODIFIED: .github/canonical-invariant.sums Riven T8 dual-sign placeholder pin"
+        rationale: |
+          Beckett T11 smoke 2026-04-26 BRT exposed warmup state JSON
+          files (state/T002/atr_20d.json + percentiles_126d.json) never
+          materialized. T002.1 delivered pure-compute builders;
+          T002.0g orchestrator wires data/in_sample/ parquet (T002.0b
+          adapter REUSE) → builders → JSON persist + audit manifest.
+          Dara BLOCK_GAP_UPSTREAM mini-council resolved AC5/AC12 to
+          {2025-05-31} only; 2024-06-30 → USER-ESCALATION-QUEUE
+          ESC-001 (lookback exige 2023-Q4 ausente).
+        exit_criterion: |
+          Quinn QA PASS + Riven DUAL-SIGN + Pax Done bump
+          (already DONE 2026-04-26); Beckett T11.bis post-Docker
+          restoration completes T10 task closure.
+        constitutional_anchors:
+          - "Article IV (No Invention) — Guard #4 tradeType escalation (não improvisar filter); Guard #1 fail-closed (não silencioso fallback)"
+          - "Article III (Story-Driven) — Council §3 brief → River draft → Pax 10/10 → Dex impl"
+          - "Article V (Quality First) — DUAL-SIGN protocol: Quinn QA gate + Riven custodial cosign"
+          - "R11 — orchestration é COMO, não O-QUÊ; spec v0.2.0 + v0.2.3 UNTOUCHED"
+          - "R15 — path lift non-breaking via --output-dir flag preservation"
+
 # ----------------------------------------------------------------
 # SYNC POINT — destrava Task #36
 # ----------------------------------------------------------------
 sync_point:
   name: "Phase E GO_EXECUTE"
-  trigger: "all 6 stories merged (T002.0a-f) + Sable coherence audit do epic"
+  trigger: "all 7 stories merged (T002.0a-g) + Sable coherence audit do epic"
   actions:
     - "T002.0f harness integration completo (Quinn PASS)"
     - "Beckett executa *mira-handshake contra v0.2.0 (já closed em 2026-04-25)"
@@ -167,6 +224,8 @@ sync_point:
     - "Dry-run retorna GO_EXECUTE (ou explicit NO-GO com métricas reais)"
     - "Morgan fecha EPIC-T002.0 status=Done"
     - "Task #36 (Beckett CPCV Gate) sai de BLOCKED → READY"
+    - "T002.0g warmup state materialization complete (Quinn PASS + Riven DUAL-SIGN)"
+    - "Beckett T11.bis smoke retry post-T002.0g (HOLD pending Docker)"
 
 # ----------------------------------------------------------------
 # NEXT SESSION PRIORITIES (post-Beckett HALT 2026-04-25)
@@ -271,6 +330,12 @@ risks:
     mitigation: "T002.0f integration tests obrigam end-to-end real em parquet slice; River + Pax validation enforce scope completo na story draft"
     owner: Morgan + Beckett
     surfaced_at: "2026-04-25T21:23 (Beckett HALT)"
+  - id: R-0.7
+    risk: "Warmup state materialization gap surfaced post-T002.0f T11 (T002.1 pure-compute caller never wired); T002.4 real diverged from T002.1 L154 prediction"
+    mitigation: "T002.0g formal story Wave W5; mini-council protocol for divergence resolution; Sable C14 errata in T002.1 footer fixes orphan reference"
+    owner: Morgan + River
+    surfaced_at: "2026-04-26T03:11 (Beckett T11 smoke HALT)"
+    status: "RESOLVED via T002.0g delivery (code+QA+custodial complete; T11.bis Docker-pending)"
 
 # ----------------------------------------------------------------
 # SPRINT RE-ESTIMATE HISTORY
@@ -310,3 +375,22 @@ sprint_reestimate_history:
       T002 NOT killed, NOT advanced — bloqueio é integração, não tese.
     scope_at_revision: "6 stories: T002.0a-f (added T002.0f CPCV Harness Integration)"
     blocked_by_decision_to: "Drafted formally vs. quick-fix in Beckett's session — chose formal route per Constitution Article III (Story-Driven)"
+
+  - revision_id: REV-003
+    date_brt: "2026-04-26T00:00:00-03:00"
+    author: "Morgan (@pm) via Council convocation 2026-04-26 BRT"
+    estimate_sessions_serial: 13.5
+    estimate_sessions_parallel: 12.0
+    delta_sessions: +3.5
+    rationale: |
+      Beckett T11 smoke 2026-04-26 BRT exposed gap upstream:
+      warmup state JSON files never materialized. T002.1 delivered
+      pure-compute builders; T002.4 real (PR #2) was child-peak
+      telemetry, not adapter live as T002.1 L154 predicted.
+      T002.0g formalized as Wave W5 (River draft + Pax 10/10 GO +
+      T0 handshakes 4/4 + Dex T1+T2+T3 + Quinn PASS + Riven DUAL-SIGN
+      PARTIAL + Sable coherence audit APPROVE_FOR_BASELINE).
+      Council 7-vote consensus Option A (vs Option D housekeeping).
+      Mini-council Dara BLOCK_GAP_UPSTREAM resolved 4/4 APPROVE_OPTION_B
+      (AC5 amended {2025-05-31} only; 2024-06-30 user-escalation).
+    scope_at_revision: "7 stories: T002.0a-g (added T002.0g Warmup State Orchestrator)"
