@@ -11,6 +11,19 @@
 
 ## Active escalations
 
+### ESC-002 — TimescaleDB hold-out window exposure (UNVERIFIED DB density / L2 CI gate CONFIRMED ACTIVE)
+
+**Update 2026-04-26 BRT — Gage proxy empirical gh api check:**
+- Branch protection main has 4 canonical-invariant jobs in `required_status_checks.contexts` ✓
+- `enforce_admins=true`, `strict=true`, `allow_force_pushes=false`, `allow_deletions=false`, `required_conversation_resolution=true` ✓
+- L2 CI gate G6 enforcement: **ACTIVE_BLOCKING_CONFIRMED** (Sable initial concern INVALIDATED)
+- Riven LAYERED_SAFE rationale CONFIRMED at L2; only DB density (L3) remains UNVERIFIED
+- R15.2 T6 was actually done previously, just unchecked in story; needs cosmetic `[x]` update + audit §8 evidence link
+- Caveat noted: `required_approving_review_count=0` (single-author posture) — recommend documenting in ADR-5 or governance ledger
+- **Sub-blocker for T002.0g T8 dual-sign on G6/CI aspect: CLOSED** (DB audit aspect still HOLD pending Docker)
+
+---
+
 ### ESC-002 — TimescaleDB hold-out window exposure (UNVERIFIED — Dara claims need re-audit)
 
 - **Date:** 2026-04-26 BRT

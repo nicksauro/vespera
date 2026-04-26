@@ -81,3 +81,30 @@ Priority list for incoming story (River to draft):
 **Re-audit trigger:** post `gh api ...protection` evidence captured + R15.2 T6 marked `[x]`.
 
 — Sable, o cético do squad 🔍
+
+---
+
+## §8 Empirical gh api branch protection check (Gage proxy READ-ONLY)
+
+- **Date:** 2026-04-26 BRT
+- **Auditor:** Gage proxy (autonomous mode)
+- **Repo:** nicksauro/vespera
+- **Branch:** main
+- **gh auth status:** authenticated as `nicksauro` (keyring; scopes: `gist`, `read:org`, `repo`)
+- **Required status checks contexts:**
+  - `gitattributes -text discipline (R-2)`
+  - `canonical-invariant.sums consistency check`
+  - `.sums mutation cosign validation (R-4)`
+  - `deterministic glob precedence (Riven C-1 R-B)`
+- **Canonical-invariant job in contexts?** YES — `canonical-invariant.sums consistency check` is registered as a required status check (app_id 15368, GitHub Actions).
+- **enforce_admins.enabled:** true
+- **required_pull_request_reviews:** present; `dismiss_stale_reviews=true`, `require_code_owner_reviews=false`, `require_last_push_approval=false`, `required_approving_review_count=0`
+- **strict:** true (require branches to be up to date before merging)
+- **Additional protections:** `allow_force_pushes=false`, `allow_deletions=false`, `required_conversation_resolution=true`, `required_linear_history=false`, `required_signatures=false`, `lock_branch=false`
+- **Final verdict on G6 enforcement:** **ACTIVE_BLOCKING_CONFIRMED**
+
+**Implication:** Sable's primary concern (T6 unverified → workflow possibly decorative) is **INVALIDATED by empirical evidence**. All four canonical-invariant jobs from `canonical-invariant-protection.yml` are wired as required status checks on `main`, with `enforce_admins=true` (admins cannot bypass) and `strict=true` (branches must be up to date). Force-push is disabled, deletions blocked, conversation resolution required. Riven LAYERED_SAFE rationale is **EMPIRICALLY SUPPORTED** at the L2 server-side enforcement layer.
+
+**R15.2 T6 status correction:** T6 was executed (likely silently or in a prior session); story file needs cosmetic `[x]` update + evidence link to this audit §8. NO Gage mutation needed — toggle is already in place.
+
+**Caveat:** `required_approving_review_count=0` means PRs can self-merge without external approval (single-author repo posture). This is consistent with the squad model but should be documented in ADR-5 or governance ledger as an explicit ruling.
