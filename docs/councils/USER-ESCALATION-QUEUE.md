@@ -88,6 +88,33 @@
   2. Approve Option F AC8 strategic relax (accept warmup as one-time-per-as_of cost)?
   3. Approve Option G hybrid (E + per-day streaming)?
 
+#### Update 2026-04-26 BRT — Mini-council 4/4 CONVERGENT APPROVE_F
+
+**Aria critical finding (Option E REFUTED):**
+- `feed_parquet.py:319-328` JÁ implementa numpy-direct path (T002.0b prior optimization, 35× speedup achieved with `to_numpy + tolist` replacing `to_pylist`)
+- Aria's prior 40-70% E speedup estimate was STALE (pre-T002.0b)
+- Hot path residual cost: `astype(object).tolist()` (boxing ns→datetime) + `_Trade` NamedTuple construction (Python-side mesmo via map C). Per-row Python object allocation is the floor.
+- 382s IS the optimized path — no further pyarrow-layer mitigation viable
+- E.1 (orchestrator helper) = duplicates holdout/manifest validation, R2 risk
+- E.2 (feed_parquet body mod) = marginal 10-15% speedup, doesn't justify R15 reopen
+- Option G (C+E hybrid) collapses to C-only because E is null
+
+**4-vote convergent on APPROVE_F with mandatory contracts:**
+- Aria: APPROVE_F (engineering through non-existent optimization wastes budget)
+- Beckett: APPROVE_F (AC8 was overly strict, conflated dev iteration vs one-time precompute)
+- Mira: APPROVE_F_PRAGMATIC (spec UNTOUCHED, story-level only; anti-leak preserved IF strict cache validation)
+- Dara: APPROVE_F (hot path at pyarrow ceiling; cache strategy sound)
+
+**Mandatory cache validation contracts (convergent):**
+1. Triple-key cache: `(as_of_date, source_sha256_from_manifest, builder_version_semver)` — Mira/Dara strict
+2. Fail-closed em mismatch (raise `StaleCacheError`, NO silent regenerate)
+3. `--force-rebuild` escape hatch (Beckett)
+4. Cache hit/miss logged em manifest for Sable audit
+5. TTL infinito (imutável por chave — Mira)
+6. AC8 reframe: warmup wall-time NOT smoke gate criterion; smoke total < 5min applies only post-warmup-cache-hit
+
+**Status:** RESOLVED — autonomous mode executing F via Pax AC8 amend + Dex cache validation contract impl.
+
 ---
 
 ### ESC-004 — T002.0h Option C insufficient (wall-time 6m22s vs amended < 60s budget)
