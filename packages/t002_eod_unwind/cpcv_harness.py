@@ -48,7 +48,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable
 
 import pandas as pd
 
@@ -281,6 +281,28 @@ def make_backtest_fn(
         rebuild internally, the caller swaps state per fold by
         re-instantiating via ``make_backtest_fn``)
 
+    **[DEFERRED-T11 — Per-fold P126 Rebuild Limitation]**
+
+    The current implementation accepts a single ``Percentiles126dState``
+    instance. All 225 folds in ``run_5_trial_fanout`` share this state
+    because ``CPCVEngine.run`` accepts a fixed ``backtest_fn`` for the
+    full run.
+
+    True per-train-fold P126 rebuild requires either:
+      (a) ``CPCVEngine.run`` accepting a
+          ``backtest_fn_factory: Callable[[CPCVSplit], Callable]`` so the
+          engine instantiates a fresh closure per fold, OR
+      (b) ``make_backtest_fn`` accepting
+          ``percentiles_provider: Callable[[pd.DataFrame], Percentiles126dState]``
+          invoked inside the closure per train slice.
+
+    For T1 (stub backtest_fn), this is a no-op since the closure does
+    not consume P126 to compute Sharpe. The real backtest body in T11
+    (Beckett smoke re-run) MUST address this before statistical results
+    are trusted.
+
+    Tracked: Aria architecture review 2026-04-26 finding M1.
+
     Anti-leak invariant (Nova T0 handshake):
         Global P126 over the in-sample window contaminates test folds
         via look-ahead volatility. Per-train-fold rebuild is the only
@@ -451,13 +473,17 @@ _PLACEHOLDER_STAMP = DeterminismStamp(
 # AC3 — run_5_trial_fanout
 # =====================================================================
 @dataclass(frozen=True)
-class FanoutResult:
+class _FanoutResult:
     """Container for per-trial CPCV results plus the canonical run id.
 
     Beckett T0: ``dict[str, list[BacktestResult]]`` is the contract;
     this dataclass is an optional convenience wrapper for callers that
     want metadata alongside. The dict-only API is preserved by
     ``run_5_trial_fanout`` returning the dict directly.
+
+    Module-private (underscore prefix) per Aria 2026-04-26 finding L2:
+    not consumed by any external module; promote to public + re-export
+    via ``__all__`` only when a real caller emerges.
     """
 
     results: dict[str, list[BacktestResult]]
@@ -546,15 +572,9 @@ def run_5_trial_fanout(
 __all__ = [
     "ENTRY_WINDOWS_BRT",
     "EXIT_DEADLINE_BRT",
-    "FanoutResult",
     "TRIALS_DEFAULT",
     "assert_warmup_satisfied",
     "build_events_dataframe",
     "make_backtest_fn",
     "run_5_trial_fanout",
 ]
-
-
-# Touch ``Iterable`` so deferred type-stubs don't trigger F401 — kept
-# for consumers that want to iterate the closure output as a generator.
-_ = Iterable

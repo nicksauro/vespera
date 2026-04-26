@@ -32,7 +32,13 @@ from packages.vespera_metrics.report import (
     MetricsResult,
     FullReport,
     KillDecision,
+    ReportConfig,
+    compute_full_report,
     evaluate_kill_criteria,
+)
+from packages.vespera_metrics.research_log import (
+    DEFAULT_RESEARCH_LOG,
+    read_research_log_cumulative,
 )
 
 __all__ = [
@@ -51,5 +57,9 @@ __all__ = [
     "MetricsResult",
     "FullReport",
     "KillDecision",
+    "ReportConfig",
+    "compute_full_report",
     "evaluate_kill_criteria",
+    "read_research_log_cumulative",
+    "DEFAULT_RESEARCH_LOG",
 ]
