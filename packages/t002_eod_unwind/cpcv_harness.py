@@ -88,11 +88,13 @@ TRIALS_DEFAULT: tuple[str, ...] = ("T1", "T2", "T3", "T4", "T5")
 ENTRY_WINDOWS_BRT: tuple[str, ...] = ("16:55", "17:10", "17:25", "17:40")
 EXIT_DEADLINE_BRT: time = time(17, 55)
 
-# Default warmup state file convention (T002.1 Story T2 file list).
+# Default warmup state file convention (T002.1 Story T2 file list +
+# T002.0g AC6 atomic path lift — canonical state/T002/ per Aria T0).
 # Used by the no-arg overload of ``assert_warmup_satisfied`` for prod
 # invocations; tests inject explicit ``WarmUpGate`` instances instead.
-_DEFAULT_ATR_PATH = Path("data/warmup/atr_20d.json")
-_DEFAULT_PERCENTILES_PATH = Path("data/warmup/percentiles_126d.json")
+# R15 non-breaking — callers can override by passing ``gate=`` explicitly.
+_DEFAULT_ATR_PATH = Path("state/T002/atr_20d.json")
+_DEFAULT_PERCENTILES_PATH = Path("state/T002/percentiles_126d.json")
 
 
 # =====================================================================
@@ -118,7 +120,8 @@ def assert_warmup_satisfied(
     gate:
         Optional pre-constructed gate (test injection). When None, a
         gate is built from default warmup state file paths
-        (``data/warmup/atr_20d.json`` + ``data/warmup/percentiles_126d.json``).
+        (``state/T002/atr_20d.json`` + ``state/T002/percentiles_126d.json``
+        — T002.0g AC6 canonical lift; R15 non-breaking via ``gate=`` override).
 
     Returns
     -------

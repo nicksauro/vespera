@@ -75,7 +75,6 @@ from packages.t002_eod_unwind.warmup.calendar_loader import (  # noqa: E402
 )
 from packages.t002_eod_unwind.warmup.gate import WarmUpGate  # noqa: E402
 from packages.t002_eod_unwind.warmup.percentiles_126d_builder import (  # noqa: E402
-    PercentileBands,
     Percentiles126dState,
 )
 from packages.vespera_cpcv import BacktestRunner, CPCVConfig  # noqa: E402
@@ -114,8 +113,12 @@ TELEMETRY_COLUMNS: tuple[str, ...] = (
 )
 
 # Default file paths used when caller omits --warmup-* overrides.
-_DEFAULT_ATR_PATH = Path("data/warmup/atr_20d.json")
-_DEFAULT_PERCENTILES_PATH = Path("data/warmup/percentiles_126d.json")
+# T002.0g AC6 atomic path lift (Aria + Beckett T0) — canonical state/T002/
+# replaces legacy data/warmup/. R15 non-breaking — overridable via
+# --warmup-atr / --warmup-percentiles. Resolves T002.0f T11 finding HIGH
+# (path mismatch between materializer output and harness consumer).
+_DEFAULT_ATR_PATH = Path("state/T002/atr_20d.json")
+_DEFAULT_PERCENTILES_PATH = Path("state/T002/percentiles_126d.json")
 _DEFAULT_CALENDAR_PATH = Path("config/calendar/2024-2027.yaml")
 _DEFAULT_ENGINE_CONFIG = Path("docs/backtest/engine-config.yaml")
 
@@ -501,51 +504,52 @@ class MemoryPoller:
 # Pipeline assembly (shared between smoke + full)
 # =====================================================================
 def _load_warmup_state(percentiles_path: Path) -> Percentiles126dState:
-    """Load Percentiles126dState — fall back to an in-memory stub if the
-    canonical T002.1 state file isn't on disk yet (pre-T11 smoke).
+    """Load canonical ``Percentiles126dState`` from JSON — fail-closed.
 
-    The stub uses neutral percentiles (1.0 / 2.0 / 3.0); the harness stub
-    backtest_fn only consumes magnitude.p20 + atr_day_ratio.p20 as a hash
-    proxy (per cpcv_harness.py:387-390), so the stub is determinism-safe.
-    Real strategy invocation in T11 (Beckett smoke re-run) MUST replace
-    this with the canonical T002.1 state — tracked via the docstring
-    [DEFERRED-T11] section in cpcv_harness.make_backtest_fn.
+    T002.0g Anti-Article-IV Guard #1 (story §Anti-Article-IV Guards):
+        Dex MUST NOT improvise neutral PercentilesState fallback if
+        parquet missing — escalate (resolves Beckett T11 issue #3).
+
+    The prior implementation silently fell back to neutral bands
+    (p20=1.0/p60=2.0/p80=3.0) when the file was missing OR when
+    deserialization failed. That fallback is REMOVED — both failure
+    modes now raise, so the operator sees the gap immediately and either
+    (a) runs ``scripts/run_warmup_state.py`` to materialize state, or
+    (b) escalates upstream data coverage (USER-ESCALATION-QUEUE.md).
+
+    Raises
+    ------
+    FileNotFoundError
+        ``percentiles_path`` does not exist. Operator should run
+        ``python scripts/run_warmup_state.py --as-of-dates <D>`` to
+        materialize state first.
+    ValueError
+        File exists but JSON deserialization failed (corrupt/schema
+        drift). Anti-Article-IV: do NOT improvise; surface the parse
+        error so root cause is visible.
     """
-    if percentiles_path.exists():
-        # The full Percentiles126dState includes a window_days tuple
-        # we'd need to faithfully reconstruct; for the harness-stub
-        # backtest_fn only the bands matter. Future work: add an
-        # explicit Percentiles126dState.from_json deserializer.
-        try:
-            data = json.loads(percentiles_path.read_text(encoding="utf-8"))
-            mag = data.get("magnitude") or {}
-            atr = data.get("atr_day_ratio") or {}
-            as_of_raw = data.get("as_of_date")
-            return Percentiles126dState(
-                as_of_date=date.fromisoformat(as_of_raw) if as_of_raw else date.today(),
-                magnitude=PercentileBands(
-                    p20=float(mag.get("p20", 1.0)),
-                    p60=float(mag.get("p60", 2.0)),
-                    p80=float(mag.get("p80", 3.0)),
-                ),
-                atr_day_ratio=PercentileBands(
-                    p20=float(atr.get("p20", 0.5)),
-                    p60=float(atr.get("p60", 1.0)),
-                    p80=float(atr.get("p80", 1.5)),
-                ),
-                window_days=tuple(),
-                computed_at_brt=datetime.now(),
-            )
-        except (json.JSONDecodeError, ValueError, KeyError, TypeError):
-            pass  # fall through to stub
-    # Stub — see docstring caveat above.
-    return Percentiles126dState(
-        as_of_date=date.today(),
-        magnitude=PercentileBands(p20=1.0, p60=2.0, p80=3.0),
-        atr_day_ratio=PercentileBands(p20=0.5, p60=1.0, p80=1.5),
-        window_days=tuple(),
-        computed_at_brt=datetime.now(),
-    )
+    if not percentiles_path.exists():
+        raise FileNotFoundError(
+            f"warmup state missing: {percentiles_path}. "
+            "Run scripts/run_warmup_state.py --as-of-dates <YYYY-MM-DD> "
+            "to materialize before invoking the CPCV dry-run "
+            "(T002.0g Anti-Article-IV Guard #1)."
+        )
+    try:
+        data = json.loads(percentiles_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ValueError(
+            f"warmup state corrupt at {percentiles_path}: {exc}. "
+            "Re-run scripts/run_warmup_state.py to regenerate "
+            "(T002.0g Anti-Article-IV Guard #1: NO neutral fallback)."
+        ) from exc
+    try:
+        return Percentiles126dState.from_json(data)
+    except (KeyError, ValueError, TypeError) as exc:
+        raise ValueError(
+            f"warmup state schema drift at {percentiles_path}: {exc}. "
+            "Re-run scripts/run_warmup_state.py with current builders."
+        ) from exc
 
 
 def _load_costs(engine_config_path: Path) -> BacktestCosts:
@@ -678,6 +682,7 @@ def _run_phase(
     seed: int,
     run_id: str,
     poller: MemoryPoller,
+    warmup_percentiles_path: Path = _DEFAULT_PERCENTILES_PATH,
 ) -> tuple[FullReport, Any, dict[str, Any]]:
     """Execute one phase (smoke or full): events → fan-out → report.
 
@@ -700,8 +705,9 @@ def _run_phase(
     poller.write_event(phase=f"{label}:events_built", note=f"n_events={n_events}")
 
     # Cost atlas + per-fold P126 stub state (T11 will swap in real per-fold rebuild).
+    # T002.0g Guard #1: NO neutral fallback — _load_warmup_state raises if missing/corrupt.
     costs = _load_costs(engine_config_path)
-    p126 = _load_warmup_state(_DEFAULT_PERCENTILES_PATH)
+    p126 = _load_warmup_state(warmup_percentiles_path)
     backtest_fn = make_backtest_fn(costs, calendar, p126)
 
     runner = _build_runner(spec_path, engine_config_path, seed, run_id)
@@ -869,6 +875,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     seed=args.seed,
                     run_id=run_id,
                     poller=poller,
+                    warmup_percentiles_path=args.warmup_percentiles,
                 )
             except Exception as exc:  # noqa: BLE001 — must abort full per AC11
                 # Per AC11 — smoke failure aborts full run; reason logged.
@@ -913,11 +920,22 @@ def main(argv: Optional[list[str]] = None) -> int:
                 seed=args.seed,
                 run_id=run_id,
                 poller=poller,
+                warmup_percentiles_path=args.warmup_percentiles,
             )
         except RuntimeError as exc:
             # Warmup failures (assert_warmup_satisfied) bubble as RuntimeError.
             poller.write_event(phase="full_failed", note=f"warmup_or_pipeline: {exc}")
             print(f"ERROR: full phase failed: {exc}", file=sys.stderr)
+            return 1
+        except FileNotFoundError as exc:
+            # T002.0g Guard #1: warmup state missing fail-closed (no fallback).
+            poller.write_event(phase="warmup_state_missing", note=str(exc))
+            print(f"ERROR: warmup state missing: {exc}", file=sys.stderr)
+            return 1
+        except ValueError as exc:
+            # Warmup state corrupt/schema-drift fail-closed (Guard #1).
+            poller.write_event(phase="warmup_state_corrupt", note=str(exc))
+            print(f"ERROR: warmup state corrupt: {exc}", file=sys.stderr)
             return 1
         except MemoryError as exc:
             poller.write_event(phase="full_halt", note=f"soft_halt: {exc}")
