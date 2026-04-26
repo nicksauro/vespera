@@ -11,6 +11,29 @@
 
 ## Active escalations
 
+### ESC-002 — TimescaleDB hold-out window exposure (ESCALATED → NEEDS_DB_GUARD)
+
+**Update 2026-04-26 BRT — Dara attempt 3 audit (Docker survived):**
+- Q1 chunks per year empirical:
+  - 2023: 6 chunks (Jan 2-6 + Jan 9) — user's "~3 random days" PARTIALLY CONFIRMED, actual is 6 consecutive trading days, ~720MB total. Operational conclusion ("unusable") STANDS.
+  - 2024: 251 chunks (Jan 2 → Dec 31) — DENSE
+  - 2025: 250 chunks (Jan 2 → Dec 31) — DENSE
+  - 2026: 63 chunks (Jan 2 → Apr 3) — DENSE
+- Q3 hold-out window (2025-07-01 → 2026-04-22): **AMBIGUOUS RED FLAG**
+  - 100+ chunks metadata exist
+  - **All chunks report `pg_relation_size = 0 bytes`**
+  - Two hypotheses:
+    (i) Chunks compressed (heap empty, data in compressed segments)
+    (ii) Genuinely empty (metadata only, no actual rows)
+  - NOT verified empirically in this attempt
+- **ESC-002 verdict ESCALATED:** NEEDS_DB_GUARD
+  - LAYERED_SAFE at L1 (5 fail-closed call-sites) + L2 (CI gate) — CONFIRMED
+  - L3 operational claim "DB has hold-out data": NOT empirically confirmed (zero-byte chunks RED FLAG)
+  - DB-side guard view JUSTIFIED before any CPCV dry-run that involves DB queries
+- **Follow-up needed:** ONE defensive query against `chunk_compression_stats` to disambiguate compressed-with-data vs genuinely empty. (Dispatching Dara now.)
+
+---
+
 ### ESC-002 — TimescaleDB hold-out window exposure (UNVERIFIED DB density / L2 CI gate CONFIRMED ACTIVE)
 
 **Update 2026-04-26 BRT — Gage proxy empirical gh api check:**
