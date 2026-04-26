@@ -296,3 +296,97 @@ applied to upstream provenance ("fill exige evidência no warmup state
 authorized.
 
 — Beckett, reencenando o passado 🎞️
+
+---
+
+## T11.bis — Post T002.0g smoke retry (2026-04-26 BRT)
+
+**Trigger:** Riven cosign HOLD list incluiu T11.bis com nota "depends on Docker engine restoration". User pediu sanity check. Hipótese a validar: T002.0g entregou orchestrator que materializa `state/T002/*.json` via parquet (sem Docker/TimescaleDB), portanto T11.bis poderia rodar mesmo com Docker instável.
+
+### Step 1-3 — Source dependency audit (READ-ONLY)
+
+| File | Verdict | Evidence |
+|------|---------|----------|
+| `packages/t002_eod_unwind/warmup/orchestrator.py` | **NO Docker dep** | Module docstring Guard #4: "NO DLL/TimescaleDB re-fetch — parquet only via ParquetSource". `FeedParquetSource` wraps `feed_parquet.load_trades` (parquet); `CalendarLoader` reads YAML; `_holdout_lock` local script. |
+| `scripts/run_warmup_state.py` | **NO Docker dep** | argparse `--source` choices restricted to `("parquet",)` — "timescaledb reserved Phase F". Imports: psutil, _holdout_lock, CalendarLoader, FeedParquetSource. Zero psycopg/SQLAlchemy/docker. |
+| `scripts/run_cpcv_dry_run.py` | **NO Docker dep** | Loads spec YAML, calendar YAML, engine-config YAML, warmup JSON state via `WarmUpGate`; CPCV computed in-process. Zero psycopg/SQLAlchemy/docker. |
+
+**(a) Docker dependency confirmed FREE.** Riven HOLD note "depends on Docker engine restoration" is INCORRECT for T11.bis. The actual blocker is a different one (see Step 4).
+
+### Step 4 — Warmup state materialization
+
+**Command literal:**
+```
+timeout 120 python scripts/run_warmup_state.py --as-of-dates 2025-05-31 --output-dir state/T002/
+```
+
+**Result:** `EXIT_CODE=124` (SIGTERM by `timeout` — wall-clock cap exceeded).
+
+**Telemetry (`state/T002/telemetry-warmup.csv`) — process killed mid-orchestrate:**
+
+```
+18:40:39 RSS  24.38 MB  phase=run_start
+18:40:39 RSS  24.46 MB  phase=init poll
+18:40:39 RSS  24.47 MB  phase=orchestrate_start as_of_count=1
+18:41:09 RSS 1978.97 MB phase=orchestrate poll        (+30s, +1.95 GB)
+18:41:39 RSS 4120.40 MB phase=orchestrate poll        (+60s, +4.10 GB)
+18:42:09 RSS 6090.26 MB phase=orchestrate poll        (+90s, +6.09 GB; soft-cap 6 GiB reached)
+[killed at 120s before next poll/persist]
+```
+
+**Artifacts under `state/T002/`:**
+
+- `telemetry-warmup.csv` — present (above)
+- `atr_20d_2025-05-31.json` — **MISSING**
+- `percentiles_126d_2025-05-31.json` — **MISSING**
+- `atr_20d.json` (canonical copy) — **MISSING**
+- `percentiles_126d.json` (canonical copy) — **MISSING**
+- `manifest.json` — **MISSING**
+- `determinism_stamp.json` — **MISSING**
+
+**(b) warmup state NOT materialized.** Single as_of_date 2025-05-31 spans `[D-146bd, D-1]` window ≈ 365 calendar days × WDO trades. Orchestrator currently materializes the full window's trade stream into in-memory list before `_aggregate_daily_with_close_at` (the iterator is consumed once into per-day buckets, and the helper does not flush per-day before reading the next day). Process hit 6 GiB soft-cap at 90s and was SIGTERM'd at 120s before any JSON could be persisted. This is a **memory-budget gap in the orchestrator**, not a correctness defect — but it BLOCKS T11.bis preconditions.
+
+### Step 5 — T11.bis smoke retry
+
+**NOT EXECUTED.** Precondition (warmup state materialized) failed at Step 4.
+
+Per Article IV and operator restriction "ABORT se exit != 0 em qualquer step (não retry, reporte)", smoke run is HALTED.
+
+### Step 6 — T002.0g T10 status
+
+T10 stays `[ ]`. Diagnostic logged in this report; story file update pending operator decision (this is a runtime/perf escalation, not a code-correctness gate).
+
+### T11.bis result block (per task brief format)
+
+- Date: 2026-04-26 BRT
+- Pre-condition: state/T002/ materialized via T002.0g orchestrator
+- Command: `timeout 600 python scripts/run_cpcv_dry_run.py --spec docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml --dry-run --smoke --in-sample-end 2025-06-30 --seed 42` (NOT EXECUTED)
+- Exit code: N/A (precondition failed)
+- Peak RSS: N/A
+- Duration: N/A
+- KillDecision: N/A
+- PBO: N/A
+- DSR: N/A
+- Verdict: **T11_BIS_HALT — warmup orchestrator memory-budget OOM at 6 GiB soft-cap before persisting JSON state for as_of=2025-05-31 (`scripts/run_warmup_state.py` exit 124 / SIGTERM by timeout 120s). Need orchestrator memory profile fix (intra-window streaming aggregation) OR larger soft-cap for materialization-only phase OR longer wall-clock budget. Article IV: NO improvisation — escalate.**
+
+### Escalation (recommended)
+
+1. **Aria (architecture):** orchestrator currently consumes the full `[D-146bd, D-1]` trade stream into in-memory list before bucket aggregation. AC10 streaming is per-as_of_date, NOT intra-as_of. For 146bd lookback the trade footprint at ~4-6 GB is the binding constraint on commodity hardware. Options:
+   - (a) Streaming per-day flush inside `_aggregate_daily_with_close_at` (drain bucket once `tr.ts.date()` advances).
+   - (b) Pre-aggregate parquet to daily OHLC offline (one-shot cache); orchestrator reads daily-OHLC parquet (much smaller).
+   - (c) Raise `--mem-soft-cap-gb` for materialization phase only (requires reconciling with `feedback_cpcv_dry_run_memory_protocol.md` 6 GiB cap convention).
+2. **Mira (anti-leak):** any of the above must preserve `compute_window` strict `[D-146bd, D-1]` invariant + `close_at_time` anti-leak pattern + Guard #1/#3.
+3. **Riven (R6 + cosign):** HOLD note for T11.bis re-cosigned with corrected reason — actual blocker is **memory-budget failure of T002.0g orchestrator**, NOT Docker engine. Docker state is irrelevant to this path.
+4. **Pax/SM:** consider follow-up story T002.0h (orchestrator streaming aggregation) before T11.bis can be retried.
+
+### Article IV trace (T11.bis additions)
+
+| Decision | Source / Reason |
+|----------|-----------------|
+| Did NOT retry warmup with longer timeout | Operator restriction "ABORT se exit != 0 em qualquer step (não retry, reporte)" |
+| Did NOT raise --mem-soft-cap-gb on my own | Memory protocol cap is governance (`feedback_cpcv_dry_run_memory_protocol.md`); changing requires Aria/Riven sign-off |
+| Did NOT proceed to T11.bis smoke command | Precondition (warmup state JSON) absent; running smoke would re-trigger same `WarmUpGate` HALT documented in main T11 section |
+| Did NOT modify orchestrator code | Code change belongs to follow-up story (Pax/SM/Aria flow); Beckett T11.bis brief is pure execution authority |
+| Did NOT push (Gage gate) | Operator brief explicit: "NÃO push" |
+
+— Beckett, reencenando o passado 🎞️
