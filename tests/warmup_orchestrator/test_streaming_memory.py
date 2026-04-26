@@ -105,8 +105,16 @@ class _PerDayStreamingSource:
         self.trades_per_day = trades_per_day
         self.base_price = base_price
         # Track the per-day call count so AC5 anti-leak inspection can
-        # verify ascending order.
+        # verify ascending order. Populated by ``load_trades`` for ALL
+        # days within the requested window (Option B per-month batched
+        # call may cover ~21 days per call; populated once per day in
+        # ascending order to remain meaningful for the AC4 ascending
+        # invariant assertion).
         self.day_call_order: list[date] = []
+        # Track raw window calls (start, end) for diagnostic purposes —
+        # Option C (per-day) makes ~110 calls; Option B (per-month) makes
+        # ~7-8 calls for the same window.
+        self.window_calls: list[tuple[datetime, datetime]] = []
 
     def load_trades(
         self,
@@ -114,14 +122,28 @@ class _PerDayStreamingSource:
         end_brt: datetime,
         ticker: str,
     ) -> Iterable[Trade]:
-        # Each call covers exactly one trading day in the streaming
-        # orchestrator (T002.0h AC2 outer loop).
-        day = start_brt.date()
-        self.day_call_order.append(day)
-        if day.weekday() >= 5:
-            # Weekend — no trades. Empty generator.
-            return iter(())
-        return self._gen_for_day(day)
+        # T002.0h AC2 amendment (Option B per-month outer loop): the
+        # orchestrator may issue per-day OR per-month calls. We honor
+        # both by generating trades for EVERY weekday in the requested
+        # ``[start_brt, end_brt)`` window.
+        self.window_calls.append((start_brt, end_brt))
+        return self._gen_for_window(start_brt, end_brt)
+
+    def _gen_for_window(
+        self, start_brt: datetime, end_brt: datetime
+    ) -> Iterator[Trade]:
+        """Generator: yields trades for every weekday in
+        ``[start_brt, end_brt)``. Days are visited in ASCENDING order so
+        the orchestrator's per-day partition (Option B) and per-day
+        consumption (Option C) both observe the SAME trade sequence.
+        """
+        cur = start_brt.date()
+        end_excl = end_brt.date()
+        while cur < end_excl:
+            if cur.weekday() < 5:
+                self.day_call_order.append(cur)
+                yield from self._gen_for_day(cur)
+            cur += timedelta(days=1)
 
     def _gen_for_day(self, day: date) -> Iterator[Trade]:
         """Generator: yields ``trades_per_day`` synthetic ``Trade`` rows

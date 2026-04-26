@@ -65,6 +65,38 @@ T002.0h AC8 amendment 2026-04-26 BRT (Option C cached file handles):
    the canonical invariant. Adapter (``feed_parquet.py``) is UNTOUCHED
    (R15 immutability of T002.0b).
 
+T002.0h AC2 amendment 2026-04-26 BRT (Option B per-month outer loop):
+   Mini-council 4-vote convergent (Aria + Mira + Beckett + Riven) +
+   Aria final decision: outer loop iterates trading days in strictly
+   ascending order, optionally grouped by ``(year, month)`` for I/O
+   batching. Indicator state (ATR_20d deque, Percentiles_126d sliding
+   window, warmup_complete) MUST carry-forward across month boundaries
+   IDENTICALLY to single-loop baseline. Equivalence verified by golden
+   test against single-loop reference over >=120-day span (Mira mandatory
+   ``test_per_month_equivalence_vs_single_loop``).
+
+   Implementation: ``orchestrate_warmup_state`` groups ``valid_days`` by
+   calendar month; for each (year, month) group it issues ONE
+   ``source.load_trades(month_start, next_month_start, ticker)`` call,
+   partitions the resulting trade stream by date in-memory, and then
+   reduces per-day in ascending order using the SAME ``_aggregate_day_
+   streaming`` + ``ohlc_deque`` + ``metrics_deque`` machinery as
+   Option C. State carry-forward across month boundaries is byte-equal
+   to Option C single-loop (golden test enforces this).
+
+   Anti-leak NEUTRAL (Mira): the outer grouping is an I/O optimization
+   only; the REDUCTION sequence remains strictly ascending day-by-day
+   so the shifted-by-1 invariant (D-1 always before D) is preserved
+   across both intra-month and cross-month boundaries.
+
+   Memory profile: per month ~21 days × per-day trade volume held in
+   the partition dict (~1.05M trades for 50k/day × 21 days ≈ ~50 MB
+   peak Trade objects). Discarded at end-of-month before next month's
+   load. Well under ADR-1 v3 CAP_v3 8.4 GiB and < 500 MB memory cap.
+
+   Opt-out: ``T002_OPTB_DISABLE=1`` env reverts to per-day outer loop
+   (Option C path) for diagnostic baseline measurement.
+
 AC mapping (story §Acceptance criteria):
 
 T002.0g (preserved):
@@ -822,6 +854,74 @@ def _enumerate_valid_sample_days(
     return days
 
 
+def _group_days_by_month(days: Sequence[date]) -> list[tuple[int, int, list[date]]]:
+    """T002.0h AC2 amendment (Option B per-month outer loop).
+
+    Group ``days`` (assumed strictly ascending) by ``(year, month)``,
+    preserving ascending order within each group AND across groups.
+    Returns ``[(year, month, [days_in_month_ascending]), ...]`` sorted
+    by ``(year, month)`` ascending.
+
+    Mira anti-leak preservation: callers iterate the groups in order
+    AND the days within each group in order, so D-1 is ALWAYS processed
+    before D regardless of whether D-1 and D fall in the same calendar
+    month or straddle a month boundary.
+    """
+    groups: dict[tuple[int, int], list[date]] = {}
+    for d in days:
+        key = (d.year, d.month)
+        groups.setdefault(key, []).append(d)
+    # Sort groups by (year, month) ascending; days within each group are
+    # already ascending because the input ``days`` is ascending and we
+    # appended in order.
+    return [(y, m, groups[(y, m)]) for (y, m) in sorted(groups.keys())]
+
+
+def _month_window_brt(year: int, month: int) -> tuple[datetime, datetime]:
+    """Return ``(month_start_brt, next_month_start_brt)`` BRT-naive.
+
+    ``next_month_start_brt`` is the EXCLUSIVE upper bound matching the
+    adapter's ``[start_brt, end_brt)`` half-open contract.
+    """
+    month_start = datetime.combine(date(year, month, 1), time(0, 0, 0))
+    if month == 12:
+        next_month_start = datetime.combine(date(year + 1, 1, 1), time(0, 0, 0))
+    else:
+        next_month_start = datetime.combine(
+            date(year, month + 1, 1), time(0, 0, 0)
+        )
+    return month_start, next_month_start
+
+
+def _partition_trades_by_date(
+    trades: Iterable[Trade],
+    accept_days: set[date],
+) -> dict[date, list[Trade]]:
+    """T002.0h AC2 amendment (Option B helper).
+
+    Consume the ``trades`` generator end-to-end and bucket each trade by
+    ``tr.ts.date()``. Trades whose date is NOT in ``accept_days`` are
+    DROPPED (defensive: the adapter may yield trades on weekends or
+    holidays inside the requested month-window — those are not valid
+    sample days and must be excluded for anti-leak compliance with
+    ``calendar.is_valid_sample_day``).
+
+    Memory profile per month: ~21 days × per-day trade volume (e.g.
+    ~50k → ~1.05M Trade objects ≈ ~50 MB at 50B/Trade-shape). Discarded
+    by caller after all days in the month are reduced.
+
+    The returned dict keys are NOT sorted — caller iterates by an
+    externally-provided ascending day list.
+    """
+    buckets: dict[date, list[Trade]] = {d: [] for d in accept_days}
+    for tr in trades:
+        d = tr.ts.date()
+        bucket = buckets.get(d)
+        if bucket is not None:
+            bucket.append(tr)
+    return buckets
+
+
 def orchestrate_warmup_state(
     *,
     as_of_dates: Sequence[date],
@@ -960,6 +1060,12 @@ def orchestrate_warmup_state(
         ohlc_deque: deque[DailyOHLC] = deque(maxlen=20)
         metrics_deque: deque[DailyMetrics] = deque(maxlen=126)
         # Mira ascending-order assertion: track last day processed.
+        # State-carry-forward MANDATORY across month boundaries (Option B
+        # AC2 amendment): ``ohlc_deque``, ``metrics_deque``, and
+        # ``last_day_processed`` are scoped to the ENTIRE as_of run, NOT
+        # per-month. The per-month outer loop below only batches I/O —
+        # the reduction sequence is byte-equal to single-loop baseline
+        # (golden equivalence test enforces).
         last_day_processed: date | None = None
         # AC4 tradeType decision — set once per as_of after first day with
         # any trades; structurally identical across the run for parquet
@@ -967,10 +1073,41 @@ def orchestrate_warmup_state(
         decision: TradeFilterDecision | None = None
         days_with_trades = 0
 
-        for day in valid_days:
+        # T002.0h AC2 amendment 2026-04-26 BRT (Option B per-month outer
+        # loop): group ``valid_days`` by ``(year, month)``, fetch each
+        # month in a SINGLE adapter call, partition trades by date in-
+        # memory, then reduce per-day in ascending order. State carry-
+        # forward across month boundaries IDENTICAL to single-loop
+        # baseline (Mira mandatory golden equivalence test asserts byte-
+        # equality of ATR_20d + Percentiles_126d output day-by-day vs
+        # Option C single-loop reference).
+        #
+        # Opt-out: ``T002_OPTB_DISABLE=1`` reverts to per-day outer loop
+        # (Option C path) for diagnostic baseline measurement. The two
+        # paths MUST produce byte-equal outputs (golden test enforces).
+        use_optb = _os.environ.get("T002_OPTB_DISABLE", "0") != "1"
+
+        def _process_day(
+            day: date,
+            trades_iter: Iterable[Trade],
+        ) -> None:
+            """Per-day reducer — closure over the as_of-scoped state.
+
+            Encapsulates the per-day reduction so both Option B (per-
+            month batched I/O) and the per-day fallback path can share
+            the EXACT SAME reduction logic. State mutations (``ohlc_
+            deque``, ``metrics_deque``, ``last_day_processed``,
+            ``decision``, ``days_with_trades``) are scoped to the
+            enclosing ``orchestrate_warmup_state`` invocation per
+            as_of_date, NOT per-month. This is what guarantees byte-
+            equal output between the two paths.
+            """
+            nonlocal last_day_processed, decision, days_with_trades
+
             # T002.0h AC4 anti-leak guard: ascending-order assertion.
-            # Defense-in-depth: ``_enumerate_valid_sample_days`` already
-            # returns ascending; this assertion catches future regressions.
+            # Defense-in-depth: callers already iterate ascending; this
+            # assertion catches future regressions across BOTH intra-
+            # month and cross-month boundaries.
             if last_day_processed is not None and day <= last_day_processed:
                 raise AssertionError(
                     f"T002.0h AC4 anti-leak violation: day={day.isoformat()} "
@@ -980,23 +1117,13 @@ def orchestrate_warmup_state(
                 )
             last_day_processed = day
 
-            # T002.0h AC2: per-day stream. Adapter contract: start
-            # inclusive, end exclusive; end_brt is start of NEXT day so
-            # trades ON ``day`` are fully captured.
-            day_start_brt = datetime.combine(day, time(0, 0, 0))
-            day_end_brt = datetime.combine(day + timedelta(days=1), time(0, 0, 0))
-            trades_iter = source.load_trades(day_start_brt, day_end_brt, ticker)
-
             # T002.0h AC1: single-pass O(1) accumulator. Trade objects
             # are discarded as the generator is consumed — NO per-day
             # list retention. Returns ``None`` if no trades on ``day``
             # (skipped — calendar said valid but data was empty).
             agg = _aggregate_day_streaming(day, trades_iter, CLOSE_AT_TIME_BRT)
-            # CRITICAL: drop the iterator reference so the generator is
-            # eligible for GC (parquet row-batches release memory).
-            del trades_iter
             if agg is None:
-                continue
+                return
             day_ohlc, close_at_price = agg
             days_with_trades += 1
 
@@ -1036,6 +1163,61 @@ def orchestrate_warmup_state(
             # their prior-window snapshot (D will be in window for D+1's
             # ATR_20 denominator — correct anti-leak semantics).
             ohlc_deque.append(day_ohlc)
+
+        if use_optb:
+            # Option B: per-month outer loop with calendar-month boundary.
+            # Groups are sorted ascending by (year, month); days within
+            # each group are sorted ascending. State carries forward
+            # across boundaries via the closure on ``_process_day``.
+            month_groups = _group_days_by_month(valid_days)
+            for year, month, days_in_month in month_groups:
+                # Single adapter call per month — covers all valid days
+                # in ``days_in_month`` PLUS any non-sample days inside
+                # the calendar month (weekends/holidays). The
+                # ``_partition_trades_by_date`` helper drops the latter
+                # via the ``accept_days`` whitelist for anti-leak
+                # compliance with ``calendar.is_valid_sample_day``.
+                month_start_brt, next_month_start_brt = _month_window_brt(
+                    year, month
+                )
+                trades_iter = source.load_trades(
+                    month_start_brt, next_month_start_brt, ticker
+                )
+                # Materialize the month's trades partitioned by date.
+                # Memory bound: ~21 days × per-day trade volume per
+                # month (~50 MB peak for 50k trades/day × 21 days).
+                # Discarded at end-of-month before next month's load.
+                accept_days = set(days_in_month)
+                month_buckets = _partition_trades_by_date(
+                    trades_iter, accept_days
+                )
+                # CRITICAL: drop the iterator reference so the generator
+                # is eligible for GC (parquet row-batches release memory).
+                del trades_iter
+
+                for day in days_in_month:
+                    day_trades = month_buckets.get(day, [])
+                    _process_day(day, iter(day_trades))
+                    # Drop the per-day list reference promptly so memory
+                    # pressure is bounded inside the month loop.
+                    month_buckets[day] = []
+                # Drop the month bucket dict at end-of-month.
+                del month_buckets
+        else:
+            # Per-day outer loop fallback (Option C diagnostic baseline).
+            # Identical reduction semantics — only the I/O batching
+            # granularity differs. The golden equivalence test asserts
+            # the two paths produce byte-equal outputs.
+            for day in valid_days:
+                day_start_brt = datetime.combine(day, time(0, 0, 0))
+                day_end_brt = datetime.combine(
+                    day + timedelta(days=1), time(0, 0, 0)
+                )
+                trades_iter = source.load_trades(
+                    day_start_brt, day_end_brt, ticker
+                )
+                _process_day(day, trades_iter)
+                del trades_iter
 
         # Resolve tradetype decision for manifest (default if no trades
         # observed at all — fall through to applied/no-trades).
