@@ -36,6 +36,21 @@
 - **Status:** UNVERIFIED — DB continuity re-audit pendente; Riven T8 dual-sign HOLD até reassessment; T002.0g Quinn PASS independente disso (orchestrator não usa DB).
 - **Action:** Re-disparar Dara empirical com query `SELECT date_trunc('day', timestamp) AS d, COUNT(*) FROM trades GROUP BY d ORDER BY d` (NÃO via chunk metadata — direto na data) para CONFIRMAR continuidade real. Aguardar resultado antes de assumir LAYERED_SAFE rationale.
 
+#### Update 2026-04-26 BRT post-Dara re-audit (DOCKER_UNAVAILABLE)
+
+- **Dara mea culpa registered:** prior "570 chunks continuous" claim was extrapolation from 5 metadata rows. RETRACTED.
+- **Docker engine status:** DOCKER_UNAVAILABLE — `docker info` + `docker ps` return 500 from `dockerDesktopLinuxEngine` named pipe. Empirical DB audit BLOCKED.
+- **2023 DB content:** UNVERIFIABLE from disk (no 2023 parquet). User claim "~3 random days" is authoritative until DB reachable.
+- **2025-07+ DB content:** UNVERIFIABLE. Filesystem has ZERO hold-out parquets (strong signal hold-out never materialized to disk, but DB density unknown).
+- **ESC-002 LAYERED_SAFE rationale RETRACTED** — was based on same metadata-extrapolation error. R10 defense (`assert_holdout_safe` + manifest pin) still blocks accidental reads, but does NOT prove hold-out density empirically.
+- **Riven T8 dual-sign HOLD** until: (a) Docker engine restored AND DB continuity confirmed via SQL, OR (b) explicit user statement on hold-out content.
+- **Action items (Dara final):**
+  1. (@devops) Restore Docker Desktop Linux engine
+  2. (Dara, post-restoration) Run 3 continuity queries → `docs/audits/AUDIT-20260426-DB-CONTINUITY.md`
+  3. (PO/PM) Treat prior 570 chunks claim as RETRACTED — Article IV violation logged
+  4. (Riven/T8) Hold ESC-002 progression
+  5. (Dara) Lesson: chunk-metadata queries must be paired with `COUNT(DISTINCT date_trunc('day'))` before any continuity claim
+
 ---
 
 ### ESC-001 — T002.0g coverage gap as_of=2024-06-30 (manifest pré-2024 ausente)
