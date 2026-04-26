@@ -69,6 +69,27 @@
 
 ---
 
+### ESC-006 — T002.0h Option B ALSO insufficient + worse (root cost is pyarrow Python materialization, structural)
+
+- **Date:** 2026-04-26 BRT (post Dex Option B empirical)
+- **Scope:** T002.0h wall-time mitigation — STRUCTURAL FINDING
+- **Trigger:** Dex Option B implementation complete (Mira golden equivalence PASS, ESC-005 fix verified, R15-clean) — empirical wall-time **WORSE**: 444s (7m25s) vs Option C 382s (6m22s); peak RSS 3.49 GiB vs Option C 120 MB
+- **Aria hypothesis empirically REFUTED:** per-month batching does NOT amortize root cost
+- **Root cause:** per-row-group I/O + Python materialization in pyarrow (`to_numpy.tolist + map(Trade)`), NOT file open overhead. Cache (Option C) helps metadata 18:1 but cannot eliminate per-row-group; per-month (Option B) trades memory for time INEFFICIENTLY.
+- **Dex HALT-ESCALATE per task spec** (> 180s threshold absolute exceeded by 2.5×). Article IV strict: NÃO improvisou, NÃO pursued Option E sem mini-council.
+- **3 mitigation options remaining:**
+  - **(E) Numpy-direct adapter** — bypass `to_numpy.tolist + map(Trade)` Python materialization in `feed_parquet._iter_parquet_rows`. Adapter modification (T002.0b touch). R15 question (story Done). Aria + Dara cosign required. ~3-4h Dex + R15 amendment overhead.
+  - **(F) Relax AC8 threshold strategically** — warmup is run-once-per-as_of with cached outputs. Beckett's < 60s budget assumed dev-loop iteration. Reframe as one-time cost: 5-7min acceptable IF cached and rare. AC8 → "warmup wall-time NOT a smoke gate criterion; smoke total < 5min applies only to CPCV simulation post-warmup."
+  - **(G) Hybrid C + E** — per-day streaming (Option C memory profile 120 MB) + numpy-direct (Option E CPU profile). Combines best of both. Adapter touch still required.
+- **Mini-council convocado:** Aria + Mira + Beckett + Dara (Dara needed for adapter Option E sign-off)
+- **Status:** HALT-ESCALATE_USER per task spec — autonomous mode dispatching mini-council; if convergent → execute; if divergent → user reviews on return
+- **Decisions for user (if council can't converge):**
+  1. Approve Option E adapter R15 amend (T002.0b reopen)?
+  2. Approve Option F AC8 strategic relax (accept warmup as one-time-per-as_of cost)?
+  3. Approve Option G hybrid (E + per-day streaming)?
+
+---
+
 ### ESC-004 — T002.0h Option C insufficient (wall-time 6m22s vs amended < 60s budget)
 
 - **Date:** 2026-04-26 BRT
