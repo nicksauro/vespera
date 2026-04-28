@@ -7,8 +7,8 @@
 **Spec parent:** [T002 v0.2.0](T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml) §metrics_required L159-172
 **Authority:** Article IV (No Invention) — toda fórmula traceável a paper canônico citado.
 **Created:** 2026-04-25 BRT
-**Spec version:** v0.2.2
-**Mira-signature:** sha256:56238dc2a56e629de10c5a57904dbc75dec47d6d23014608d8a287c89271891f
+**Spec version:** v0.2.3
+**Mira-signature:** sha256:bc43487ca247deee9c0ab3f7f50a8bdbebe9f4b2dee462c1fc61f28c4324cc59
 
 ---
 
@@ -54,10 +54,11 @@ class MetricsResult:
 
     # ---- Provenance (auditoria, traceability) ----
     n_paths: int                             # 45 para CPCV(N=10, k=2)
+    n_pbo_groups: int                        # dimensão efetiva da matriz PBO (≠ n_paths quando consumer é CPCV; v0.2.3)
     n_trials_used: int                       # source-of-truth de docs/ml/research-log.md (AC12.1)
     n_trials_source: str                     # "docs/ml/research-log.md@<git-sha>"
     seed_bootstrap: int                      # PCG64 seed
-    spec_version: str                        # "T002-v0.2.2"
+    spec_version: str                        # "T002-v0.2.3"
     computed_at_brt: str                     # ISO timestamp BRT
 ```
 
@@ -388,6 +389,22 @@ def probability_backtest_overfitting(
 ) -> float: ...
 ```
 
+### CPCV consumer contract — paths→groups aggregation (v0.2.3 addendum)
+
+Para inputs CPCV(N_groups, k_test) com N_paths = C(N_groups, k_test) > N_groups,
+o consumer DEVE primeiro agregar paths→groups (mean de Sharpe-daily dos paths
+cujo `test_group_ids` contém g) antes de chamar `probability_backtest_overfitting`.
+
+**Justificativa:** BBLZ 2014 §3 define CSCV sobre os N folds nativos disjuntos;
+paths CPCV são re-amostragens não-disjuntas (cada group g aparece em
+C(N-1, k-1) paths) que violariam o requisito de partições balanceadas.
+Reduce path→group recupera o vetor R_t^OOS por fold-group exigido.
+
+**Caveat:** mean(sharpe_daily) por group não é idêntica a Sharpe-do-período-do-group
+(perde Jensen). É a aproximação consistente com o que CPCV oferece sem refazer
+simulações por group puro. Erro de aproximação esperado < 1% para distribuições
+de Sharpe quasi-normais.
+
 ### 6.2 Fórmula
 
 **Bailey, Borwein, Lopez de Prado, Zhu (2014)** "The Probability of Backtest Overfitting" *J. of Computational Finance*; AFML Ch.11 §11.5 p. 156-159.
@@ -466,6 +483,52 @@ tolerância = 1e-12   # determinístico em scipy ≥ 1.10 com convenção §6.4
 ```
 
 > **Nota histórica:** A v0.2.0 reportava PBO=5/6≈0.8333 com s=3 marcado como NO overfit. Esse valor era resultado de IS means errados em s=3 (var2 e var3 listados como 5.0, devem ser 5.5). Com a aritmética correta, s=3 também overfita e PBO=1.0. Coincidentemente, T11 e T12 agora compartilham PBO=1.0 (anti-correlação perfeita); mantemos T11 (T=4 variantes, N=4 folds) como caso não-degenerado pois testa argmax tie-breaking real (s=2,3,4 têm empates em IS) e rank tie-breaking real (`method='min'` em s=2..5 OOS). T12 (T=2) permanece como sanity trivial.
+
+### 6.5b — T11b path→group aggregation toy (v0.2.3)
+
+**Setup:** path-level Sharpe matrix shape (T=2, N=6 paths), CPCV(N_groups=4, k=2),
+onde N_paths = C(4,2) = 6. Group test memberships:
+
+- path 0: groups {0,1}
+- path 1: groups {0,2}
+- path 2: groups {0,3}
+- path 3: groups {1,2}
+- path 4: groups {1,3}
+- path 5: groups {2,3}
+
+**Path-level matrix:**
+
+```
+trial T1: [1.0, 1.5, 2.0, 0.5, 1.0, 1.5]
+trial T2: [0.8, 1.2, 1.6, 0.4, 0.8, 1.2]
+```
+
+**Group-aggregate (T, N_groups=4):** cada cell[t, g] = mean dos paths que contêm g.
+
+- group 0 aparece em paths {0,1,2}
+- group 1 aparece em paths {0,3,4}
+- group 2 aparece em paths {1,3,5}
+- group 3 aparece em paths {2,4,5}
+
+```
+trial T1: [(1.0+1.5+2.0)/3, (1.0+0.5+1.0)/3, (1.5+0.5+1.5)/3, (2.0+1.0+1.5)/3]
+         = [1.5, 0.833..., 1.166..., 1.5]
+trial T2: [(0.8+1.2+1.6)/3, (0.8+0.4+0.8)/3, (1.2+0.4+1.2)/3, (1.6+0.8+1.2)/3]
+         = [1.2, 0.666..., 0.933..., 1.2]
+```
+
+**PBO computation:** S = C(4, 2) = 6 partitions. Para cada partition (J_in, J_out):
+
+- argmax_t mean(group_matrix[t, J_in])
+- rank_OOS desse trial em mean(group_matrix[:, J_out])
+- λ = logit(rank_OOS / (T+1))
+- count overfit if λ ≤ 0
+
+**Expected:** Como T1 estritamente domina T2 em todas as partitions
+(mesma estrutura, factor 0.8), argmax_IS = T1 sempre, e rank_OOS(T1) = 1
+(top trial), portanto λ > 0 sempre, **PBO = 0.0** (no overfitting detected).
+
+**Tolerance:** byte-exact 0.0 (rational arithmetic — sem float ambiguity).
 
 ### 6.6 Toy benchmark T12 (matrix degenerate — PBO=1.0 trivial)
 
@@ -696,7 +759,7 @@ hit_rate   = 4/7 ≈ 0.5714
 | Agente | Validação | Status |
 |--------|-----------|--------|
 | Mira | autoria + matemática + bibliografia | ASSINADO (este doc) |
-| Beckett | toy numerics cross-validados contra Bailey-LdP 2014 + AFML Ch.11 + (mlfinlab onde aplicável) | PENDENTE — sign-off comment na story T002.0d |
+| Beckett | toy numerics cross-validados contra Bailey-LdP 2014 + AFML Ch.11 + (mlfinlab onde aplicável); pre-flight Mira-handshake (spec→impl, atlas→engine-config, CPCV defaults, dataset readiness) | ASSINADO 2026-04-25 BRT — `docs/backtest/T002-pbo-beckett-validation.md` (PBO §6.4-§6.5 endorse) + `docs/backtest/T002-mira-handshake-2026-04-25.md` (handshake; verdict HANDSHAKE_OK_FOR_DRY_RUN) |
 | Kira | alignment kill criteria (K1: DSR>0; K2: PBO<0.4; K3: IC decay) | PENDENTE |
 | Dex | implementação byte-exact contra toy benchmarks | PENDENTE — após AC0 gate |
 | Pax | `*validate-story-draft` T002.0d → GO | PENDENTE |
@@ -733,8 +796,44 @@ hit_rate   = 4/7 ≈ 0.5714
 | v0.2.0  | 2026-04-25 | Mira   | minor (initial) | AC0 gate spec — fórmulas + toy benchmarks + bibliografia | (initial release) | (sha pre-issue) |
 | v0.2.1  | 2026-04-25 | Mira   | patch (correction) | **Article IV escalation by Dex (@dev) durante T002.0d implementation.** Walkthrough §6.5 continha erros aritméticos nas IS means de s=2/3/4 (médias de pares de folds calculadas erroneamente — em particular s=3 listava var2=var3=5.0 quando o correto é 5.5). Sob a convenção LOCKED §6.4 (`rankdata(method='min')` + `argmax` first-index), esse erro flipava o argmax IS de var 0 para var 2 em s=3, mudando o veredito de overfit NO→YES e o PBO final de 5/6 (≈0.8333) para 6/6 (=1.0). **Convenção §6.4 NÃO mudou**; apenas a aritmética do walkthrough e o expected de T11 (PBO=1.0 com tolerância 1e-12, não 0.8333±1e-4). | §6.5 (walkthrough table + nota histórica + expected); frontmatter (Spec version v0.2.0→v0.2.1, Mira-signature recomputed) | (sha pre-update → sha post-update; ver header) |
 | v0.2.2  | 2026-04-25 | Mira   | patch (errata, residual sweep) | **Quinn (@qa) finding em T002.0d gate review.** Cross-sweep de referências stale a "PBO=0.8333" pós v0.2.1 fix. Encontrada 1 ocorrência residual no Beckett checklist (§14, linha 712) que ainda dizia "Validar T11 (PBO=0.8333) e T12 (PBO=1.0 trivial)" — resíduo da v0.2.0 não atualizado no patch v0.2.1. Atualizado para refletir T11=1.0 (anti-correlação perfeita pós-walkthrough fix) e T12=1.0 trivial T=2. Outras ocorrências de "0.8333" / "5/6" (linhas 468 nota histórica §6.5, 734 revision entry v0.2.1, 738 crédito Article IV) são contextualmente corretas — narram a divergência histórica e foram preservadas. **Convenção §6.4 e walkthrough §6.5 NÃO mudaram (corretos pós-v0.2.1).** Adicionalmente, flagged para Dex: `tests/vespera_metrics/test_pbo.py` docstring lines 4-5 carregam mesmo erro stale ("PBO=0.8333 instead of 1.0 trivial" — invertido); code assertion linha 54 está correta; cleanup cosmético de docstring é Dex authority (não Mira). | §1.1 (`spec_version` "T002-v0.2.1"→"T002-v0.2.2"); §14 Beckett checklist (linha 712 errata); frontmatter (v0.2.1→v0.2.2, Mira-signature recomputed) | (sha pre-update → sha post-update; ver header) |
+| v0.2.3  | 2026-04-26 | Mira   | minor (additive, Article IV escalation) | **Dex (@dev) T002.0f T2 implementation surfaced PBO tractability issue.** C(44,22) ≈ 2.1e12 partitions for N_paths=45 intractable; CSCV (BBLZ 2014 §3) is defined over disjoint folds, not over CPCV paths. v0.2.3 reconciles spec with paper via paths→groups aggregation contract. | §6.1 addendum (CPCV consumer contract); §1.1 (`n_pbo_groups: int` field add); §6.5b (T11b path→group aggregation toy); frontmatter (v0.2.2→v0.2.3, Mira-signature recomputed) | (sha pre-update → sha post-update; ver header) |
 
 **Article IV preservado:** correção é cosmética/aritmética. Toda fórmula continua traceável a Bailey-Borwein-Lopez de Prado-Zhu (2014) §3 eq. (6-8) e AFML Ch.11 §11.5. Nenhuma feature/decisão inventada.
+
+### v0.2.3 (2026-04-26 BRT) — Article IV escalation: paths→groups aggregation
+
+**Author:** Mira (@ml-researcher)
+**Trigger:** Dex T002.0f T2 implementation surfaced PBO tractability issue —
+C(44,22) ≈ 2.1e12 partitions for N_paths=45 intractable; CSCV (BBLZ 2014 §3) is
+defined over disjoint folds, not over CPCV paths.
+
+**Changes:**
+
+- §6.1 — added "CPCV consumer contract — paths→groups aggregation" addendum
+  mandating reduce path→group via mean(sharpe_daily) before PBO computation.
+- §1.1 — added `n_pbo_groups: int` field to MetricsResult dataclass to
+  disambiguate path-level traceability (`n_paths`) from PBO computation
+  dimensionality (`n_pbo_groups`).
+- §6.5b — added T11b toy benchmark validating path→group aggregator with
+  byte-exact PBO=0.0 expectation under strict-dominance fixture.
+
+**Article IV credit:** Dex (@dev) — escalation surfaced during T002.0f T2.
+Spec was technically violating its own §6.1 path-level statement vs paper
+(paths ≠ folds). v0.2.3 reconciles spec with paper.
+
+**Breaking field check (R15):** None.
+
+- cv_scheme: unchanged
+- data_splits: unchanged
+- feature_set: unchanged
+- label: unchanged
+- trading_rules: unchanged
+- n_trials: unchanged
+
+`n_pbo_groups` is **additive** field on output dataclass — new consumers may
+read it; existing consumers that only read `n_paths` are unaffected.
+No PRR-202xx-y required. Pax cosign sufficient via post-hoc note in
+`MANIFEST_CHANGES.md` if preferred.
 
 **Crédito Article IV escalation:** Dex (@dev) detectou a divergência formula-vs-walkthrough durante T002.0d implementation (101/101 tests pass, T11 formula-faithful=1.0 contradiz spec=0.8333) e escalou em vez de improvisar. Comportamento exemplar para Article IV (No Invention).
 

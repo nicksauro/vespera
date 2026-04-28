@@ -1,0 +1,16 @@
+{
+  "seed": 42,
+  "simulator_version": "cpcv-dry-run-T002.0f-T3",
+  "dataset_sha256": "e3962eb80d83e1928f1a26fda5fb3f0c3d243456b63a0bc693eb067b62545c99",
+  "spec_sha256": "285ab7c475629417fb856f857bf6eea649ace6153db24449ebe09f43d4af30bf",
+  "spec_version": "0.2.0",
+  "engine_config_sha256": "9a97e8f8734cbb8cd35362d7a336fe876a5b16257a170b9436d9e868ad946c81",
+  "rollover_calendar_sha256": null,
+  "cost_atlas_sha256": null,
+  "cpcv_config_sha256": "d2ea61f29d7ccb4c86cb6447d957d3ea2563897599f3e142a55258123680acc3",
+  "python_version": "3.14.3",
+  "numpy_version": "2.4.2",
+  "pandas_version": "2.3.3",
+  "run_id": "324c151fe42a49bbab6ec44d4fc2ff28",
+  "timestamp_brt": "2026-04-28T08:47:46"
+}

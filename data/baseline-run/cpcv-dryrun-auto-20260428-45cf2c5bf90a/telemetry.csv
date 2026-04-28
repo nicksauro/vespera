@@ -1,0 +1,6 @@
+timestamp_brt,rss_mb,vms_mb,cpu_pct,peak_commit_bytes,peak_wset_bytes,sample_size,duration_ms,fold_index,trial_id,phase,note
+2026-04-28T08:46:01,141.02,591.86,0.00,147869696,620613632,1,0,-1,,run_start,run_id=auto-20260428-45cf2c5bf90a;spec_sha=285ab7c47562
+2026-04-28T08:46:01,141.05,591.92,0.00,147898368,620670976,2,0,-1,,init,poll
+2026-04-28T08:46:01,141.05,591.92,0.00,147902464,620675072,3,0,-1,,smoke:events_start,window=2025-05-31..2025-06-30
+2026-04-28T08:46:01,141.05,591.92,0.00,147902464,620675072,4,0,-1,,smoke_failed,"reason: smoke_aborted: RuntimeError: warmup not satisfied for 2025-05-31: status=WARM_UP_FAILED, reason=atr: stale as_of_date (file=2024-08-22, expected=2025-05-31); percentiles: stale as_of_date (file=2024-08-22, expected=2025-05-31)"
+2026-04-28T08:46:01,141.05,591.92,0.00,147902464,620675072,5,0,-1,,run_end,halt_observed=False

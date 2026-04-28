@@ -1,2 +1,13 @@
 78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72  data/manifest.csv
 1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d  core/memory_budget.py
+# T002.0g-orchestrator warmup-state-manifest schema marker (Story T002.0g AC9 + Riven T8 cosign 2026-04-26).
+# Schema reference: state/T002/manifest.json — append-only JSONL; per-line keys =
+#   {as_of_date, source_sha, builder_version, orchestrator_version, computed_at_brt,
+#    output_sha, holdout_unlock_used, calendar_sha, tradetype_filter_status}
+# Schema authority: packages/t002_eod_unwind/warmup/orchestrator.py::ManifestEntry
+# Riven custodial cosign T8 (docs/qa/gates/T002.0g-riven-cosign.md):
+#   PIN DECISION = Option (b) NO-PIN — manifest.json is append-only mutable by design;
+#   pinning a content sha would create a permanently-failing invariant or force cosign on
+#   every operational run. Schema marker comment satisfies AC9 contract test
+#   (has_schema_marker branch). Phase 2 deferred: schema-doc + sha pin in canonical-
+#   invariant.sums (USER-ESCALATION-QUEUE.md P3 — Aria/Riven joint).

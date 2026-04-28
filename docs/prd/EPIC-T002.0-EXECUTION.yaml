@@ -102,18 +102,173 @@ waves:
           - "Unit tests contra reference values"
         exit_criterion: "Mira valida fórmulas; Kira confirma alignment com thesis kill criteria; Quinn PASS"
 
+  - wave: W4
+    label: "Harness Integration: callables + CLI dry-run runner"
+    parallel: false
+    depends_on_waves: [W3]
+    stories:
+      - id: T002.0f
+        title: "CPCV Harness Integration"
+        status: "Open / Pending River draft"
+        owner: "Dex (@dev) impl — drafted by River (@sm)"
+        reviewers: ["Beckett (@backtester)", "Mira (@ml-researcher)", "Aria (@architect)"]
+        qa: "Quinn (@qa)"
+        validator: "Pax (@po)"
+        depends_on: [T002.0c, T002.0d, T002.0e]
+        gated_by: ["River draft", "Pax validate"]
+        estimate_sessions: 3.5
+        estimate_breakdown:
+          dex_implementation: 2.0
+          pax_validation: 0.5
+          quinn_qa: 0.5
+          beckett_rerun: 0.5
+        scope:
+          - "packages/t002_eod_unwind/cpcv_harness.py — orchestrates spec → events → backtest → report"
+          - "build_events_dataframe(spec, parquet_root) → DataFrame[event_id, t0, t1, ticker, side, size]"
+          - "backtest_fn(events_df, params, cost_atlas) → trades_df + equity_curve per CPCV path"
+          - "compute_full_report(cpcv_results, metrics_module) → DSR/PBO/IC/sharpe_dist consolidated"
+          - "scripts/run_cpcv_dry_run.py — CLI entrypoint: --spec, --dry-run, --paths-limit, --seed"
+          - "Integration tests: end-to-end on 1-month parquet slice with VESPERA_UNlock_HOLDOUT=0"
+        deliverables:
+          - "packages/t002_eod_unwind/cpcv_harness.py"
+          - "scripts/run_cpcv_dry_run.py"
+          - "tests/integration/test_cpcv_harness_dry_run.py"
+          - "docs/backtest/T002-harness-architecture.md (Aria sign)"
+        blocks:
+          - "Beckett *run-cpcv --dry-run (Phase E sync_point)"
+          - "EPIC-T002.0 closure"
+          - "Task #36 unblock"
+        rationale: |
+          Beckett HALT-ESCALATE 2026-04-25T21:23 BRT durante pre-flight + dry-run attempt:
+          3 callables ausentes no codebase (build_events_dataframe, backtest_fn, compute_full_report)
+          + harness cpcv_harness.py + CLI run_cpcv_dry_run.py não existem.
+          Article IV (No Invention) veto: Beckett não pode improvisar callables.
+          Gap exposto pela closure do mira-handshake (P2) — primitivos READY mas não ligados.
+          T002 NOT killed, NOT advanced — bloqueio é integração, não tese.
+        exit_criterion: |
+          River drafta story; Pax valida (10-point checklist >=7); Dex implementa;
+          Quinn QA Gate PASS; Beckett executa *run-cpcv --dry-run com sucesso retornando
+          GO_EXECUTE ou explicit NO-GO baseado em métricas reais (não erro de import).
+        constitutional_anchors:
+          - "Article IV (No Invention) — Beckett HALT correto; harness deve ser drafted+spec'd antes de impl"
+          - "Article III (Story-Driven) — T002.0f formalizada antes de qualquer code change"
+          - "Article V (Quality First) — QA Gate Quinn obrigatório; sem auto-approve"
+
+  - wave: W5
+    label: "Warmup State Orchestrator: materialize ATR_20d + Percentiles_126d JSON for CPCV pre-flight"
+    parallel: false
+    depends_on_waves: [W4]
+    stories:
+      - id: T002.0g
+        title: "Warmup State Orchestrator"
+        status: "Done (code+QA+custodial PASS 2026-04-26 BRT — Autonomous Session); T10 T11.bis HOLD pending Docker"
+        owner: "Dex (@dev) impl — drafted by River (@sm)"
+        reviewers: ["Aria", "Mira", "Beckett", "Dara"]
+        qa: "Quinn (@qa) + Riven (@risk-manager) DUAL-SIGN custodial cosign"
+        validator: "Pax (@po)"
+        depends_on: [T002.0a, T002.0b, T002.1, T002.0f]
+        gated_by: ["River draft", "Pax 10/10 GO", "Quinn QA PASS", "Riven DUAL-SIGN PARTIAL"]
+        estimate_sessions: 3.5
+        estimate_breakdown:
+          t0_handshakes: 0.5
+          dex_implementation: 2.0
+          quinn_qa: 0.5
+          riven_cosign_and_beckett_buffer: 0.5
+        scope:
+          - "packages/t002_eod_unwind/warmup/orchestrator.py — orchestrate_warmup_state(as_of_dates, source, output_dir, calendar) + helpers"
+          - "scripts/run_warmup_state.py — argparse CLI + MemoryPoller (REUSE T002.0f T3 pattern) + hold-out lock pre-flight + exit codes 0/1/2"
+          - "Path lift atomic (R15 non-breaking): cpcv_harness.py:94-95 + run_cpcv_dry_run.py:117-118 defaults data/warmup/ → state/T002/"
+          - "Guard #1 silent-fallback removal em run_cpcv_dry_run.py:503-548 (_load_warmup_state agora fail-closed)"
+          - "state/T002/manifest.json append-only JSONL audit trail + determinism_stamp.json (state_content_hash)"
+          - "Anti-leak STRICT [D-146 valid_business_days, D-1] (146 = 126 P126 + 20 ATR_20 aux)"
+          - "tradeType filter {2,3} via Guard #4 escalation (orchestrator emite tradetype_filter_status='escalated_adapter_gap' + USER-ESCALATION-PENDING WARN log)"
+        deliverables:
+          - "packages/t002_eod_unwind/warmup/orchestrator.py (638 LoC NEW)"
+          - "scripts/run_warmup_state.py (343 LoC NEW)"
+          - "tests/warmup_orchestrator/test_orchestrator.py (20 tests PASS, AC1-AC10 + Guard #1 + Mira T0 calendar)"
+          - "tests/scripts/test_run_warmup_state.py (11 tests PASS, AC11 CLI + AC10 poller + DoD grep)"
+          - "tests/contracts/test_warmup_orchestrator_contracts.py (7 PASS + 1 SKIP, AC9 manifest pin + AC12 gate end-to-end)"
+          - "MODIFIED: packages/t002_eod_unwind/cpcv_harness.py L94-97 path lift"
+          - "MODIFIED: scripts/run_cpcv_dry_run.py L117-121 path lift + L77-79 unused import + L503-548 Guard #1 fail-closed"
+          - "MODIFIED: .github/canonical-invariant.sums Riven T8 dual-sign placeholder pin"
+        rationale: |
+          Beckett T11 smoke 2026-04-26 BRT exposed warmup state JSON
+          files (state/T002/atr_20d.json + percentiles_126d.json) never
+          materialized. T002.1 delivered pure-compute builders;
+          T002.0g orchestrator wires data/in_sample/ parquet (T002.0b
+          adapter REUSE) → builders → JSON persist + audit manifest.
+          Dara BLOCK_GAP_UPSTREAM mini-council resolved AC5/AC12 to
+          {2025-05-31} only; 2024-06-30 → USER-ESCALATION-QUEUE
+          ESC-001 (lookback exige 2023-Q4 ausente).
+        exit_criterion: |
+          Quinn QA PASS + Riven DUAL-SIGN + Pax Done bump
+          (already DONE 2026-04-26); Beckett T11.bis post-Docker
+          restoration completes T10 task closure.
+        constitutional_anchors:
+          - "Article IV (No Invention) — Guard #4 tradeType escalation (não improvisar filter); Guard #1 fail-closed (não silencioso fallback)"
+          - "Article III (Story-Driven) — Council §3 brief → River draft → Pax 10/10 → Dex impl"
+          - "Article V (Quality First) — DUAL-SIGN protocol: Quinn QA gate + Riven custodial cosign"
+          - "R11 — orchestration é COMO, não O-QUÊ; spec v0.2.0 + v0.2.3 UNTOUCHED"
+          - "R15 — path lift non-breaking via --output-dir flag preservation"
+
 # ----------------------------------------------------------------
 # SYNC POINT — destrava Task #36
 # ----------------------------------------------------------------
 sync_point:
   name: "Phase E GO_EXECUTE"
-  trigger: "all 5 stories merged + Sable coherence audit do epic"
+  trigger: "all 7 stories merged (T002.0a-g) + Sable coherence audit do epic"
   actions:
-    - "Beckett executa *mira-handshake contra v0.2.0"
-    - "Beckett roda *run-cpcv --spec {spec_ref} --dry-run"
-    - "Dry-run retorna GO_EXECUTE"
+    - "T002.0f harness integration completo (Quinn PASS)"
+    - "Beckett executa *mira-handshake contra v0.2.0 (já closed em 2026-04-25)"
+    - "Beckett roda *run-cpcv --spec {spec_ref} --dry-run via run_cpcv_dry_run.py CLI"
+    - "Dry-run retorna GO_EXECUTE (ou explicit NO-GO com métricas reais)"
     - "Morgan fecha EPIC-T002.0 status=Done"
     - "Task #36 (Beckett CPCV Gate) sai de BLOCKED → READY"
+    - "T002.0g warmup state materialization complete (Quinn PASS + Riven DUAL-SIGN)"
+    - "Beckett T11.bis smoke retry post-T002.0g (HOLD pending Docker)"
+
+# ----------------------------------------------------------------
+# NEXT SESSION PRIORITIES (post-Beckett HALT 2026-04-25)
+# ----------------------------------------------------------------
+next_session_priorities:
+  updated_at_brt: "2026-04-25T21:35:00-03:00"
+  updated_by: "Morgan (@pm)"
+  trigger: "Beckett HALT-ESCALATE 2026-04-25T21:23 — harness gap exposed"
+  priorities:
+    - rank: P1
+      task: "T002.0f drafting + validation"
+      agents: ["River (@sm) drafts", "Pax (@po) validates"]
+      action: "River executa *draft → docs/stories/T002.0f.story.md; Pax executa *validate-story-draft (10-point checklist)"
+      blocking: "Dex impl"
+      estimate_sessions: 1.0  # 0.5 River + 0.5 Pax
+    - rank: P2
+      task: "T002.0f implementation"
+      agents: ["Dex (@dev)"]
+      action: "Dex executa *develop-story → packages/t002_eod_unwind/cpcv_harness.py + scripts/run_cpcv_dry_run.py + integration tests"
+      blocking: "Quinn QA + Beckett re-run"
+      estimate_sessions: 2.0
+      depends_on: P1
+    - rank: P3
+      task: "Beckett *run-cpcv --dry-run re-execution"
+      agents: ["Beckett (@backtester)"]
+      action: "Beckett re-executa dry-run após Quinn PASS — espera GO_EXECUTE ou explicit NO-GO baseado em métricas reais"
+      blocking: "EPIC-T002.0 closure + Task #36 unblock"
+      estimate_sessions: 0.5
+      depends_on: P2
+
+# ----------------------------------------------------------------
+# CRITICAL PATH CHECKPOINT
+# ----------------------------------------------------------------
+critical_path_checkpoint:
+  last_revision_brt: "2026-04-25T21:35:00-03:00"
+  revised_by: "Morgan (@pm)"
+  previous_estimate_sessions: 1.0  # apenas Beckett dry-run re-run após handshake closure
+  revised_estimate_sessions: 3.5   # T002.0f drafting + impl + QA + re-run
+  delta_sessions: +2.5
+  reason: "Beckett HALT-ESCALATE 2026-04-25T21:23 — 3 callables ausentes + harness/CLI inexistentes; Article IV veto sobre invention; T002.0f formalizada para fechar gap"
+  remaining_critical_path:
+    - "T002.0f (River draft → Pax validate → Dex impl → Quinn QA → Beckett re-run)"
+  status: "Critical path extended by +1 wave (W4) post-handshake closure"
 
 # ----------------------------------------------------------------
 # STATUS BOARD (snapshot 2026-04-25 BRT — Morgan @pm)
@@ -185,13 +340,14 @@ critical_path_checkpoint:
 # TIMELINE ESTIMATE (best case, linear)
 # ----------------------------------------------------------------
 timeline:
-  total_sessions_serial: 6.5
-  total_sessions_with_parallelism: 5.0
-  critical_path: [T002.0a, T002.0b, T002.0c, T002.0d]
+  total_sessions_serial: 10.0  # +3.5 (T002.0f added 2026-04-25)
+  total_sessions_with_parallelism: 8.5  # +3.5 (T002.0f is sequential, no parallel)
+  critical_path: [T002.0a, T002.0b, T002.0c, T002.0d, T002.0f]
   parallel_tracks:
     - [T002.0a, T002.0e]      # W1 parallel
     - [T002.0c, T002.0d_spec] # W3 spec concurrent with impl
-  estimated_calendar_range: "3-7 dias corridos (depende de cadência humano↔squad)"
+    # W4 (T002.0f) is fully sequential — no parallel track
+  estimated_calendar_range: "5-10 dias corridos (revised 2026-04-25 post-HALT)"
 
 # ----------------------------------------------------------------
 # HANDSHAKES required before each story leaves Draft
@@ -202,6 +358,7 @@ required_handshakes:
   T002.0c: [Mira, Beckett]
   T002.0d: [Mira, Beckett]
   T002.0e: [Nova, Beckett]
+  T002.0f: [Beckett, Aria]  # Beckett (consumer) + Aria (architecture sign on harness contract)
   epic_overall: [Beckett]
 
 # ----------------------------------------------------------------
@@ -234,3 +391,72 @@ risks:
     risk: "Descoberta durante dev força mudança na spec v0.2.0"
     mitigation: "Parar story; Mira emite v0.3.0 + PRR-novo; epic re-assina"
     owner: Morgan + Mira
+  - id: R-0.5
+    risk: "Harness integration revela mais gaps após T002.0f impl (cascade discovery)"
+    mitigation: "T002.0f integration tests obrigam end-to-end real em parquet slice; River + Pax validation enforce scope completo na story draft"
+    owner: Morgan + Beckett
+    surfaced_at: "2026-04-25T21:23 (Beckett HALT)"
+  - id: R-0.7
+    risk: "Warmup state materialization gap surfaced post-T002.0f T11 (T002.1 pure-compute caller never wired); T002.4 real diverged from T002.1 L154 prediction"
+    mitigation: "T002.0g formal story Wave W5; mini-council protocol for divergence resolution; Sable C14 errata in T002.1 footer fixes orphan reference"
+    owner: Morgan + River
+    surfaced_at: "2026-04-26T03:11 (Beckett T11 smoke HALT)"
+    status: "RESOLVED via T002.0g delivery (code+QA+custodial complete; T11.bis Docker-pending)"
+
+# ----------------------------------------------------------------
+# SPRINT RE-ESTIMATE HISTORY
+# ----------------------------------------------------------------
+## Sprint Re-estimate History
+sprint_reestimate_history:
+  - revision_id: REV-001
+    date_brt: "2026-04-21T20:30:00-03:00"
+    author: "Morgan (@pm)"
+    estimate_sessions_serial: 6.5
+    estimate_sessions_parallel: 5.0
+    rationale: |
+      Original epic estimate at creation: 5 stories (T002.0a-e), W1-W3 waves.
+      Critical path: T002.0a → T002.0b → T002.0c → T002.0d (4 sessions serial).
+      W1 parallel (0a + 0e) + W3 parallel (0c + 0d_spec) reduzem para ~5 sessões.
+      Premissa: handshake mira-beckett + dry-run executável após T002.0d merge.
+    scope_at_revision: "5 stories: T002.0a-e"
+
+  - revision_id: REV-002
+    date_brt: "2026-04-25T21:35:00-03:00"
+    author: "Morgan (@pm)"
+    estimate_sessions_serial: 10.0
+    estimate_sessions_parallel: 8.5
+    delta_sessions: +3.5
+    rationale: |
+      Beckett HALT-ESCALATE 2026-04-25T21:23 BRT.
+      Trigger: pre-flight + dry-run attempt expôs 3 callables ausentes
+      (build_events_dataframe, backtest_fn, compute_full_report) + harness
+      cpcv_harness.py + CLI scripts/run_cpcv_dry_run.py inexistentes no codebase.
+      Article IV (No Invention) veto: Beckett correto em parar — não pode improvisar
+      callables sem story formal + impl + QA. Mira-handshake (P2 closed em 2026-04-25
+      docs/backtest/T002-mira-handshake-2026-04-25.md) confirmou primitivos READY mas
+      não cobriu integration layer.
+      Decisão: T002.0f formalizada como nova story (Wave W4, sequential).
+      Critical path estendido: + River draft (0.5) + Pax validate (0.5) + Dex impl (2.0)
+      + Quinn QA (0.5) + Beckett re-run (0.5) = +3.5 sessões.
+      T002 NOT killed, NOT advanced — bloqueio é integração, não tese.
+    scope_at_revision: "6 stories: T002.0a-f (added T002.0f CPCV Harness Integration)"
+    blocked_by_decision_to: "Drafted formally vs. quick-fix in Beckett's session — chose formal route per Constitution Article III (Story-Driven)"
+
+  - revision_id: REV-003
+    date_brt: "2026-04-26T00:00:00-03:00"
+    author: "Morgan (@pm) via Council convocation 2026-04-26 BRT"
+    estimate_sessions_serial: 13.5
+    estimate_sessions_parallel: 12.0
+    delta_sessions: +3.5
+    rationale: |
+      Beckett T11 smoke 2026-04-26 BRT exposed gap upstream:
+      warmup state JSON files never materialized. T002.1 delivered
+      pure-compute builders; T002.4 real (PR #2) was child-peak
+      telemetry, not adapter live as T002.1 L154 predicted.
+      T002.0g formalized as Wave W5 (River draft + Pax 10/10 GO +
+      T0 handshakes 4/4 + Dex T1+T2+T3 + Quinn PASS + Riven DUAL-SIGN
+      PARTIAL + Sable coherence audit APPROVE_FOR_BASELINE).
+      Council 7-vote consensus Option A (vs Option D housekeeping).
+      Mini-council Dara BLOCK_GAP_UPSTREAM resolved 4/4 APPROVE_OPTION_B
+      (AC5 amended {2025-05-31} only; 2024-06-30 user-escalation).
+    scope_at_revision: "7 stories: T002.0a-g (added T002.0g Warmup State Orchestrator)"

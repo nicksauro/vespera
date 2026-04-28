@@ -1,0 +1,6 @@
+timestamp_brt,rss_mb,vms_mb,cpu_pct,peak_commit_bytes,peak_wset_bytes,sample_size,duration_ms,fold_index,trial_id,phase,note
+2026-04-26T03:11:30,141.95,592.27,0.00,148844544,621039616,1,0,-1,,run_start,run_id=auto-20260426-d2098a3d865b;spec_sha=98f22f3c8cee
+2026-04-26T03:11:30,141.99,592.32,0.00,148885504,621092864,2,0,-1,,init,poll
+2026-04-26T03:11:30,141.99,592.32,0.00,148889600,621096960,3,0,-1,,smoke:events_start,window=2025-05-31..2025-06-30
+2026-04-26T03:11:30,142.00,592.32,0.00,148893696,621096960,4,0,-1,,smoke_failed,"reason: smoke_aborted: RuntimeError: warmup not satisfied for 2025-05-31: status=WARM_UP_IN_PROGRESS, reason=state files not yet produced"
+2026-04-26T03:11:30,142.00,592.32,0.00,148893696,621096960,5,0,-1,,run_end,halt_observed=False
