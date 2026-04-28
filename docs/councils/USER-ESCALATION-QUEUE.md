@@ -11,6 +11,146 @@
 
 ## Active escalations
 
+### ESC-010 — Dual-track: WarmUpGate singleton + make_backtest_fn stub (Beckett N4 HALT)
+
+**Date (BRT):** 2026-04-28
+**Discovered by:** Beckett (@backtester) — T11.bis #4 N4 HALT-ESCALATE
+**Source:** docs/backtest/T002-beckett-t11-bis-smoke-report-N4-2026-04-28.md
+**Severity:** HIGH dual-track (blocks AC8 closure + Riven §9 + Phase F unblock)
+**Type:** 2 findings (architectural, dual-track)
+
+#### Track A — WarmUpGate singleton + default-path binding
+
+**Symptom:** AC8 amended invocation `--smoke --in-sample-start 2024-08-22 --in-sample-end 2025-06-30` aborta exit=1 em 2.892s antes do fanout.
+
+**Root cause empirical (Beckett N4 §root cause):**
+- `scripts/run_cpcv_dry_run.py:848` instancia `WarmUpGate` ÚNICO compartilhado entre smoke + full phases
+- Linha 865: smoke phase deriva `smoke_in_sample_start = max(in_sample_start, in_sample_end - 30d) = 2025-05-31` independentemente de `--in-sample-start`
+- `WarmUpGate` lê de `_DEFAULT_ATR_PATH` / `_DEFAULT_PERCENTILES_PATH` (default path symlink/copy), NÃO dated path
+- Default path holds last write — atualmente `as_of=2024-08-22` (write mais recente do precompute)
+- Smoke pede `as_of=2025-05-31`, encontra `2024-08-22` → `WARM_UP_FAILED` → AC11 abort
+
+**Implication:** AC8 amended invocation **NÃO pode simultaneamente satisfazer smoke (precisa 2025-05-31) e full (precisa 2024-08-22)** sob harness atual. ESC-009 council 6/6 (Aria + Mira + Pax mesmo) errou em assumir que cache-hit em ambas as_of dates resolveria — esqueceu o singleton + default-path binding.
+
+#### Track B — make_backtest_fn neutral stub (degenerate KillDecision)
+
+**Symptom:** Beckett rodou DIAGNOSTIC sem `--smoke` (`run_id T002-N4-DIAG-NOSMOKE`): exit=0 + 5 artifacts OK. MAS KillDecision NO_GO sobre 45 path Sharpes **TODOS 0.0**, IC=0, PBO=0.5 default, DSR=0.5 default.
+
+**Root cause:** `packages/t002_eod_unwind/cpcv_harness.py::make_backtest_fn` é **neutral stub** — não retorna real strategy. Mesmo padrão degenerate da N3 smoke synthetic, mas agora sobre janela full ~10mo CPCV — prova que a degeneração é **arquitetural** (stub), NÃO sample-size.
+
+**Implication:** AC8.9 "verdict ∈ {GO, NO_GO}" PASS literal mas semanticamente vazio. T002 GO/NO_GO real **NÃO É testável** sob make_backtest_fn stub. Phase F gate (próxima barreira antes capital ramp) pediria real make_backtest_fn — mas isso é fora do escopo T002.0h declarado.
+
+#### Why ESC-009 council missed Track A
+
+ESC-009 6/6 council (Aria + Mira + Pax + Beckett + Riven + Dara) modelou cuidadosamente o `warmup_gate_as_of` binding em full-phase mas NÃO inspecionou o singleton + default-path binding. Discovery requires N4 empirical execution — not visible from static read alone. Article IV (no invention) honored — councils proceed on best evidence available; new evidence requires new council.
+
+#### Honored guards (Beckett N4 7/7)
+
+- NO subsample
+- NO engine config mutation
+- NO threshold relaxation
+- Peak RSS reported honestly (N/A where not sampled)
+- Article IV strict
+- NO source code modification
+- NO push (Article II → Gage)
+
+#### Action items (recommended)
+
+1. **Mini-council ESC-010 6-vote** (Aria + Mira + Beckett + Riven + Pax + Dara) — dual-track decision:
+   - **Track A:** E1 (harness amendment — `WarmUpGate` per-phase dated paths) | E2 (drop `--smoke` from AC8 invocation literal) | E3 (other)
+   - **Track B:** F1 (integrate real make_backtest_fn now) | F2 (redefine AC8.9 stub-OK) | F3 (split into T002.0h.1 + T002.1.bis)
+2. **Council outcome ledger:** `docs/councils/COUNCIL-2026-04-28-ESC-010-dual-track.md`
+3. **Outcome execution per autonomous mandate** (mini-council substitui user authorization)
+
+#### Status
+
+- [x] Mini-council ESC-010 6-vote (Track A + Track B) — 2026-04-28 BRT, 6 voters consolidated
+- [x] Council ledger ([COUNCIL-2026-04-28-ESC-010-dual-track.md](COUNCIL-2026-04-28-ESC-010-dual-track.md))
+- [x] AC8 invocation literal amendment (E2 — drop --smoke flag, story T002.0h L65)
+- [x] AC8.9 redefinition (F2 — PIPELINE INTEGRITY vs STRATEGY EDGE scope clarification, story T002.0h)
+- [x] PRR-20260428-1 (E2) + PRR-20260428-2 (F2) appended preregistration_revisions[] (4/4 hashes verified via `python scripts/pax_cosign.py verify`)
+- [x] T002.0h.1 + T002.1.bis spawn (stub headers; @sm formal drafts downstream)
+- [x] Beckett N5 re-run (post Pax cosign; cache `as_of=2024-08-22` already exists — no precompute needed) — PASS strict-literal 9/9; report `docs/backtest/T002-beckett-t11-bis-smoke-report-N5-2026-04-28.md` (run_id 50c4fe32...)
+- [x] Riven §9 HOLD #1 clear + §9 HOLD #2 arm (Riven custodial 2026-04-28 BRT + **Mira ML statistical authority dual-sign COMPLETE 2026-04-28 BRT** — Gate 4 criteria DSR>0.95 + PBO<0.5 + IC decay ratified per Bailey-LdP 2014 §3+§6 and BBLP 2014 §3; Bonferroni n_trials=5 preserved across all 5 disarm gates; anti-leak invariants preserved; hold-out lock UNTOUCHED) — appended to `docs/qa/gates/T002.0g-riven-cosign.md` 2026-04-28 BRT
+- [ ] Sable audit (Q-SDC Phase G — coherence post-N5)
+- [ ] Gage push (autonomous mode, R12 user-gated)
+
+#### Article IV trace
+
+- Beckett N4 report §root-cause-empirical-track-A (singleton observation)
+- Beckett N4 report §diagnostic-run (synthetic-stub revelation)
+- N4 evidence artifacts: `data/baseline-run/cpcv-dryrun-T002-N4-DIAG-NOSMOKE/` (5 artifacts sha256-ed)
+- ESC-009 council ledger (Track A blind spot acknowledged)
+
+**Pax cosign 2026-04-28 BRT — Autonomous Daily Session.**
+
+---
+
+### ESC-009 — AC8 amendment (D1 empirical refutation → D2-narrow as_of=2024-08-22)
+
+**Date (BRT):** 2026-04-27
+**Source:** docs/councils/COUNCIL-2026-04-27-ESC-009-AC8-amendment.md
+**Severity:** HIGH (blocks Riven §9 + Phase F unblock)
+**Trigger:** D1-original (`as_of=2024-07-01`) HALT empirical — Operator precompute attempt per ESC-008 D1 path returned `InsufficientCoverage: only 91 valid DailyMetrics (need 126); window=[2023-11-13, 2024-06-30]; days_with_trades=111`. 2023-Q4 upstream unrecoverable per Dara coverage audit + user briefing.
+**Council outcome:** **6/6 functional convergence APPROVE_D2_NARROW `as_of=2024-08-22`** (Aria + Mira + Beckett + Riven + Pax + Dara)
+**User authorization:** Autonomous mode mandate 2026-04-27 BRT (mini-council decides)
+
+**Critical architectural finding (Aria + Mira + Pax independent):** `scripts/run_cpcv_dry_run.py:761` hardcodes `warmup_gate_as_of = in_sample_start.isoformat()`. AC8 invocation literal does NOT carry `--in-sample-start` flag. D1-shifted (any non-default `as_of`) is functionally identical to D2-narrow under another label — Aria mandated honest relabel.
+
+**Amendment:** AC8 invocation literal at story T002.0h L65 amended to add `--in-sample-start 2024-08-22 --in-sample-end 2025-06-30` (existing CLI flag, no script change). Earliest viable `as_of=2024-08-22` per Dara walk (`state/T002/_dara_d1_candidates.txt`); ~10mo in-sample (~225 valid sample days) preserves non-degenerate Bonferroni n_trials=5 + DSR distribution per Mira.
+
+**Spec compliance:** Spec yaml `data_splits.in_sample` UNCHANGED. PRR-20260427-1 appended to `preregistration_revisions[]` (patch 0.2.0 → 0.2.1) documenting empirical refutation of PRR-20260421-1's data_constraint_evidence (which did NOT model `is_valid_sample_day` filter). Pax cosign hash `0305e456f072ff521ffd2dc8ce487b261b7111796bbe274318d4fd381359919c` verified via `python scripts/pax_cosign.py verify`. Hold-out lock UNTOUCHED.
+
+### Status
+
+- [x] Council convened + 6 votes consolidated
+- [x] Architectural finding propagated (warmup_gate_as_of hardcoded binding)
+- [x] PRR-20260427-1 appended (with verified pax_cosign_hash)
+- [x] AC8 invocation literal amended
+- [x] T002.0h Change Log entry + AC8 amendment section + 10-point re-validation 10/10 GO
+- [ ] Operator precompute `as_of=2024-08-22` via `python scripts/run_warmup_state.py --as-of-dates 2024-08-22 --output-dir state/T002/`
+- [ ] Beckett N4 re-run amended invocation (`--in-sample-start 2024-08-22 --in-sample-end 2025-06-30`)
+- [ ] Riven + Mira §9 deferral reconciliation (capital-ramp clearance deferred to future story)
+- [ ] Sable audit coherence (Q-SDC Phase G)
+- [ ] Gage push (autonomous mode)
+
+**Article IV trace:** all clauses traceable to (a) Operator precompute log 2026-04-27 BRT, (b) Dara coverage audit (`docs/architecture/T002-data-coverage-audit-2026-04-27.md`), (c) user briefing 2026-04-27 BRT, (d) Dara D1-shifted candidates walk (`state/T002/_dara_d1_candidates.txt`), (e) ESC-006 + ESC-008 council ledgers, (f) 6 verbatim votes recorded in council ledger (condensed; full transcripts retained in council session log).
+
+**Pax cosign 2026-04-27 BRT — Autonomous Daily Session.**
+
+---
+
+### ESC-008 — AC8 clarification (Beckett N3 HALT-ESCALATE → D1 approved)
+
+**Date (BRT):** 2026-04-27
+**Source:** [docs/councils/COUNCIL-2026-04-27-ESC-008-AC8-clarification.md](COUNCIL-2026-04-27-ESC-008-AC8-clarification.md)
+**Severity:** HIGH (blocks Riven §9 + Phase F unblock)
+**Trigger:** Beckett T11.bis #3 (N3) HALT-ESCALATE-FOR-CLARIFICATION ([report](../backtest/T002-beckett-t11-bis-smoke-report-N3-2026-04-27.md))
+**Council outcome:** **4/5 MAJORITY APPROVE_D1** (Aria + Mira + Riven + Pax converging; Beckett conditional dissent D3 — personal preference declared D1)
+**User authorization:** **GRANTED 2026-04-27 BRT**
+**Action items:** see [council ledger §6 Action items](COUNCIL-2026-04-27-ESC-008-AC8-clarification.md#6-action-items-post-decision)
+
+**3 mitigation paths surfaced (Beckett N3 §11):**
+- **D1** (APPROVED) — Operator authorizes precompute warmup state for `as_of=2024-07-01` per AC9 cache contract + ESC-006 run-once-per-as_of principle (~5–7min cost). ZERO spec change, ZERO precedent damage.
+- D2 — AC8 spec amendment (R15 evaluation required; rejected as overkill).
+- D3 — AC8 declared PASS on semantic 8/9 PARTIAL_PASS reading (rejected: statistical malpractice per Mira; custodially unacceptable per Riven; binary-verifiability erosion per Aria + Pax).
+
+### Status
+
+- [x] Council convened + 5 votes consolidated
+- [x] User authorization granted
+- [ ] Operator precompute `as_of=2024-07-01` via `python scripts/run_warmup_state.py --as-of-dates 2024-07-01 --output-dir state/T002/`
+- [ ] Beckett N4 re-run (full pipeline empirical, peak RSS < 6 GiB target, full wall-time captured)
+- [ ] Riven §9 amendment (HOLD #1 clearance language preview in council ledger §2.4)
+- [ ] Pax close + Sable audit (Q-SDC Phase G)
+- [ ] Gage push (R12 user-gated)
+
+**Article IV trace:** all clauses traceable to (a) Beckett N3 report §11 escalation matrix, (b) ESC-006 mini-council 4/4 APPROVE_F (council ledger 2026-04-26), (c) AC9 cache contract (T002.0h L73–78 DONE), (d) 5 verbatim votes recorded in council ledger (condensed for ledger; full transcripts retained in session log).
+
+**Pax cosign 2026-04-27 BRT — Autonomous Daily Session.**
+
+---
+
 ### ESC-002 — TimescaleDB hold-out window exposure (ESCALATED → NEEDS_DB_GUARD)
 
 **Update 2026-04-26 BRT — Dara attempt 3 audit (Docker survived):**
@@ -261,6 +401,69 @@
   - Aceitar Phase E com in_sample window 2024-07..2025-06 → window de teste = 6 meses (Jan-Jun 2024 vira warmup)
   - OR adiar Phase E até backfill DLL inicial 2023-Q4 (viola constraint atual)
   - OR aceitar smoke-only Phase E preliminar (insuficiente estatisticamente per Morgan)
+
+---
+
+## ESC-007 — research_log._split_yaml_blocks parser inversion
+
+**Date (BRT):** 2026-04-27
+**Discovered by:** Beckett (@backtester) — T11.bis #2 re-run AC8 exit gate FAIL
+**Source:** docs/backtest/T002-beckett-t11-bis-smoke-report-2026-04-27.md §11
+**Severity:** HIGH (blocks AC8 exit gate; blocks Riven §9 cosign; blocks Phase F unblock)
+**Type:** Latent bug (NOT memory/perf/streaming regression)
+
+### Symptom
+
+CPCV smoke aborts exit 1 in `compute_full_report → read_research_log_cumulative` step. KillDecision NOT produced. 1/5 artifacts persisted (only telemetry.csv). T002.0h streaming + AC9 cache contract observed PERFECT (warmup cache hit 0.336s, peak RSS 0.024 GiB on warmup; CPCV harness fanout 1.279s producing 225 results, peak RSS 142.85 MB) — failure is downstream of streaming/cache.
+
+### Root cause
+
+`packages/vespera_metrics/research_log.py::_split_yaml_blocks` toggle-fence walker is structurally inverted vs production format `docs/ml/research-log.md`. Parser captures prose bodies (lines 72-78 "Os cinco trials varrem: (a)...") and SKIPS actual frontmatter YAML blocks (64-70 + 80-86). Result: `n_trials_cumulative` parses prose narration as YAML, fails downstream consumer expecting `T002.0d=5 + T002.0f=0 = 5`.
+
+### Why it slipped
+
+5 existing parser tests (`tests/...research_log...`) all use `_write_research_log` mock helper which produces tightly-formatted YAML (no prose interleaving). Production ledger `docs/ml/research-log.md` interleaves prose narration between frontmatter blocks. Coverage gap = no integration test exercises real ledger format. AC11 fail-closed guard worked correctly (aborted smoke exit 1 instead of producing corrupt KillDecision).
+
+### Honored guards (Beckett 7/7)
+
+- #1 NO subsample: dataset window unchanged (`[2025-05-31, 2025-06-30]`).
+- #2 NO modify engine config: `engine-config.yaml` read-only.
+- #3 NO improvise threshold relaxation: AC8.5/8.8/8.9 reported FAIL, NOT waived.
+- #4 Reported peak RSS HONESTLY: 142.85 MB from poller CSV `max(rss_mb)`.
+- #5 NO retry after exit ≠ 0: single Step C invocation, captured + reported.
+- #6 NO push: no git push attempted (Gage authority).
+- #7 NO modify story files: report is the only artifact written by Beckett.
+- (bonus) NO bypass AC11 abort guard: Riven invariant respected — bypass would require Riven cosign + governance entry.
+
+### Action items (recommended owners — per Beckett report §11.3 + §11.5)
+
+1. **Dex (@dev)** — fix `_split_yaml_blocks`. 3 abordagens em report §11.3:
+   (a) state machine recognizing "consecutive `---` fences delimit a frontmatter block",
+   (b) regex `^---\n(?P<body>.*?)\n---$` with re.MULTILINE+DOTALL,
+   (c) adopt `python-frontmatter` library convention.
+2. **Mira (@ml-researcher)** — clarify ledger header schema language; "top-level `---` fences" is ambiguous between "toggle" and "delimit pairs". R15 evaluation if `breaking_fields` revision is required for any chosen reinterpretation.
+3. **Quinn (@qa)** — add integration test loading ACTUAL `docs/ml/research-log.md` from disk and asserting `n_trials_cumulative == 5` (sum T002.0d=5 + T002.0f=0); re-QA gate increment T002.0h to require this coverage before any future close.
+4. **Beckett (@backtester)** — T11.bis #3 re-run (full plan re-execution) após Dex parser fix + Quinn re-QA.
+5. **Riven (@risk-manager)** — §9 amendment apenas após T11.bis #3 PASS (HOLD #1 clearance criteria NOT MET enquanto full_report.json + KillDecision.verdict ausentes).
+
+### Status
+
+- [ ] Dex fix `_split_yaml_blocks`
+- [ ] Quinn integration test (real ledger) + re-QA gate increment
+- [ ] Beckett T11.bis #3 re-run
+- [ ] Riven §9 cosign / HOLD #1 clearance
+- [ ] Gage push (R12 user-gated)
+
+### Article IV trace
+
+Não houve invenção — todas as fontes citadas:
+- Beckett report §11.1 (AC8 sub-criteria 9-row matrix), §11.3 (Dex 3 abordagens, ownership classification, mitigation NOT attempted rationale), §11.4 (canonical ESC-007 escalation text), §11.5 (handoff trigger sequence)
+- AC11 fail-closed guard (Riven invariant — Beckett report §11.3 Mitigation NOT attempted #3)
+- 5 parser tests existentes usando `_write_research_log` mock helper (Quinn coverage gap — Beckett report §11.3)
+- Production ledger `docs/ml/research-log.md` linhas 64-86 (Mira authority — append-only R15)
+- `packages/vespera_metrics/research_log.py::_split_yaml_blocks` (verified path on disk)
+
+**Pax cosign 2026-04-27 BRT — Autonomous Daily Session.**
 
 ---
 
