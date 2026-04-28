@@ -19,3 +19,9 @@ def pytest_configure(config):
         "markers",
         "slow: marks tests as slow (>10s wall time); deselect with `-m 'not slow'`",
     )
+    config.addinivalue_line(
+        "markers",
+        "integration: marks tests that exercise on-disk production artefacts "
+        "(e.g. docs/ml/research-log.md) — distinct from unit tests using "
+        "fixture strings. Run with `pytest -m integration`.",
+    )
