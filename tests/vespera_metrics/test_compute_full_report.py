@@ -392,6 +392,148 @@ def test_research_log_negative_n_trials_raises(tmp_path: Path) -> None:
 
 
 # =====================================================================
+# ESC-007 regression — production ledger format (prose-interleaved)
+# =====================================================================
+# Beckett T11.bis #2 (commit 243bcad) discovered that
+# `_split_yaml_blocks` was structurally inverted vs the production
+# `docs/ml/research-log.md` format. The 5 mock-based parser tests above
+# all use `_write_research_log` which emits tightly-formatted YAML with
+# NO prose interleaving between entries — coverage gap allowed the bug
+# to ship. The two fixtures below mimic the real ledger shape:
+#
+#   1. Doc preamble fences (Authority / Schema headers) BEFORE entries.
+#   2. Free-form prose narration between entry pairs.
+#   3. Trailing markdown content after the last entry (e.g. `## Version`).
+#
+# Both fixtures must yield correctly-summed `n_trials_cumulative`, and
+# malformed-but-attempted entries embedded among prose must still
+# raise (Article IV fail-closed).
+
+
+_PROSE_INTERLEAVED_LEDGER = """\
+# Vespera Research Log — Cumulative Multiple-Testing Ledger
+
+> Owner: Mira (@ml-researcher) — sole authority.
+
+---
+
+## Authority statement
+
+This file is the append-only ledger.
+
+---
+
+## Schema (parse contract)
+
+Every entry is a YAML frontmatter block delimited by --- lines.
+
+---
+
+## Entries
+
+---
+story_id: "T002.0d"
+date_brt: "2026-04-25"
+n_trials: 5
+trials_enumerated: [T1, T2, T3, T4, T5]
+description: "seed entry"
+spec_ref: "spec1"
+signed_by: "Mira (@ml-researcher)"
+---
+
+T002.0d enumerou o trial set canônico. Os cinco trials varrem:
+(a) sensitivity ao threshold, (b) ablation do filtro ATR,
+(c) ablation do número de janelas (T5, apenas 17:25).
+
+---
+story_id: "T002.0f"
+date_brt: "2026-04-26"
+n_trials: 0
+trials_enumerated: []
+description: "harness integration; no new trials"
+spec_ref: "spec2"
+signed_by: "Mira (@ml-researcher)"
+---
+
+T002.0f é puramente infra: integra o harness CPCV. NENHUM trial novo.
+
+## Version
+
+**v0.1** — 2026-04-26 BRT — Mira (@ml-researcher) — seed entries.
+"""
+
+
+def test_research_log_prose_interleaved_production_format(
+    tmp_path: Path,
+) -> None:
+    """ESC-007 regression — parser must correctly extract entries from a
+    ledger with doc preamble fences AND prose narration between entries.
+
+    This fixture mirrors `docs/ml/research-log.md` (Mira ledger v0.1)
+    structure byte-for-byte at the fence-and-prose level. Pre-fix this
+    raised ValueError "no valid ledger entries found" because the
+    toggle-walker captured prose bodies and skipped frontmatter blocks.
+    """
+    p = tmp_path / "research-log.md"
+    p.write_text(_PROSE_INTERLEAVED_LEDGER, encoding="utf-8")
+    n_trials, source_ref = read_research_log_cumulative(path=p)
+    # T002.0d=5 + T002.0f=0 = 5 (squad-cumulative per Bailey-LdP §3).
+    assert n_trials == 5
+    assert source_ref.startswith("docs/ml/research-log.md@")
+
+
+def test_research_log_prose_interleaved_malformed_entry_still_raises(
+    tmp_path: Path,
+) -> None:
+    """ESC-007 regression — an attempted entry (carries `story_id:`
+    marker) embedded in a prose-interleaved ledger MUST still raise on
+    schema violation. Prose-tolerance must not weaken Article IV
+    fail-closed semantics for genuine entry malformation.
+    """
+    bad_ledger = (
+        "# Doc title\n\n"
+        "---\n\n## Authority preamble\n\nfree prose\n\n---\n\n"
+        "---\n"
+        'story_id: "T002.0d"\n'
+        "n_trials: 5\n"
+        "---\n\n"
+        "Some prose narration about T002.0d.\n"
+    )
+    p = tmp_path / "research-log.md"
+    p.write_text(bad_ledger, encoding="utf-8")
+    with pytest.raises(ValueError, match="missing required keys"):
+        read_research_log_cumulative(path=p)
+
+
+def test_research_log_prose_interleaved_pure_prose_skipped_silently(
+    tmp_path: Path,
+) -> None:
+    """ESC-007 regression — prose chunks between entry pairs must NOT
+    raise YAMLError; they are skipped silently as documentation noise.
+    Only at least one valid entry is required for the file to parse.
+    """
+    ledger = (
+        "# Doc\n\n"
+        "---\n## Header section\nText with `:` and other markdown.\n---\n\n"
+        "Some narration: with: many: colons:.\n\n"
+        "---\n"
+        'story_id: "T002.0d"\n'
+        'date_brt: "2026-04-25"\n'
+        "n_trials: 7\n"
+        "trials_enumerated: [A, B]\n"
+        'description: "valid entry surrounded by prose"\n'
+        'spec_ref: "spec"\n'
+        'signed_by: "Mira"\n'
+        "---\n\n"
+        "Closing prose narration.\n"
+    )
+    p = tmp_path / "research-log.md"
+    p.write_text(ledger, encoding="utf-8")
+    n_trials, _ = read_research_log_cumulative(path=p)
+    assert n_trials == 7
+
+
+# =====================================================================
 # AC6 — Mira synthetic toy: 4×4 sub-matrix reproduces T11 PBO=1.0
 # =====================================================================
 def test_against_mira_t11_pbo_4x4_reduction(tmp_path: Path) -> None:
