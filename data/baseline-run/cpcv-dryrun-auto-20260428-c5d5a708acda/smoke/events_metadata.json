@@ -1,0 +1,17 @@
+{
+  "phase": "smoke",
+  "in_sample_start": "2025-05-31",
+  "in_sample_end": "2025-06-30",
+  "n_events": 360,
+  "n_trials": 5,
+  "trials": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5"
+  ],
+  "warmup_gate_as_of": "2025-05-31",
+  "warmup_gate_passed_at_brt": "2026-04-28T20:34:21",
+  "fanout_duration_ms": 1620
+}

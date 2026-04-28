@@ -12,6 +12,6 @@
     "T5"
   ],
   "warmup_gate_as_of": "2024-08-22",
-  "warmup_gate_passed_at_brt": "2026-04-28T09:19:20",
-  "fanout_duration_ms": 1464
+  "warmup_gate_passed_at_brt": "2026-04-28T20:34:23",
+  "fanout_duration_ms": 1914
 }

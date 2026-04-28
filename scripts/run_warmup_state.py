@@ -607,9 +607,20 @@ def _append_cache_audit(
 ) -> None:
     """Append a JSONL audit entry to ``state/T002/cache_audit.jsonl``.
 
-    Schema: ``{computed_at_brt, as_of_date, status, expected_key,
-    found_key, note}``. ``status`` ∈ {hit, miss, stale, write,
-    force_rebuild}. Append-only — Sable consumes for cross-run audit.
+    Producer-side schema: ``{computed_at_brt, as_of_date, status,
+    expected_key, found_key, note}``. ``status`` ∈ {hit, miss, stale,
+    write, force_rebuild}. Append-only — Sable consumes for cross-run
+    audit.
+
+    T002.0h.1 AC3 — consumer-side entries (emitted by
+    ``scripts/run_cpcv_dry_run.py::_append_consumer_cache_audit``) add
+    an **additive** ``phase`` field (``"smoke" | "full"``) and use
+    ``status == "consumer_check"`` (does NOT collide with this producer
+    enum). Sable readers MUST tolerate missing ``phase`` on legacy /
+    producer entries (defensive ``.get("phase")`` access pattern). The
+    triple-key contract (``as_of_date``, ``source_sha256_from_manifest``,
+    ``builder_version_semver``) is preserved unchanged on producer
+    entries (Mira AC9 invariant).
 
     Best-effort write — IO failure logs a warning and continues (audit
     is observability, NOT a correctness contract).

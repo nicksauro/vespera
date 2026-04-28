@@ -1,7 +1,7 @@
 # T002 CPCV Metrics Report
 
 - **Spec version:** `T002-v0.2.3`
-- **Computed (BRT):** `2026-04-28T20:34:23`
+- **Computed (BRT):** `2026-04-28T20:34:21`
 - **n_paths:** 45
 - **n_pbo_groups:** 10
 - **n_trials_used:** 5
