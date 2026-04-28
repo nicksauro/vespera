@@ -72,8 +72,8 @@ ESC-009 6/6 council (Aria + Mira + Pax + Beckett + Riven + Dara) modelou cuidado
 - [x] T002.0h.1 + T002.1.bis spawn (stub headers; @sm formal drafts downstream)
 - [x] Beckett N5 re-run (post Pax cosign; cache `as_of=2024-08-22` already exists — no precompute needed) — PASS strict-literal 9/9; report `docs/backtest/T002-beckett-t11-bis-smoke-report-N5-2026-04-28.md` (run_id 50c4fe32...)
 - [x] Riven §9 HOLD #1 clear + §9 HOLD #2 arm (Riven custodial 2026-04-28 BRT + **Mira ML statistical authority dual-sign COMPLETE 2026-04-28 BRT** — Gate 4 criteria DSR>0.95 + PBO<0.5 + IC decay ratified per Bailey-LdP 2014 §3+§6 and BBLP 2014 §3; Bonferroni n_trials=5 preserved across all 5 disarm gates; anti-leak invariants preserved; hold-out lock UNTOUCHED) — appended to `docs/qa/gates/T002.0g-riven-cosign.md` 2026-04-28 BRT
-- [ ] Sable audit (Q-SDC Phase G — coherence post-N5)
-- [ ] Gage push (autonomous mode, R12 user-gated)
+- [x] Sable audit (Q-SDC Phase G — coherence post-N5) — `docs/audits/AUDIT-2026-04-28-T002.0h-ESC-010-coherence.md` READY FOR GAGE PUSH; 0 critical, 2 moderate findings → backlog housekeeping (non-blocking)
+- [x] Gage push (autonomous mode) — **PR #6 merged to main 2026-04-28 BRT** under mini-council 3/3 UNANIMOUS APPROVE_AUTO_MERGE (Pax + Riven + Sable). Merge SHA `8b644d5655e1dee9409e993718881100e16c3a52`. CI 4/4 PASS pre-merge. Branch `t002-1-warmup-impl-126d` preserved (--delete-branch=false). §9 HOLD #2 capital-ramp barrier remains ARMED (5 disarm gates still pending). Article II + autonomous mode mandate.
 
 #### Article IV trace
 
@@ -83,6 +83,7 @@ ESC-009 6/6 council (Aria + Mira + Pax + Beckett + Riven + Dara) modelou cuidado
 - ESC-009 council ledger (Track A blind spot acknowledged)
 
 **Pax cosign 2026-04-28 BRT — Autonomous Daily Session.**
+**Gage merge 2026-04-28 BRT — PR #6 → main SHA `8b644d5`.**
 
 ---
 
