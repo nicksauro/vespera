@@ -95,8 +95,41 @@ honrado mesmo com delta zero).
 
 ---
 
+---
+story_id: T002.0h
+date_brt: "2026-04-28"
+n_trials: 0
+trials_enumerated: []
+description: "ESC-010 §9 HOLD #1 disarm + §9 HOLD #2 arm — Mira ML statistical authority dual-sign appended to docs/qa/gates/T002.0g-riven-cosign.md 2026-04-28 BRT. Engineering layer cleared (Beckett N5 PASS strict-literal 9/9, run_id 50c4fe32602b448c943ca7277f1f08ef; sha256 prefixes full_report.md 0f9c4eb3, full_report.json 7e2b43d5, determinism_stamp.json 5c245ed3, events_metadata.json a4337d80, telemetry.csv 992bb46a; wall=4.381s; peak RSS=0.140 GiB). Statistical clearance for Phase F unblock deferred to T002.1.bis (real make_backtest_fn integration + per-fold P126 rebuild per DEFERRED-T11 finding M1 cpcv_harness.py:287-307) gated by Mira Gate 4 statistical clearance (DSR>0.95 + PBO<0.5 + IC decay over non-degenerate distribution per Bailey-LdP 2014 §3+§6 and BBLP 2014 §3). Bonferroni n_trials=5 PRESERVED across all 5 disarm gates of §9 HOLD #2 chain (T002.0h.1 → T002.1.bis → Beckett N6 → Mira clearance → Riven dual-sign); no recount triggered. Anti-leak invariants (shifted-by-1, ascending iteration) preserved; R10 hold-out virgin lock [2025-07-01, 2026-04-21] UNTOUCHED. Spec yaml v0.2.3 UNTOUCHED at data_splits/feature_set/trading_rules/n_trials levels — only preregistration_revisions[] append (PRR-20260428-1 + PRR-20260428-2 per Pax cosign hashes verified). This entry is governance audit trail; no new research trial introduced."
+spec_ref: "docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml@72261326d61d59224709ba1c072a0ec4798ed2f21b789a89480421245d8d26c8"
+signed_by: "Mira (@ml-researcher)"
+---
+
+T002.0h ESC-010 dual-sign não introduz nenhum trial novo — a story consome
+o trial set {T1..T5} já versionado em T002.0d. A entrada existe explicitamente
+para preservar o audit trail Bailey-LdP §3 (DSR multi-testing penalty é
+SQUAD-CUMULATIVE, append-only) e documentar que a co-assinatura ML statistical
+authority sobre §9 HOLD #1 disarm + §9 HOLD #2 arm foi emitida sem mudança de
+n_trials_cumulative. Bonferroni α/n_trials = 0.01/5 = 0.002 stands at Gate 4
+evaluation moment (T002.1.bis post-completion + Beckett N6 PASS).
+
+Authority chain ratified: Bailey-Lopez de Prado 2014 §3 (DSR closed-form),
+§6 (canonical reproducible-backtest gating triplet); Bailey-Borwein-Lopez de
+Prado 2014 §3 + Appendix B (PBO logit-rank formula). 3-criteria triplet
+(DSR>0.95 + PBO<0.5 + IC decay) é necessário e suficiente para Phase F
+statistical clearance — no fourth criterion required, no third redundant,
+no two-of-three substitution acceptable.
+
+§9 HOLD #2 5 disarm gates strictly serial (Gate 1 → 2 → 3 → 4 → 5);
+parallel partial-PASS does not constitute disarm. Mira gate authority é Gate 4;
+custodial cosign Riven+Quinn é Gate 5.
+
+---
+
 ## Version
 
 **v0.1** — 2026-04-26 BRT — Mira (@ml-researcher) — seed entries T002.0d + T002.0f
+
+**v0.2** — 2026-04-28 BRT — Mira (@ml-researcher) — appended T002.0h ESC-010 §9 HOLD #1 disarm + §9 HOLD #2 arm dual-sign audit-trail entry (n_trials=0 — governance, no new trial)
 
 — Mira, mapeando o sinal

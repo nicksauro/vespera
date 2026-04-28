@@ -119,6 +119,184 @@ preregistration_revisions:
     data_constraint_evidence: "SQL: SELECT MIN(range_start), MAX(range_end) FROM timescaledb_information.chunks WHERE hypertable_name=trades AND range_start >= 2023-01-01 AND range_start < 2024-01-01; -> 6 chunks total in Jan 2023, zero in Feb-Dec 2023; continuous from 2024-01-02. Documented in docs/councils/VESPERA-DATA-PIPELINE-2026-04-21.md ADDENDUM section, Turno 5 revision."
     pax_cosign_hash: "c34c201c612e63d0dfaf03bbd1827bf1bf2e7973fcd22b72c6a8a6a487d79e5a"
 
+  - revision_id: PRR-20260427-1
+    timestamp_brt: "2026-04-27T00:00:00-03:00"
+    from_version: "0.2.0"
+    to_version: "0.2.1"
+    breaking_fields:
+      - acceptance_criteria.AC8.invocation_literal  # story-level path (docs/stories/T002.0h.story.md L65); spec yaml data_splits.in_sample UNCHANGED
+    justification: |
+      ESC-009 mini-council 6/6 functional convergence (Aria + Mira + Beckett + Riven + Pax + Dara)
+      empirically refutes PRR-20260421-1's data_constraint_evidence SQL count.
+
+      PRR-20260421-1 had reported "6 chunks Jan 2023, zero Feb-Dec 2023; continuous from
+      2024-01-02" but did NOT account for is_valid_sample_day exclusions
+      (weekends/holidays/Copom/rollover D-3..D-1).
+
+      Empirical HALT 2026-04-27 BRT (Operator precompute as_of=2024-07-01 via
+      scripts/run_warmup_state.py per ESC-008 D1 path):
+      "InsufficientCoverage: only 91 valid DailyMetrics (need 126);
+      window=[2023-11-13, 2024-06-30]; days_with_trades=111".
+
+      Full-phase warmup at as_of=2024-07-01 upstream-INFEASIBLE per Dara coverage
+      audit (docs/architecture/T002-data-coverage-audit-2026-04-27.md).
+      Backfill 2023-Q4 NÃO viável (~2 trading days quebrados per user briefing).
+
+      AC8 invocation literal narrowed via existing CLI flag --in-sample-start 2024-08-22
+      (earliest viable as_of per Dara walk: state/T002/_dara_d1_candidates.txt).
+      Preserves ~10 months in_sample CPCV (~225 valid sample days) for non-degenerate
+      Bonferroni n_trials=5 + DSR distribution. Bonferroni n_trials=5 PRESERVED
+      (no recount per Mira ruling).
+
+      Spec data_splits.in_sample (2024-07-01..2025-06-30) UNCHANGED for downstream
+      Phase F empirical anchor — only AC8 exit gate scope narrowed at story level.
+      Hold-out lock [2025-07-01, 2026-04-21] UNTOUCHED.
+
+      Story-level R15 breaking_field — spec yaml v0.2.0 schema UNTOUCHED at
+      data_splits / feature_set / trading_rules / n_trials levels. Patch bump 0.2.0 ->
+      0.2.1 reflects preregistration_revisions[] append only.
+
+      Architectural finding (Aria + Mira + Pax independent discovery):
+      scripts/run_cpcv_dry_run.py:761 binds warmup_gate_as_of = in_sample_start.isoformat();
+      AC8 invocation must carry --in-sample-start to align cache lookup with viable
+      manifest window. D1-shifted (any non-default as_of) is functionally identical to
+      D2-narrow under another label — Aria mandated honest relabel.
+
+      §9 capital-ramp clearance language DEFERRED to future story when upstream
+      coverage fixed (Riven + Mira condition #4; resolved as separate post-N4 task).
+    data_constraint_evidence: |
+      1. Operator precompute log 2026-04-27 BRT: 91/126 valid DailyMetrics em
+         [2023-11-13, 2024-06-30] (window for as_of=2024-07-01); days_with_trades=111.
+      2. Dara audit (docs/architecture/T002-data-coverage-audit-2026-04-27.md):
+         TimescaleDB chunks 2023-01-02..2026-04-02 (570 chunks across full range) —
+         2023-Q4 effectively absent at valid-sample-day granularity.
+      3. User briefing 2026-04-27 BRT: "garanto que NÃO tem 2023, tem tipo uns 2 dias
+         quebrados" — backfill not viable per canonical constraint
+         "todos os dados que tenho salvos são da DLL — não adianta nada baixarmos de novo".
+      4. Dara D1-shifted candidates walk (state/T002/_dara_d1_candidates.txt):
+         as_of=2024-08-22 = earliest viable (window 2024-01-02..2024-08-21 fully in
+         manifest [2024-01-02, 2025-06-30]); total valid sample days in in_sample
+         range = 225.
+      5. PRR-20260421-1 claim refuted: original SQL aggregation (chunk metadata count)
+         did NOT model is_valid_sample_day filter. "Continuous from 2024-01-02" was
+         true at calendar-day granularity but FALSE at valid-sample-day granularity
+         for warmup gate purposes.
+      6. ESC-009 council ledger (docs/councils/COUNCIL-2026-04-27-ESC-009-AC8-amendment.md):
+         6/6 functional convergence APPROVE_D2_NARROW as_of=2024-08-22.
+    council_ref: docs/councils/COUNCIL-2026-04-27-ESC-009-AC8-amendment.md
+    authority: ESC-009 mini-council 6/6 functional convergence
+    pax_cosign_date: "2026-04-27 BRT"
+    pax_cosign_hash: "0305e456f072ff521ffd2dc8ce487b261b7111796bbe274318d4fd381359919c"
+
+  - revision_id: PRR-20260428-1
+    timestamp_brt: "2026-04-28T00:00:00-03:00"
+    from_version: "0.2.1"
+    to_version: "0.2.2"
+    breaking_fields:
+      - acceptance_criteria.AC8.invocation_literal  # story-level path (docs/stories/T002.0h.story.md L65); spec yaml data_splits.in_sample UNCHANGED
+    justification: |
+      ESC-010 mini-council 5/6 MAJORITY APPROVE_E2 (1 dissent E1 Dara — data integrity
+      stance, registered for transparency).
+
+      Beckett T11.bis #4 N4 empirical refutation 2026-04-28 BRT: AC8 amended invocation
+      literal `--smoke --in-sample-start 2024-08-22 --in-sample-end 2025-06-30` aborts
+      exit=1 in 2.892s because scripts/run_cpcv_dry_run.py:848 instantiates ONE
+      WarmUpGate shared between smoke + full phases; L865 derives
+      smoke_in_sample_start = max(in_sample_start, in_sample_end - 30d) = 2025-05-31
+      independent of --in-sample-start; default-path lookup sees as_of=2024-08-22 (last
+      write) and strict-equality check fails -> AC11 protective abort.
+
+      DIAGNOSTIC run_id 324c151fe42a49bbab6ec44d4fc2ff28 (no --smoke flag) PASSES strict
+      literal: exit=0, wall=4.596s, peak RSS 0.14 GiB, 5 artifacts persisted with
+      recorded sha256 prefixes (Beckett N4 report §4).
+
+      AC8 invocation literal narrowed: drop --smoke flag from gate execution surface.
+      AC11 protective abort REMAINS in spec (only the AC8 gating run is decoupled).
+      Long-term harness amendment (per-phase WarmUpGate dated paths, Aria E1) deferred
+      to T002.0h.1 successor story (non-blocking for T002.0h closure).
+
+      Spec yaml data_splits.in_sample (2024-07-01..2025-06-30) UNCHANGED. Patch bump
+      0.2.1 -> 0.2.2 reflects preregistration_revisions[] append only.
+
+      Anti-Article-IV Guard #5 (extended, ESC-009 honored): N4 empirical refutation =
+      authorization basis for E2, NOT retry. Singleton + default-path binding is a
+      HARNESS-LAYER fault outside T002.0h scope (Guard #4 + R15); successor story
+      T002.0h.1 spawned to address structurally.
+    data_constraint_evidence: |
+      1. Beckett N4 verbatim error log: "smoke phase failed; aborting full run per
+         AC11: warmup not satisfied for 2025-05-31: status=WARM_UP_FAILED;
+         reason=atr: stale as_of_date (file=2024-08-22, expected=2025-05-31)".
+      2. DIAGNOSTIC run artifacts persisted at
+         data/baseline-run/cpcv-dryrun-T002-N4-DIAG-NOSMOKE/ — 5 artifacts with
+         recorded sha256 prefixes (Beckett N4 report §4):
+         determinism_stamp.json, events_metadata.json, full_report.json,
+         full_report.md, telemetry.csv.
+      3. run_id 324c151fe42a49bbab6ec44d4fc2ff28 (deterministic from spec+window+seed,
+         Beckett N4 report L343).
+      4. ESC-010 council ledger §3 (council convergence Track A):
+         docs/councils/COUNCIL-2026-04-28-ESC-010-dual-track.md.
+      5. USER-ESCALATION-QUEUE.md ESC-010 entry (2026-04-28 BRT) — Track A
+         WarmUpGate singleton + default-path binding root cause documented.
+      6. ESC-009 council ledger Track A blind spot acknowledged in ESC-010 §1
+         (proceed-on-best-evidence honored; new evidence requires new council).
+    council_ref: docs/councils/COUNCIL-2026-04-28-ESC-010-dual-track.md
+    authority: ESC-010 mini-council 5/6 MAJORITY APPROVE_E2 + 1/6 dissent E1 (Dara — data integrity stance, registered)
+    pax_cosign_date: "2026-04-28 BRT"
+    pax_cosign_hash: "6fda5cbca92ac8d1cd2465b233dbe5bab2a2d423c8a48576a0bd92b9b60b81d8"
+
+  - revision_id: PRR-20260428-2
+    timestamp_brt: "2026-04-28T00:00:00-03:00"
+    from_version: "0.2.2"
+    to_version: "0.2.3"
+    breaking_fields:
+      - acceptance_criteria.AC8.sub_criterion_8_9.semantic_scope  # story-level path (docs/stories/T002.0h.story.md AC8.9); spec yaml UNCHANGED
+    justification: |
+      ESC-010 mini-council 6/6 functional convergence em F2 (AC8.9 redefinition stub-OK)
+      with binding F3 commitment + NEW §9 HOLD #2 armed (Riven custodial veto authority
+      exercised: "F2 SEM F3 commitment -> REJECT"; combined F2 + F3-commitment cleared).
+
+      Mira authority decisive ruling: AC8.9 "verdict in {GO, NO_GO}" tests PIPELINE
+      INTEGRITY (verdict computed without TIMEOUT/MEMORY_HALT, set membership
+      ∈ {GO, NO_GO}), NOT STRATEGY EDGE. Strategy edge validation is exclusive Phase F
+      with real make_backtest_fn + per-fold P126 rebuild — separate story (T002.1.bis)
+      gated by Riven + Mira §9 HOLD #2 cosign.
+
+      F2 formalizes explicitly ESC-009 condition #4 already adopted 6/6 (statistical
+      clearance for capital ramp DEFERRED to future story when upstream coverage /
+      real backtest_fn fixed). Phase F unblock is gated by NEW §9 HOLD #2 5 disarm
+      gates: T002.0h.1 PASS + T002.1.bis PASS + Beckett N5 PASS + Mira statistical
+      clearance + Riven dual-sign disarm.
+
+      AC8.9 amended text (story-level): "FullReport.KillDecision.verdict ∈ {GO, NO_GO}
+      (não TIMEOUT, não MEMORY_HALT). NOTE (PRR-20260428-2): AC8.9 verifies PIPELINE
+      INTEGRITY (engineering exit gate); strategy edge clearance via real
+      make_backtest_fn deferred to T002.1.bis + NEW §9 HOLD #2."
+
+      Spec yaml data_splits.in_sample (2024-07-01..2025-06-30) UNCHANGED. Patch bump
+      0.2.2 -> 0.2.3 reflects preregistration_revisions[] append only. Bonferroni
+      n_trials=5 PRESERVED (Mira ruling carry-forward from ESC-009 6/6).
+    data_constraint_evidence: |
+      1. Beckett N4 §4.2 stub-degenerate KillDecision over 45 path Sharpes ALL 0.0,
+         IC=0, PBO=0.5 default, DSR=0.5 default — synthetic-stub artifact, NOT
+         sample-size; proves degeneracy is architectural (stub).
+      2. cpcv_harness.py:707 verbatim comment: "T11 will swap in real per-fold
+         rebuild" — documents intentional stub state inherited from T002.0f-T3.
+      3. cpcv_harness.py:287-307 DEFERRED-T11 docstring (Aria architecture finding M1
+         2026-04-26) — make_backtest_fn neutral stub explicitly registered as
+         deferred work; per-fold P126 rebuild explicit deferral.
+      4. ESC-009 condition #4 (Mira authority) — statistical clearance for capital
+         ramp DEFERRED already adopted 6/6 (council ledger §7.2).
+      5. ESC-010 council ledger §3 (Track B: 4/6 F2 + 2/6 F3 with 6/6 functional
+         convergence on spawning T002.0h.1 + T002.1.bis) +
+         §4 (Riven custodial veto verbatim language preserved):
+         docs/councils/COUNCIL-2026-04-28-ESC-010-dual-track.md.
+      6. T002.1.bis successor story spawned (non-blocking; gated by NEW §9 HOLD #2
+         5 disarm gates per Riven custodial veto authority).
+    council_ref: docs/councils/COUNCIL-2026-04-28-ESC-010-dual-track.md
+    authority: ESC-010 mini-council 6/6 functional convergence F2-with-binding-F3-commitment + Riven custodial veto exercised
+    pax_cosign_date: "2026-04-28 BRT"
+    pax_cosign_hash: "e55b0d5f20b2eff39209d645366fe0282b24991e391d96686b7216bb88a12e56"
+
 # ----------------------------------------------------
 # N_TRIALS PRE-REGISTERED (Bonferroni calibration)
 # ----------------------------------------------------
