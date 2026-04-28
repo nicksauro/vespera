@@ -1,0 +1,2 @@
+timestamp_brt,phase,fold_idx,available_mib,available_gib,total_mib,peak_commit_mib,peak_commit_gib,soft_halt_threshold_gib,note
+2026-04-25T21:23:06,pre_flight_baseline,-1,7927,7.74,16349,0,0.00,6.00,baseline before any CPCV work; no harness available to execute folds

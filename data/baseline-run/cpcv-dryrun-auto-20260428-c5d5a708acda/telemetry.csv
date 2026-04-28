@@ -1,0 +1,10 @@
+timestamp_brt,rss_mb,vms_mb,cpu_pct,peak_commit_bytes,peak_wset_bytes,sample_size,duration_ms,fold_index,trial_id,phase,note
+2026-04-28T09:19:19,141.23,591.82,0.00,148090880,620568576,1,0,-1,,run_start,run_id=auto-20260428-c5d5a708acda;spec_sha=72261326d61d
+2026-04-28T09:19:19,141.25,591.87,0.00,148115456,620621824,2,0,-1,,init,poll
+2026-04-28T09:19:19,141.26,591.88,0.00,148123648,620630016,3,0,-1,,full:events_start,window=2024-08-22..2025-06-30
+2026-04-28T09:19:19,143.17,593.19,0.00,150122496,622002176,4,0,-1,,full:events_built,n_events=3800
+2026-04-28T09:19:19,143.20,593.19,0.00,150151168,622002176,5,0,-1,,full:fanout_start,"trials=['T1', 'T2', 'T3', 'T4', 'T5']"
+2026-04-28T09:19:20,143.83,593.32,0.00,150814720,622137344,6,0,-1,,full:fanout_complete,duration_ms=1464;total_results=225
+2026-04-28T09:19:20,143.99,593.57,0.00,150982656,622407680,7,0,-1,,full:report_complete,verdict=NO_GO;dsr=0.500000;pbo=0.500000
+2026-04-28T09:19:20,143.99,593.57,0.00,150986752,622407680,8,0,-1,,full_complete,verdict=NO_GO
+2026-04-28T09:19:20,143.99,593.57,0.00,150986752,622407680,9,0,-1,,run_end,halt_observed=False

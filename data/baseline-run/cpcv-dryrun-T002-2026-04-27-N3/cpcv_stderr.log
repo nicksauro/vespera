@@ -1,0 +1,5 @@
+ERROR: full phase failed: warmup not satisfied for 2024-07-01: status=WARM_UP_FAILED, reason=atr: stale as_of_date (file=2025-05-31, expected=2024-07-01); percentiles: stale as_of_date (file=2025-05-31, expected=2024-07-01)
+
+real	0m5.629s
+user	0m0.000s
+sys	0m0.015s

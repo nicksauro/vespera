@@ -1,0 +1,8 @@
+ERROR: smoke phase failed; aborting full run per AC11: docs\ml\research-log.md entry #3: YAML parse error — mapping values are not allowed here
+  in "<unicode string>", line 3, column 31:
+    varrer. Os cinco trials varrem: (a) sensitivity ao threshold d ... 
+                                  ^
+
+real	0m4.198s
+user	0m0.000s
+sys	0m0.015s

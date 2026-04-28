@@ -1,0 +1,12 @@
+timestamp_brt,rss_mb,vms_mb,cpu_pct,peak_commit_bytes,peak_wset_bytes,sample_size,duration_ms,fold_index,trial_id,phase,note
+2026-04-27T22:05:30,140.91,592.07,0.00,147750912,620830720,1,0,-1,,run_start,run_id=auto-20260427-d2098a3d865b;spec_sha=98f22f3c8cee
+2026-04-27T22:05:30,140.94,592.12,0.00,147787776,620888064,2,0,-1,,init,poll
+2026-04-27T22:05:30,140.95,592.13,0.00,147791872,620892160,3,0,-1,,smoke:events_start,window=2025-05-31..2025-06-30
+2026-04-27T22:05:30,141.57,592.39,0.00,148447232,621162496,4,0,-1,,smoke:events_built,n_events=360
+2026-04-27T22:05:30,141.64,592.39,0.00,148525056,621162496,5,0,-1,,smoke:fanout_start,"trials=['T1', 'T2', 'T3', 'T4', 'T5']"
+2026-04-27T22:05:32,142.43,592.39,0.00,149348352,621162496,6,0,-1,,smoke:fanout_complete,duration_ms=2038;total_results=225
+2026-04-27T22:05:32,142.66,592.39,0.00,149590016,621162496,7,0,-1,,smoke:report_complete,verdict=NO_GO;dsr=0.500000;pbo=0.500000
+2026-04-27T22:05:32,142.66,592.39,0.00,149594112,621162496,8,0,-1,,smoke_complete,verdict=NO_GO
+2026-04-27T22:05:32,142.66,592.39,0.00,149594112,621162496,9,0,-1,,full:events_start,window=2024-07-01..2025-06-30
+2026-04-27T22:05:32,142.66,592.39,0.00,149594112,621162496,10,0,-1,,full_failed,"warmup_or_pipeline: warmup not satisfied for 2024-07-01: status=WARM_UP_FAILED, reason=atr: stale as_of_date (file=2025-05-31, expected=2024-07-01); percentiles: stale as_of_date (file=2025-05-31, expected=2024-07-01)"
+2026-04-27T22:05:32,142.66,592.39,0.00,149594112,621162496,11,0,-1,,run_end,halt_observed=False

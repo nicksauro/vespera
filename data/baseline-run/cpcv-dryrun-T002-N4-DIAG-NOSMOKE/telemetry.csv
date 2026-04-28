@@ -1,0 +1,10 @@
+timestamp_brt,rss_mb,vms_mb,cpu_pct,peak_commit_bytes,peak_wset_bytes,sample_size,duration_ms,fold_index,trial_id,phase,note
+2026-04-28T08:47:46,141.37,591.95,0.00,148234240,620703744,1,0,-1,,run_start,run_id=T002-N4-DIAG-NOSMOKE;spec_sha=285ab7c47562
+2026-04-28T08:47:46,141.43,592.00,0.00,148295680,620756992,2,0,-1,,init,poll
+2026-04-28T08:47:46,141.43,592.00,0.00,148299776,620761088,3,0,-1,,full:events_start,window=2024-08-22..2025-06-30
+2026-04-28T08:47:46,143.23,593.26,0.00,150188032,622080000,4,0,-1,,full:events_built,n_events=3800
+2026-04-28T08:47:46,143.27,593.26,0.00,150233088,622080000,5,0,-1,,full:fanout_start,"trials=['T1', 'T2', 'T3', 'T4', 'T5']"
+2026-04-28T08:47:47,143.97,593.52,0.00,150966272,622354432,6,0,-1,,full:fanout_complete,duration_ms=1479;total_results=225
+2026-04-28T08:47:48,144.16,593.57,0.00,151158784,622403584,7,0,-1,,full:report_complete,verdict=NO_GO;dsr=0.500000;pbo=0.500000
+2026-04-28T08:47:48,144.16,593.57,0.00,151162880,622403584,8,0,-1,,full_complete,verdict=NO_GO
+2026-04-28T08:47:48,144.16,593.57,0.00,151162880,622403584,9,0,-1,,run_end,halt_observed=False
