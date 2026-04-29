@@ -65,6 +65,7 @@ import yaml    # noqa: E402
 from packages.t002_eod_unwind.adapters.exec_backtest import BacktestCosts  # noqa: E402
 from packages.t002_eod_unwind.cpcv_harness import (  # noqa: E402
     TRIALS_DEFAULT,
+    _build_daily_metrics_from_train_events,
     build_events_dataframe,
     make_backtest_fn,
     run_5_trial_fanout,
@@ -75,8 +76,10 @@ from packages.t002_eod_unwind.warmup.calendar_loader import (  # noqa: E402
 )
 from packages.t002_eod_unwind.warmup.gate import WarmUpGate  # noqa: E402
 from packages.t002_eod_unwind.warmup.percentiles_126d_builder import (  # noqa: E402
+    Percentiles126dBuilder,
     Percentiles126dState,
 )
+from packages.vespera_cpcv import CPCVSplit  # noqa: E402
 from packages.vespera_cpcv import BacktestRunner, CPCVConfig  # noqa: E402
 from packages.vespera_metrics import (  # noqa: E402
     FullReport,
@@ -683,20 +686,51 @@ def _load_costs(engine_config_path: Path) -> BacktestCosts:
     return BacktestCosts()  # deprecated defaults — docstring warned
 
 
+def _resolve_cost_atlas_path(engine_config_path: Path) -> Path | None:
+    """Resolve atlas YAML path from engine-config ``cost_atlas_ref.path``.
+
+    Quinn F1 (T002.1.bis): surfaces ``cost_atlas_sha256`` in
+    DeterminismStamp so the SHA-locked atlas v1.0.0 audit trail
+    (Riven T0d §11) is visible. Returns ``None`` when engine-config or
+    atlas YAML is missing — preserves test-fixture fallback behaviour.
+    """
+    if not engine_config_path.exists():
+        return None
+    try:
+        cfg = yaml.safe_load(engine_config_path.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, OSError):
+        return None
+    atlas_rel = (cfg or {}).get("cost_atlas_ref", {}).get("path")
+    if not atlas_rel:
+        return None
+    p = Path(atlas_rel)
+    if not p.is_absolute():
+        # engine-config canonical layout: repo_root/docs/backtest/engine-config.yaml
+        p = engine_config_path.resolve().parents[2] / p
+    return p if p.is_file() else None
+
+
 def _build_runner(
     spec_path: Path,
     engine_config_path: Path,
     seed: int,
     run_id: str,
+    *,
+    calendar_path: Path | None = None,
 ) -> BacktestRunner:
     """Construct BacktestRunner with full provenance for DeterminismStamp."""
     cfg = CPCVConfig.from_spec_yaml(spec_path, seed=seed)
+    cost_atlas_path = _resolve_cost_atlas_path(engine_config_path)
     return BacktestRunner(
         config=cfg,
         spec_path=spec_path,
         spec_version="0.2.0",
         simulator_version="cpcv-dry-run-T002.0f-T3",
         engine_config_path=engine_config_path if engine_config_path.exists() else None,
+        cost_atlas_path=cost_atlas_path,
+        rollover_calendar_path=(
+            calendar_path if calendar_path is not None and calendar_path.exists() else None
+        ),
     )
 
 
@@ -800,6 +834,7 @@ def _run_phase(
     as_of_date: date,
     warmup_atr_cli: Path = _DEFAULT_ATR_PATH,
     warmup_percentiles_cli: Path = _DEFAULT_PERCENTILES_PATH,
+    calendar_path: Path = _DEFAULT_CALENDAR_PATH,
 ) -> tuple[FullReport, Any, dict[str, Any]]:
     """Execute one phase (smoke or full): events → fan-out → report.
 
@@ -867,15 +902,64 @@ def _run_phase(
 
     poller.write_event(phase=f"{label}:events_built", note=f"n_events={n_events}")
 
-    # Cost atlas + per-fold P126 stub state (T11 will swap in real per-fold rebuild).
+    # Cost atlas + per-fold P126 rebuild via backtest_fn_factory.
     # T002.0g Guard #1: NO neutral fallback — _load_warmup_state raises if missing/corrupt.
     # T002.0h.1 AC2 — `pct_path` is the phase-local dated percentiles path
     # resolved above (default → dated; operator override honoured verbatim).
+    # T002.1.bis — per Aria T0b APPROVE_OPTION_B (DEFERRED-T11 M1 fix), each
+    # fold receives its own ``Percentiles126dState`` rebuilt from the fold's
+    # train slice (``as_of_date == first_test_session_of_fold`` per Mira
+    # spec §3.1 anti-leak invariant). The cached warmup state at ``pct_path``
+    # is the global-window baseline (Beckett N5 backward compat / fallback);
+    # the factory below uses the **fold-local** rebuild for the engine
+    # per-fold dispatch, but falls back to the global state when the fold
+    # train slice is too small (< 126 valid days) so smoke runs over short
+    # windows still execute end-to-end.
     costs = _load_costs(engine_config_path)
-    p126 = _load_warmup_state(pct_path)
-    backtest_fn = make_backtest_fn(costs, calendar, p126)
+    p126_global = _load_warmup_state(pct_path)
+    p126_builder = Percentiles126dBuilder(calendar)
 
-    runner = _build_runner(spec_path, engine_config_path, seed, run_id)
+    def _backtest_fn_factory(split: CPCVSplit, train_events):
+        """Per-fold factory — rebuilds P126 from THIS fold's train slice.
+
+        Per Aria T0b APPROVE_OPTION_B + Mira spec §3.1 + §6.1:
+          1. Reduce ``train_events`` to per-day ``DailyMetrics`` via
+             ``_build_daily_metrics_from_train_events`` (fold-local).
+          2. ``as_of_date`` = first session of fold's TEST slice (D-1
+             anti-leak invariant — Mira spec §3.4).
+          3. Rebuild ``Percentiles126dState`` via ``Percentiles126dBuilder.build``.
+             When the fold has < 126 valid days (smoke / short windows),
+             fall back to the global cached state — preserves N5 wall-time
+             baseline + Beckett T0c projection.
+          4. Wrap the existing pure ``make_backtest_fn`` closure with
+             fold-local state.
+        """
+        # 1. Per-day metrics (fold-local, anchored to split.path_id for
+        # determinism + cross-fold distinguishability).
+        metrics = _build_daily_metrics_from_train_events(
+            train_events, seed_anchor=split.path_id
+        )
+        # 2. as_of_date = min(test_events.session) per Mira §3.4 D-1 invariant.
+        if "session" in split.test_events.columns and len(split.test_events) > 0:
+            as_of_date = min(split.test_events["session"])
+        else:
+            as_of_date = p126_global.as_of_date
+        # 3. Rebuild P126 — fall back to global state when train slice is
+        # too small (< 126 valid days; common in --smoke runs).
+        try:
+            fold_p126 = p126_builder.build(
+                metrics=metrics,
+                as_of_date=as_of_date,
+                now_brt=p126_global.computed_at_brt,
+            )
+        except ValueError:
+            fold_p126 = p126_global
+        # 4. Per-fold closure bound to fold-local state.
+        return make_backtest_fn(costs, calendar, fold_p126)
+
+    runner = _build_runner(
+        spec_path, engine_config_path, seed, run_id, calendar_path=calendar_path
+    )
 
     # Per AC8 — check the halt flag between phase boundaries; this gives
     # the poller a chance to surface 6 GiB before kicking off the heavy
@@ -888,7 +972,11 @@ def _run_phase(
     poller.set_phase(f"{label}:fanout")
     poller.write_event(phase=f"{label}:fanout_start", note=f"trials={list(TRIALS_DEFAULT)}")
     t_fanout_start = time.monotonic()
-    cpcv_results = run_5_trial_fanout(events, backtest_fn, runner)
+    cpcv_results = run_5_trial_fanout(
+        events,
+        runner=runner,
+        backtest_fn_factory=_backtest_fn_factory,
+    )
     fanout_ms = int((time.monotonic() - t_fanout_start) * 1000)
     poller.write_event(
         phase=f"{label}:fanout_complete",
@@ -1050,6 +1138,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     as_of_date=smoke_start,
                     warmup_atr_cli=args.warmup_atr,
                     warmup_percentiles_cli=args.warmup_percentiles,
+                    calendar_path=args.calendar,
                 )
             except Exception as exc:  # noqa: BLE001 — must abort full per AC11
                 # Per AC11 — smoke failure aborts full run; reason logged.
@@ -1099,6 +1188,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 as_of_date=in_sample_start,
                 warmup_atr_cli=args.warmup_atr,
                 warmup_percentiles_cli=args.warmup_percentiles,
+                calendar_path=args.calendar,
             )
         except RuntimeError as exc:
             # Warmup failures (assert_warmup_satisfied) bubble as RuntimeError.

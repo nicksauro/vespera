@@ -111,22 +111,35 @@ class BacktestRunner:
     def run(
         self,
         events: pd.DataFrame,
-        backtest_fn: Callable[[pd.DataFrame, pd.DataFrame, CPCVSplit], BacktestResult],
+        backtest_fn: Callable[[pd.DataFrame, pd.DataFrame, CPCVSplit], BacktestResult] | None = None,
         *,
+        backtest_fn_factory: Callable[
+            [CPCVSplit, pd.DataFrame],
+            Callable[[pd.DataFrame, pd.DataFrame, CPCVSplit], BacktestResult],
+        ] | None = None,
         determinism: DeterminismStamp | None = None,
         run_id: str | None = None,
     ) -> list[BacktestResult]:
         """Drive the engine over ``events``, returning ordered results.
 
+        Forwards EXACTLY ONE of ``backtest_fn`` (static closure) or
+        ``backtest_fn_factory`` (per-fold factory; T002.1.bis DEFERRED-T11
+        M1 fix per Aria T0b APPROVE_OPTION_B). Mutual-exclusivity is
+        enforced by ``CPCVEngine.run``.
+
         If ``determinism`` is None, a fresh stamp is built from
         ``build_determinism_stamp(events)`` and INJECTED into each result
         via ``dataclasses.replace`` so the per-run audit trail is uniform
-        across folds.
+        across folds — preserved verbatim under both paths.
         """
         if determinism is None:
             determinism = self.build_determinism_stamp(events, run_id=run_id)
 
-        raw_results = self._engine.run(events, backtest_fn=backtest_fn)
+        raw_results = self._engine.run(
+            events,
+            backtest_fn=backtest_fn,
+            backtest_fn_factory=backtest_fn_factory,
+        )
         # Inject the per-run stamp uniformly (idempotent if backtest_fn already set it).
         stamped: list[BacktestResult] = []
         for r in raw_results:
