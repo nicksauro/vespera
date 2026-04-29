@@ -724,8 +724,8 @@ def _build_runner(
     return BacktestRunner(
         config=cfg,
         spec_path=spec_path,
-        spec_version="0.2.0",
-        simulator_version="cpcv-dry-run-T002.0f-T3",
+        spec_version="T002-v0.2.3",
+        simulator_version="cpcv-dry-run-T002.1.bis-T1",
         engine_config_path=engine_config_path if engine_config_path.exists() else None,
         cost_atlas_path=cost_atlas_path,
         rollover_calendar_path=(
