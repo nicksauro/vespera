@@ -113,14 +113,119 @@ TELEMETRY_COLUMNS: tuple[str, ...] = (
 )
 
 # Default file paths used when caller omits --warmup-* overrides.
+#
 # T002.0g AC6 atomic path lift (Aria + Beckett T0) — canonical state/T002/
 # replaces legacy data/warmup/. R15 non-breaking — overridable via
 # --warmup-atr / --warmup-percentiles. Resolves T002.0f T11 finding HIGH
 # (path mismatch between materializer output and harness consumer).
+#
+# T002.0h.1 AC2 (E1 harness amendment) — these constants are now **CLI
+# affordance only**. WarmUpGate semantics resolve via the dated path
+# helpers ``_dated_atr_path`` / ``_dated_percentiles_path`` per-phase.
+# When the operator omits ``--warmup-atr`` / ``--warmup-percentiles``,
+# these defaults are detected as the legacy sentinels and substituted
+# for the per-phase dated paths inside ``_run_phase``. When the operator
+# explicitly passes a non-default override, it is honoured verbatim
+# (operator authority for ad-hoc state files). See Aria T1 design memo
+# in docs/stories/T002.0h.1.story.md.
 _DEFAULT_ATR_PATH = Path("state/T002/atr_20d.json")
 _DEFAULT_PERCENTILES_PATH = Path("state/T002/percentiles_126d.json")
 _DEFAULT_CALENDAR_PATH = Path("config/calendar/2024-2027.yaml")
 _DEFAULT_ENGINE_CONFIG = Path("docs/backtest/engine-config.yaml")
+
+# T002.0h.1 AC2 — canonical state directory + cache_audit consumer file.
+_STATE_DIR = Path("state/T002")
+_CACHE_AUDIT_FILENAME = "cache_audit.jsonl"
+
+
+def _dated_atr_path(as_of_date: date) -> Path:
+    """Canonical ATR_20d state path bound to a specific ``as_of_date``.
+
+    Returns ``state/T002/atr_20d_{as_of}.json`` matching the producer-side
+    naming convention in ``scripts/run_warmup_state.py`` (per-as_of dated
+    outputs). This is the canonical lookup for ``WarmUpGate`` per-phase
+    semantics (T002.0h.1 AC2). The legacy ``_DEFAULT_ATR_PATH`` is retained
+    as CLI affordance only and is NOT used by the gate under default
+    invocation.
+    """
+    return _STATE_DIR / f"atr_20d_{as_of_date.isoformat()}.json"
+
+
+def _dated_percentiles_path(as_of_date: date) -> Path:
+    """Canonical Percentiles_126d state path bound to a specific ``as_of_date``.
+
+    Returns ``state/T002/percentiles_126d_{as_of}.json`` matching the
+    producer-side naming convention in ``scripts/run_warmup_state.py``.
+    Canonical lookup for ``WarmUpGate`` per-phase semantics (T002.0h.1 AC2).
+    Legacy ``_DEFAULT_PERCENTILES_PATH`` retained as CLI affordance only.
+    """
+    return _STATE_DIR / f"percentiles_126d_{as_of_date.isoformat()}.json"
+
+
+def _resolve_warmup_path(cli_arg: Path, dated_default: Path) -> Path:
+    """Resolve effective warmup path for per-phase ``WarmUpGate``.
+
+    Per Aria T1 design memo §1: if the caller passed the legacy default
+    constant (i.e., omitted the override on the CLI), substitute the
+    dated default for the phase. Otherwise honour the operator override
+    verbatim (preserves CLI affordance for ad-hoc operator runs with
+    hand-crafted state files).
+
+    Invariant — gate semantics MUST resolve to the dated path on default
+    invocation; operator-override path MUST be honoured verbatim. This
+    detection is by *path equality*: the argparse default sentinels are
+    ``_DEFAULT_ATR_PATH`` / ``_DEFAULT_PERCENTILES_PATH``.
+    """
+    if cli_arg in (_DEFAULT_ATR_PATH, _DEFAULT_PERCENTILES_PATH):
+        return dated_default
+    return cli_arg
+
+
+def _append_consumer_cache_audit(
+    audit_dir: Path,
+    *,
+    as_of: date,
+    phase: str,
+    status: str,
+    expected_key: dict[str, str] | None,
+    found_key: dict[str, str] | None,
+    note: str = "",
+) -> None:
+    """Append a consumer-side ``cache_audit.jsonl`` entry tagged with ``phase``.
+
+    T002.0h.1 AC3 — consumer-side audit emission tagged with phase
+    (``"smoke" | "full"``). The producer-side ``_append_cache_audit`` in
+    ``scripts/run_warmup_state.py`` is **untouched** (Aria memo §3 — keep
+    producer schema canonical, consumer audit is a separate enrichment).
+
+    Schema (additive ``phase`` field; existing fields preserved verbatim):
+        ``{computed_at_brt, as_of_date, status, expected_key, found_key,
+        note, phase}``
+
+    ``status`` for consumer entries is by convention ``"consumer_check"``
+    (does not collide with producer enum ``{hit, miss, stale, write,
+    force_rebuild}``). Best-effort append — IO failure logs nothing and
+    continues (audit is observability, NOT a correctness contract).
+    """
+    entry = {
+        "computed_at_brt": datetime.now().isoformat(timespec="seconds"),
+        "as_of_date": as_of.isoformat(),
+        "status": status,
+        "expected_key": expected_key,
+        "found_key": found_key,
+        "note": note,
+        "phase": phase,
+    }
+    audit_path = audit_dir / _CACHE_AUDIT_FILENAME
+    try:
+        audit_path.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(entry, sort_keys=True, separators=(",", ":"))
+        with audit_path.open("a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+    except OSError:
+        # Best-effort write per producer-side convention; audit is
+        # observability-only and must never break the gate decision.
+        pass
 
 
 # =====================================================================
@@ -510,6 +615,17 @@ def _load_warmup_state(percentiles_path: Path) -> Percentiles126dState:
         Dex MUST NOT improvise neutral PercentilesState fallback if
         parquet missing — escalate (resolves Beckett T11 issue #3).
 
+    T002.0h.1 AC2 — under per-phase usage the ``percentiles_path`` arg
+    is now phase-specific dated path resolved from ``as_of_date`` (e.g.,
+    ``state/T002/percentiles_126d_2024-08-22.json`` for full phase or
+    ``state/T002/percentiles_126d_2025-05-31.json`` for smoke phase),
+    NOT the legacy default-path singleton. Function semantics are
+    UNCHANGED — only the path argument value changes per phase. The
+    triple-key cache contract (Mira AC9) is preserved per-phase via the
+    sidecar ``_cache_key_{as_of}.json`` validated upstream by the
+    producer; consumer-side this function only deserializes the dated
+    state file and raises fail-closed on missing/corrupt.
+
     The prior implementation silently fell back to neutral bands
     (p20=1.0/p60=2.0/p80=3.0) when the file was missing OR when
     deserialization failed. That fallback is REMOVED — both failure
@@ -678,17 +794,64 @@ def _run_phase(
     in_sample_start: date,
     in_sample_end: date,
     calendar: CalendarData,
-    warmup_gate: WarmUpGate,
     seed: int,
     run_id: str,
     poller: MemoryPoller,
-    warmup_percentiles_path: Path = _DEFAULT_PERCENTILES_PATH,
+    as_of_date: date,
+    warmup_atr_cli: Path = _DEFAULT_ATR_PATH,
+    warmup_percentiles_cli: Path = _DEFAULT_PERCENTILES_PATH,
 ) -> tuple[FullReport, Any, dict[str, Any]]:
     """Execute one phase (smoke or full): events → fan-out → report.
+
+    T002.0h.1 AC1 / AC2 — per-phase ``WarmUpGate`` ownership semantics.
+    Each call constructs its **own** ``WarmUpGate`` instance bound to the
+    dated path resolved from ``as_of_date`` (smoke and full are independent
+    gate decisions, never share the same gate instance). This eliminates
+    the Track A structural defect surfaced by Beckett N4 (singleton at the
+    legacy ``:848`` site forced both phases to share the same default
+    path → strict-equality false-failure when smoke and full required
+    distinct as_of dates).
+
+    The CLI override sentinels (``warmup_atr_cli`` / ``warmup_percentiles_cli``)
+    are routed through ``_resolve_warmup_path`` — when they equal the
+    legacy default constants, dated paths from ``_dated_*_path(as_of_date)``
+    are used; otherwise the operator override is honoured verbatim
+    (CLI affordance preserved).
+
+    Per AC3, this function emits a consumer-side ``cache_audit.jsonl``
+    entry tagged with ``phase ∈ {"smoke", "full"}`` (additive enrichment;
+    producer-side schema and triple-key contract untouched).
+
+    Per AC7 / AC9 — ``_load_warmup_state`` semantics are NOT modified;
+    only the path bound to the gate changes (default → dated). Gate
+    strict-equality fail-closed semantics in ``WarmUpGate._check_file``
+    are preserved verbatim.
 
     Returns ``(full_report, determinism_stamp, events_metadata)``. Raises
     on any failure; caller maps to exit code 1 (HALT) per AC8/AC11.
     """
+    # T002.0h.1 AC1 — construct phase-local WarmUpGate against dated paths.
+    atr_path = _resolve_warmup_path(warmup_atr_cli, _dated_atr_path(as_of_date))
+    pct_path = _resolve_warmup_path(
+        warmup_percentiles_cli, _dated_percentiles_path(as_of_date)
+    )
+    warmup_gate = WarmUpGate(atr_path, pct_path)
+
+    # T002.0h.1 AC3 — consumer-side audit entry (additive `phase` field).
+    # Best-effort write — observability only; never affects gate decision.
+    _append_consumer_cache_audit(
+        _STATE_DIR,
+        as_of=as_of_date,
+        phase=label,
+        status="consumer_check",
+        expected_key=None,
+        found_key=None,
+        note=(
+            f"atr={atr_path.as_posix()};pct={pct_path.as_posix()};"
+            f"window={in_sample_start.isoformat()}..{in_sample_end.isoformat()}"
+        ),
+    )
+
     poller.set_phase(f"{label}:events")
     poller.write_event(phase=f"{label}:events_start", note=f"window={in_sample_start}..{in_sample_end}")
 
@@ -706,8 +869,10 @@ def _run_phase(
 
     # Cost atlas + per-fold P126 stub state (T11 will swap in real per-fold rebuild).
     # T002.0g Guard #1: NO neutral fallback — _load_warmup_state raises if missing/corrupt.
+    # T002.0h.1 AC2 — `pct_path` is the phase-local dated percentiles path
+    # resolved above (default → dated; operator override honoured verbatim).
     costs = _load_costs(engine_config_path)
-    p126 = _load_warmup_state(warmup_percentiles_path)
+    p126 = _load_warmup_state(pct_path)
     backtest_fn = make_backtest_fn(costs, calendar, p126)
 
     runner = _build_runner(spec_path, engine_config_path, seed, run_id)
@@ -839,13 +1004,18 @@ def main(argv: Optional[list[str]] = None) -> int:
         )
         return int(se.code) if isinstance(se.code, int) else 2
 
-    # ---------- Calendar + warmup gate (shared across phases) ----------
+    # ---------- Calendar (shared across phases) ----------
     try:
         calendar = CalendarLoader.load(args.calendar)
     except (FileNotFoundError, ValueError) as exc:
         print(f"ERROR: calendar load failed: {exc}", file=sys.stderr)
         return 1
-    warmup_gate = WarmUpGate(args.warmup_atr, args.warmup_percentiles)
+
+    # T002.0h.1 AC1 — NO shared WarmUpGate singleton at this site. Each
+    # ``_run_phase`` call constructs its own phase-local gate against
+    # dated paths derived from the phase-specific ``as_of_date`` (smoke =
+    # max(in_sample_start, in_sample_end - 30d); full = in_sample_start).
+    # Track A structural defect (Beckett N4 root-cause `:848`) eliminated.
 
     # ---------- AC8 — psutil poller (daemon thread, telemetry CSV) ----------
     soft_cap_bytes = int(args.mem_soft_cap_gb * 1024**3)
@@ -864,6 +1034,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         if args.smoke:
             smoke_start = max(in_sample_start, in_sample_end - timedelta(days=DEFAULT_SMOKE_DAYS))
             try:
+                # T002.0h.1 AC1 — smoke phase derives as_of = smoke_start
+                # and constructs its own WarmUpGate against
+                # ``_dated_*_path(smoke_start)`` (e.g., 2025-05-31).
                 smoke_report, smoke_stamp, smoke_meta = _run_phase(
                     label="smoke",
                     spec_path=args.spec,
@@ -871,11 +1044,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                     in_sample_start=smoke_start,
                     in_sample_end=in_sample_end,
                     calendar=calendar,
-                    warmup_gate=warmup_gate,
                     seed=args.seed,
                     run_id=run_id,
                     poller=poller,
-                    warmup_percentiles_path=args.warmup_percentiles,
+                    as_of_date=smoke_start,
+                    warmup_atr_cli=args.warmup_atr,
+                    warmup_percentiles_cli=args.warmup_percentiles,
                 )
             except Exception as exc:  # noqa: BLE001 — must abort full per AC11
                 # Per AC11 — smoke failure aborts full run; reason logged.
@@ -909,6 +1083,9 @@ def main(argv: Optional[list[str]] = None) -> int:
 
         # ---------- Full run ----------
         try:
+            # T002.0h.1 AC1 — full phase derives as_of = in_sample_start
+            # and constructs its own WarmUpGate against
+            # ``_dated_*_path(in_sample_start)`` (e.g., 2024-08-22).
             full_report, full_stamp, full_meta = _run_phase(
                 label="full",
                 spec_path=args.spec,
@@ -916,11 +1093,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                 in_sample_start=in_sample_start,
                 in_sample_end=in_sample_end,
                 calendar=calendar,
-                warmup_gate=warmup_gate,
                 seed=args.seed,
                 run_id=run_id,
                 poller=poller,
-                warmup_percentiles_path=args.warmup_percentiles,
+                as_of_date=in_sample_start,
+                warmup_atr_cli=args.warmup_atr,
+                warmup_percentiles_cli=args.warmup_percentiles,
             )
         except RuntimeError as exc:
             # Warmup failures (assert_warmup_satisfied) bubble as RuntimeError.

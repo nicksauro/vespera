@@ -249,7 +249,7 @@
     "n_trials_source": "docs/ml/research-log.md@69d97aeea2276370a797a5f32dabde6a6ad7261e",
     "seed_bootstrap": 42,
     "spec_version": "T002-v0.2.3",
-    "computed_at_brt": "2026-04-28T20:34:23"
+    "computed_at_brt": "2026-04-28T20:34:21"
   },
   "kill_decision": {
     "verdict": "NO_GO",

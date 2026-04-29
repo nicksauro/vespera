@@ -297,6 +297,106 @@ preregistration_revisions:
     pax_cosign_date: "2026-04-28 BRT"
     pax_cosign_hash: "e55b0d5f20b2eff39209d645366fe0282b24991e391d96686b7216bb88a12e56"
 
+  - revision_id: PRR-20260428-3
+    timestamp_brt: "2026-04-28T20:34:23-03:00"
+    from_version: "0.2.3"
+    to_version: "0.2.4"
+    breaking_fields:
+      - acceptance_criteria.AC8.invocation_literal  # story-level path (docs/stories/T002.0h.story.md L65); spec yaml UNCHANGED
+    justification: |
+      T002.0h.1 PASS strict-literal closes Track A (E1 successor) of ESC-010 dual-track:
+      Dex T2 commit 6a78b88 (E1 per-phase WarmUpGate + dated path resolvers AC1-AC10) +
+      Quinn T3-T4 PASS 7/7 quality checks (`docs/qa/gates/T002.0h.1-qa-gate.md` —
+      589 + 4 skip + 1 deselect `not slow`; 590 + 4 skip slow-incl; ruff clean;
+      0 mypy regressions) + Beckett N+1 PASS strict-literal 10/10 sub-criteria
+      (`docs/backtest/T002-beckett-t11-bis-smoke-report-N+1-2026-04-28.md` —
+      run_id cpcv-dryrun-auto-20260428-c5d5a708acda, exit=0, wall 3.910s inner /
+      7.489s outer, 5 artifacts run root + 4 artifacts smoke subdir, KillDecision
+      verdict NO_GO ∈ {GO, NO_GO} stub-OK per F2 redef PRR-20260428-2).
+
+      Empirical demonstration AC8 invocation literal RESTORED with --smoke flag:
+
+        python scripts/run_cpcv_dry_run.py
+          --spec docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml
+          --dry-run --smoke
+          --in-sample-start 2024-08-22 --in-sample-end 2025-06-30
+
+      → exit 0; smoke + full ambos PASS; smoke phase reads dated path
+      `state/T002/atr_20d_2025-05-31.json` + `state/T002/percentiles_126d_2025-05-31.json`
+      (smoke as_of=2025-05-31); full phase reads `state/T002/atr_20d_2024-08-22.json` +
+      `state/T002/percentiles_126d_2024-08-22.json` (full as_of=in_sample_start=2024-08-22);
+      cache_audit.jsonl emits 2 phase-tagged consumer_check entries (smoke first, full
+      second per AC10/AC11 ordering).
+
+      PRR-20260428-1 (E2 narrowing — drop --smoke from AC8 invocation literal) becomes
+      SUPERSEDED — no longer required since per-phase WarmUpGate + dated path resolvers
+      decouple smoke/full as_of bindings architecturally without invocation literal
+      narrowing. E2 was short-term workaround under ESC-010 5/6 MAJORITY APPROVE_E2 +
+      Dara E1 dissent carry-forward; E1 is the structurally correct fix per Aria/Dara
+      design (T002.0h.1 successor story closure).
+
+      AC8 invocation literal canonical (post-T002.0h.1 PASS):
+
+        python scripts/run_cpcv_dry_run.py
+          --spec docs/ml/specs/T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml
+          --dry-run --smoke
+          --in-sample-start 2024-08-22 --in-sample-end 2025-06-30
+
+      PRR-20260428-2 (F2 — AC8.9 PIPELINE INTEGRITY redef stub-OK) REMAINS in effect —
+      pipeline integrity vs strategy edge dichotomy independent of Track A E1 fix.
+      Strategy edge clearance via real make_backtest_fn deferred to T002.1.bis
+      (Gate 2 of §9 HOLD #2 disarm chain).
+
+      Spec yaml `data_splits.in_sample` (2024-07-01..2025-06-30) UNCHANGED. Patch bump
+      0.2.3 -> 0.2.4 reflects preregistration_revisions[] append only. Bonferroni
+      n_trials=5 PRESERVED across all 5 disarm gates per Mira ML statistical authority
+      ruling (carry-forward from ESC-009 6/6 + ESC-010 6/6). Hold-out lock
+      [2025-07-01, 2026-04-21] UNTOUCHED.
+
+      §9 HOLD #2 Gate 1 of 5 CLEARED engineering layer (T002.0h.1 PASS); awaits Riven
+      custodial dual-sign formal disarm + Mira ML co-sign on Gate 1. Gates 2-5 remain
+      pending downstream: T002.1.bis + Beckett N6 + Mira statistical clearance + Riven
+      dual-sign final disarm.
+    data_constraint_evidence: |
+      1. Dex T2 commit `6a78b88` "feat(t002.0h.1): E1 per-phase WarmUpGate + dated path
+         resolvers (AC1-AC10)" — `scripts/run_cpcv_dry_run.py` per-phase WarmUpGate
+         instantiated inside `_run_phase` (singleton at L848 REMOVED per Anti-Article-IV
+         Guard #1); `_dated_atr_path` + `_dated_percentiles_path` + `_resolve_warmup_path`
+         + `_append_consumer_cache_audit` helpers added; legacy `_DEFAULT_*_PATH`
+         retained as CLI affordance only.
+      2. Quinn T3-T4 QA gate PASS 7/7 — `docs/qa/gates/T002.0h.1-qa-gate.md`:
+         5 new tests `tests/scripts/test_run_cpcv_dry_run_per_phase.py` PASS
+         (3.07s wall); full regression 589 passed + 4 skipped + 1 deselected
+         (`not slow`); 590 + 4 skipped slow-incl (333.04s); ruff clean across all
+         modified files; zero new mypy regressions.
+      3. Beckett N+1 strict-literal report `docs/backtest/T002-beckett-t11-bis-smoke-report-N+1-2026-04-28.md`:
+         AC9 sub-criteria 10/10 PASS — exit=0; wall 3.910s inner / 7.489s outer
+         (vs 90s envelope = ≥12× headroom); smoke as_of=2025-05-31 + full as_of=2024-08-22
+         both bind correctly via dated paths; cache_audit.jsonl lines 3-4 phase-tagged
+         (smoke first 20:34:19 then full 20:34:21); 5/5 artifacts run root + 4/4 smoke
+         subdir + shared telemetry.csv (telemetry written once at run-level by
+         MemoryPoller per `persist_artifacts` docstring contract); KillDecision verdict
+         NO_GO smoke + NO_GO full (stub-degenerate per F2 redef — pipeline integrity
+         validated end-to-end, strategy edge deferred to T002.1.bis).
+      4. ESC-010 mini-council 6/6 functional convergence (Track A 5/6 MAJORITY APPROVE_E2
+         + Dara E1 dissent carry-forward as governance entity via T002.0h.1 successor;
+         Track B 6/6 F2-with-binding-F3-commitment + NEW §9 HOLD #2 armed):
+         `docs/councils/COUNCIL-2026-04-28-ESC-010-dual-track.md`. T002.0h.1 = Track A
+         E1 successor closure (Dara dissent carry-forward honored architecturally).
+      5. PRR-20260428-1 disposition trail: original revision_id PRR-20260428-1 +
+         pax_cosign_hash `6fda5cbca92ac8d1cd2465b233dbe5bab2a2d423c8a48576a0bd92b9b60b81d8`
+         remains immutable in spec yaml `preregistration_revisions[]` per R15 append-only
+         invariant. PRR-20260428-3 (this revision) records SUPERSEDED disposition
+         downstream (revision_id-based supersession chain — historical record preserved).
+      6. T002.0h.1 story file `docs/stories/T002.0h.1.story.md` Status InReview → Done
+         transition cosigned by Pax T6 2026-04-28 BRT (`story-lifecycle.md` Phase 4
+         authority — PO transition + R15 PRR amendment + 10-point gate post-impl
+         re-validation).
+    council_ref: docs/councils/COUNCIL-2026-04-28-ESC-010-dual-track.md
+    authority: T002.0h.1 PASS (Dex 6a78b88 + Quinn T3-T4 7/7 + Beckett N+1 10/10) + Pax T6 cosign + ESC-010 Track A E1 successor closure
+    pax_cosign_date: "2026-04-28 BRT"
+    pax_cosign_hash: "89f0e98cfe29f77d80b005e0460b779b03f011b21575364b9e9c2161e4876ba7"
+
 # ----------------------------------------------------
 # N_TRIALS PRE-REGISTERED (Bonferroni calibration)
 # ----------------------------------------------------

@@ -46,6 +46,27 @@ class WarmUpGate:
     """
 
     def __init__(self, atr_path: Path, percentiles_path: Path) -> None:
+        """Bind the gate to a specific pair of warm-up state files.
+
+        T002.0h.1 AC10 — under per-phase usage (callers in
+        ``scripts/run_cpcv_dry_run.py::_run_phase``), the constructor
+        expects **dated paths** resolved from a phase-specific
+        ``as_of_date`` (e.g., ``state/T002/percentiles_126d_2024-08-22.json``
+        for full phase, ``state/T002/percentiles_126d_2025-05-31.json``
+        for smoke phase). Each ``_run_phase`` call constructs its own
+        ``WarmUpGate`` instance — never share an instance across phases
+        with different as_of expectations.
+
+        The legacy default-path constants
+        (``scripts/run_cpcv_dry_run.py::_DEFAULT_ATR_PATH`` /
+        ``_DEFAULT_PERCENTILES_PATH``) are retained as **CLI affordance
+        only** (operator-friendly default for ad-hoc invocations); gate
+        semantics resolve via the dated path helpers
+        ``_dated_atr_path`` / ``_dated_percentiles_path`` per AC2. Strict
+        equality of the file's ``as_of_date`` field with the
+        ``as_of_date`` argument to ``check()`` (per ``_check_file``)
+        is the fail-closed invariant — preserved verbatim by E1.
+        """
         self._atr_path = atr_path
         self._percentiles_path = percentiles_path
 

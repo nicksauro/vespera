@@ -72,8 +72,9 @@ ESC-009 6/6 council (Aria + Mira + Pax + Beckett + Riven + Dara) modelou cuidado
 - [x] T002.0h.1 + T002.1.bis spawn (stub headers; @sm formal drafts downstream)
 - [x] Beckett N5 re-run (post Pax cosign; cache `as_of=2024-08-22` already exists — no precompute needed) — PASS strict-literal 9/9; report `docs/backtest/T002-beckett-t11-bis-smoke-report-N5-2026-04-28.md` (run_id 50c4fe32...)
 - [x] Riven §9 HOLD #1 clear + §9 HOLD #2 arm (Riven custodial 2026-04-28 BRT + **Mira ML statistical authority dual-sign COMPLETE 2026-04-28 BRT** — Gate 4 criteria DSR>0.95 + PBO<0.5 + IC decay ratified per Bailey-LdP 2014 §3+§6 and BBLP 2014 §3; Bonferroni n_trials=5 preserved across all 5 disarm gates; anti-leak invariants preserved; hold-out lock UNTOUCHED) — appended to `docs/qa/gates/T002.0g-riven-cosign.md` 2026-04-28 BRT
-- [ ] Sable audit (Q-SDC Phase G — coherence post-N5)
-- [ ] Gage push (autonomous mode, R12 user-gated)
+- [x] Sable audit (Q-SDC Phase G — coherence post-N5) — `docs/audits/AUDIT-2026-04-28-T002.0h-ESC-010-coherence.md` READY FOR GAGE PUSH; 0 critical, 2 moderate findings → backlog housekeeping (non-blocking)
+- [x] Gage push (autonomous mode) — **PR #6 merged to main 2026-04-28 BRT** under mini-council 3/3 UNANIMOUS APPROVE_AUTO_MERGE (Pax + Riven + Sable). Merge SHA `8b644d5655e1dee9409e993718881100e16c3a52`. CI 4/4 PASS pre-merge. Branch `t002-1-warmup-impl-126d` preserved (--delete-branch=false). §9 HOLD #2 capital-ramp barrier remains ARMED (5 disarm gates still pending). Article II + autonomous mode mandate.
+- [x] **T002.0h.1 PASS — Track A E1 successor closure** (engineering Gate 1 of 5 of §9 HOLD #2 disarm chain CLEARED engineering layer 2026-04-28 BRT). Dex T2 commit `6a78b88` (E1 per-phase WarmUpGate + dated path resolvers AC1-AC10) + Quinn T3-T4 PASS 7/7 (`docs/qa/gates/T002.0h.1-qa-gate.md`) + Beckett N+1 PASS 10/10 strict-literal (`docs/backtest/T002-beckett-t11-bis-smoke-report-N+1-2026-04-28.md`) + Pax T6 cosign Status InReview → Done (`docs/stories/T002.0h.1.story.md` Validation Status post-impl 10/10 GO). **PRR-20260428-3 SUPERSEDES PRR-20260428-1** (AC8 invocation literal RESTORED with `--smoke` flag — `python scripts/pax_cosign.py verify` 5/5 OK; `pytest tests/contracts/test_spec_version_gate.py` 16/16 PASS). Spec yaml `data_splits` / `feature_set` / `trading_rules` / `n_trials` UNTOUCHED. Bonferroni n_trials=5 PRESERVED. Hold-out lock UNTOUCHED. **Awaits Riven §9 HOLD #2 Gate 1 dual-sign formal disarm + Mira ML co-sign on Gate 1.** Gates 2-5 remain pending downstream (T002.1.bis + Beckett N6 + Mira statistical clearance + Riven dual-sign final).
 
 #### Article IV trace
 
@@ -81,8 +82,11 @@ ESC-009 6/6 council (Aria + Mira + Pax + Beckett + Riven + Dara) modelou cuidado
 - Beckett N4 report §diagnostic-run (synthetic-stub revelation)
 - N4 evidence artifacts: `data/baseline-run/cpcv-dryrun-T002-N4-DIAG-NOSMOKE/` (5 artifacts sha256-ed)
 - ESC-009 council ledger (Track A blind spot acknowledged)
+- T002.0h.1 closure trace (Track A E1 successor): Dex commit `6a78b88` + Quinn gate `docs/qa/gates/T002.0h.1-qa-gate.md` + Beckett N+1 report `docs/backtest/T002-beckett-t11-bis-smoke-report-N+1-2026-04-28.md` + PRR-20260428-3 pax_cosign_hash `89f0e98cfe29f77d80b005e0460b779b03f011b21575364b9e9c2161e4876ba7`
 
 **Pax cosign 2026-04-28 BRT — Autonomous Daily Session.**
+**Gage merge 2026-04-28 BRT — PR #6 → main SHA `8b644d5`.**
+**Pax T6 cosign 2026-04-28 BRT — T002.0h.1 closure (Track A E1 successor) + PRR-20260428-3 SUPERSEDES PRR-20260428-1.**
 
 ---
 
