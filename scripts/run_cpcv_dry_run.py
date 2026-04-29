@@ -686,20 +686,51 @@ def _load_costs(engine_config_path: Path) -> BacktestCosts:
     return BacktestCosts()  # deprecated defaults — docstring warned
 
 
+def _resolve_cost_atlas_path(engine_config_path: Path) -> Path | None:
+    """Resolve atlas YAML path from engine-config ``cost_atlas_ref.path``.
+
+    Quinn F1 (T002.1.bis): surfaces ``cost_atlas_sha256`` in
+    DeterminismStamp so the SHA-locked atlas v1.0.0 audit trail
+    (Riven T0d §11) is visible. Returns ``None`` when engine-config or
+    atlas YAML is missing — preserves test-fixture fallback behaviour.
+    """
+    if not engine_config_path.exists():
+        return None
+    try:
+        cfg = yaml.safe_load(engine_config_path.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, OSError):
+        return None
+    atlas_rel = (cfg or {}).get("cost_atlas_ref", {}).get("path")
+    if not atlas_rel:
+        return None
+    p = Path(atlas_rel)
+    if not p.is_absolute():
+        # engine-config canonical layout: repo_root/docs/backtest/engine-config.yaml
+        p = engine_config_path.resolve().parents[2] / p
+    return p if p.is_file() else None
+
+
 def _build_runner(
     spec_path: Path,
     engine_config_path: Path,
     seed: int,
     run_id: str,
+    *,
+    calendar_path: Path | None = None,
 ) -> BacktestRunner:
     """Construct BacktestRunner with full provenance for DeterminismStamp."""
     cfg = CPCVConfig.from_spec_yaml(spec_path, seed=seed)
+    cost_atlas_path = _resolve_cost_atlas_path(engine_config_path)
     return BacktestRunner(
         config=cfg,
         spec_path=spec_path,
         spec_version="0.2.0",
         simulator_version="cpcv-dry-run-T002.0f-T3",
         engine_config_path=engine_config_path if engine_config_path.exists() else None,
+        cost_atlas_path=cost_atlas_path,
+        rollover_calendar_path=(
+            calendar_path if calendar_path is not None and calendar_path.exists() else None
+        ),
     )
 
 
@@ -803,6 +834,7 @@ def _run_phase(
     as_of_date: date,
     warmup_atr_cli: Path = _DEFAULT_ATR_PATH,
     warmup_percentiles_cli: Path = _DEFAULT_PERCENTILES_PATH,
+    calendar_path: Path = _DEFAULT_CALENDAR_PATH,
 ) -> tuple[FullReport, Any, dict[str, Any]]:
     """Execute one phase (smoke or full): events → fan-out → report.
 
@@ -925,7 +957,9 @@ def _run_phase(
         # 4. Per-fold closure bound to fold-local state.
         return make_backtest_fn(costs, calendar, fold_p126)
 
-    runner = _build_runner(spec_path, engine_config_path, seed, run_id)
+    runner = _build_runner(
+        spec_path, engine_config_path, seed, run_id, calendar_path=calendar_path
+    )
 
     # Per AC8 — check the halt flag between phase boundaries; this gives
     # the poller a chance to surface 6 GiB before kicking off the heavy
@@ -1104,6 +1138,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     as_of_date=smoke_start,
                     warmup_atr_cli=args.warmup_atr,
                     warmup_percentiles_cli=args.warmup_percentiles,
+                    calendar_path=args.calendar,
                 )
             except Exception as exc:  # noqa: BLE001 — must abort full per AC11
                 # Per AC11 — smoke failure aborts full run; reason logged.
@@ -1153,6 +1188,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 as_of_date=in_sample_start,
                 warmup_atr_cli=args.warmup_atr,
                 warmup_percentiles_cli=args.warmup_percentiles,
+                calendar_path=args.calendar,
             )
         except RuntimeError as exc:
             # Warmup failures (assert_warmup_satisfied) bubble as RuntimeError.
