@@ -66,6 +66,7 @@ from packages.t002_eod_unwind.adapters.exec_backtest import BacktestCosts  # noq
 from packages.t002_eod_unwind.cpcv_harness import (  # noqa: E402
     TRIALS_DEFAULT,
     _build_daily_metrics_from_train_events,
+    augment_events_with_microstructure_flags,
     build_events_dataframe,
     make_backtest_fn,
     run_5_trial_fanout,
@@ -96,6 +97,9 @@ DEFAULT_POLL_INTERVAL_S: float = 30.0  # AC8 + memory protocol
 DEFAULT_SEED: int = 42  # Beckett T0 handshake (CI repro)
 DEFAULT_OUTPUT_ROOT: Path = Path("data/baseline-run")
 DEFAULT_SMOKE_DAYS: int = 30  # AC10 1-month subset
+# T002.6 T1 — Phase F real-tape defaults (Beckett C-B2 lazy per-session).
+DEFAULT_PHASE: str = "E"  # synthetic walk default; "F" activates real-tape
+DEFAULT_PARQUET_ROOT: Path = Path("data/in_sample")
 
 # Telemetry CSV header — Pax gap #2: SUPERSET satisfying both the story
 # (rss_mb, vms_mb, cpu_pct, fold_index, trial_id) AND the memory
@@ -346,6 +350,29 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=Path,
         default=_DEFAULT_PERCENTILES_PATH,
         help="Percentiles_126d warmup state path.",
+    )
+    # T002.6 T1 — Phase F real-tape replay flags (Beckett C-B2 lazy default).
+    p.add_argument(
+        "--phase",
+        type=str,
+        choices=["E", "F"],
+        default=DEFAULT_PHASE,
+        help=(
+            "Backtest regime — 'E' = synthetic walk (default; T002.1.bis "
+            "Gate 4a HARNESS_PASS carry-forward), 'F' = real-tape replay "
+            "(T002.6 Phase F Gate 4b). 'F' requires --parquet-root to point "
+            "at the WDO trade-tape parquet root."
+        ),
+    )
+    p.add_argument(
+        "--parquet-root",
+        type=Path,
+        default=DEFAULT_PARQUET_ROOT,
+        help=(
+            f"WDO parquet trade-tape root directory (default {DEFAULT_PARQUET_ROOT}). "
+            "Layout: year=YYYY/month=MM/wdo-YYYY-MM.parquet. Lazy per-session "
+            "loading enforced (Beckett C-B2; no eager full-window load)."
+        ),
     )
     return p
 
@@ -686,6 +713,23 @@ def _load_costs(engine_config_path: Path) -> BacktestCosts:
     return BacktestCosts()  # deprecated defaults — docstring warned
 
 
+def _resolve_latency_model(engine_config_path: Path) -> dict[str, Any] | None:
+    """Load engine-config v1.1.0 ``latency_model:`` block when present.
+
+    T002.6 T1 — Phase F real-tape replay needs the latency model parameters
+    consumed by ``feed_realtape.draw_latency_ms`` per Beckett spec §2.4.
+    Absence (engine-config v1.0.0 backward-compat) returns None and the
+    closure factory routes to synthetic walk under phase='E'.
+    """
+    if not engine_config_path.exists():
+        return None
+    try:
+        cfg = yaml.safe_load(engine_config_path.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, OSError):
+        return None
+    return (cfg or {}).get("latency_model")
+
+
 def _resolve_cost_atlas_path(engine_config_path: Path) -> Path | None:
     """Resolve atlas YAML path from engine-config ``cost_atlas_ref.path``.
 
@@ -835,6 +879,8 @@ def _run_phase(
     warmup_atr_cli: Path = _DEFAULT_ATR_PATH,
     warmup_percentiles_cli: Path = _DEFAULT_PERCENTILES_PATH,
     calendar_path: Path = _DEFAULT_CALENDAR_PATH,
+    phase: str = DEFAULT_PHASE,
+    parquet_root: Path = DEFAULT_PARQUET_ROOT,
 ) -> tuple[FullReport, Any, dict[str, Any]]:
     """Execute one phase (smoke or full): events → fan-out → report.
 
@@ -897,6 +943,17 @@ def _run_phase(
         calendar=calendar,
         warmup_gate=warmup_gate,
     )
+    # T002.6 T1 — Aria C-A4: augment with per-session microstructure flags
+    # BEFORE engine partition so train/test slicing preserves them. Under
+    # phase='E' the augmentation is still applied (forward-compat) but the
+    # closure body ignores the columns since real_tape_active is False.
+    if phase == "F":
+        events = augment_events_with_microstructure_flags(
+            events,
+            calendar=calendar,
+            parquet_root=parquet_root,
+            eager_circuit_breaker_scan=False,  # Beckett C-B2 lazy default
+        )
     n_events = int(len(events))
     n_trials = int(events["trial_id"].nunique())
 
@@ -918,6 +975,14 @@ def _run_phase(
     costs = _load_costs(engine_config_path)
     p126_global = _load_warmup_state(pct_path)
     p126_builder = Percentiles126dBuilder(calendar)
+    # T002.6 T1 — Phase F latency model resolved from engine-config v1.1.0.
+    # Under phase='E' (default), latency_config is None and synthetic walk
+    # path is exercised in the closure (T002.1.bis carry-forward).
+    latency_model = _resolve_latency_model(engine_config_path) if phase == "F" else None
+    # Per Aria C-A1: parquet_root passed through factory→closure ONLY when
+    # phase='F' (real-tape regime active); under phase='E' factory receives
+    # parquet_root=None which preserves synthetic walk dispatch.
+    real_tape_root = parquet_root if phase == "F" else None
 
     def _backtest_fn_factory(split: CPCVSplit, train_events):
         """Per-fold factory — rebuilds P126 from THIS fold's train slice.
@@ -955,7 +1020,17 @@ def _run_phase(
         except ValueError:
             fold_p126 = p126_global
         # 4. Per-fold closure bound to fold-local state.
-        return make_backtest_fn(costs, calendar, fold_p126)
+        # T002.6 T1 — Phase F additive kwargs threaded via factory; under
+        # phase='E' (synthetic; default) parquet_root=None and latency_config=None
+        # preserve T002.1.bis Gate 4a HARNESS_PASS back-compat.
+        return make_backtest_fn(
+            costs,
+            calendar,
+            fold_p126,
+            parquet_root=real_tape_root,
+            latency_config=latency_model,
+            phase=phase,  # type: ignore[arg-type]
+        )
 
     runner = _build_runner(
         spec_path, engine_config_path, seed, run_id, calendar_path=calendar_path
@@ -1014,6 +1089,10 @@ def _run_phase(
         "warmup_gate_as_of": in_sample_start.isoformat(),
         "warmup_gate_passed_at_brt": datetime.now().isoformat(timespec="seconds"),
         "fanout_duration_ms": fanout_ms,
+        # T002.6 T1 — backtest regime + real-tape provenance for audit.
+        "backtest_phase": phase,
+        "parquet_root": parquet_root.as_posix() if real_tape_root is not None else None,
+        "latency_model_active": latency_model is not None and phase == "F",
     }
     return full_report, determinism_stamp, events_metadata
 
@@ -1139,6 +1218,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                     warmup_atr_cli=args.warmup_atr,
                     warmup_percentiles_cli=args.warmup_percentiles,
                     calendar_path=args.calendar,
+                    phase=args.phase,
+                    parquet_root=args.parquet_root,
                 )
             except Exception as exc:  # noqa: BLE001 — must abort full per AC11
                 # Per AC11 — smoke failure aborts full run; reason logged.
@@ -1189,6 +1270,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 warmup_atr_cli=args.warmup_atr,
                 warmup_percentiles_cli=args.warmup_percentiles,
                 calendar_path=args.calendar,
+                phase=args.phase,
+                parquet_root=args.parquet_root,
             )
         except RuntimeError as exc:
             # Warmup failures (assert_warmup_satisfied) bubble as RuntimeError.

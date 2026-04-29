@@ -21,12 +21,23 @@
 #  - tick_size_points / multiplier vêm single-source de atlas Nova → DOMAIN_GLOSSARY
 # =============================================================================
 
-engine_config_version: "1.0.0"
-compiled_at_brt: "2026-04-25T15:00:00-03:00"
+engine_config_version: "1.1.0"
+compiled_at_brt: "2026-04-29T18:00:00-03:00"
 compiled_by: "Beckett (@backtester)"
 consumer_of: "Nova cost atlas"
 contract: "WDO"
-phase: "T002.0e — Fase E CPCV wire"
+phase: "T002.6 — Phase F real-tape replay (latency + microstructure flags)"
+
+# =============================================================================
+# PHASE GATING — synthetic (E) vs real-tape (F) regime
+# =============================================================================
+# T002.6 T1 — explicit phase tag consumed by make_backtest_fn factory closure
+# to dispatch synthetic walk (E) vs real-tape replay (F). Default 'E' preserves
+# T002.1.bis Gate 4a HARNESS_PASS back-compat; 'F' activates real-tape branch
+# and the latency_model below.
+phase_gating:
+  enabled_for_phase: ["F"]              # phases that activate latency_model + real-tape replay
+  default_phase: "E"                    # synthetic walk (T002.1.bis carry-forward)
 
 # =============================================================================
 # COST ATLAS REFERENCE — single-source canonical
@@ -225,6 +236,98 @@ consumer_contract:
     deprecated_path: "BacktestCosts.__init__ direct call with default placeholders R$ 0.25/0.35"
 
 # =============================================================================
+# LATENCY MODEL — DMA2 baseline for Phase F real-tape replay
+# =============================================================================
+# Beckett authority. Spec: docs/backtest/latency-dma2-profile-spec.md §4 verbatim.
+# Story:           docs/stories/T002.6.story.md AC3 + R-4 mitigation.
+# Synthetic walk N6 and earlier: latency_model NOT applied (events instantaneous).
+# Phase F real-tape:               latency_model REQUIRED for honest slippage.
+# Mira spec §5.1:                  consumed verbatim into Gate 4b spec body.
+latency_model:
+  type: "lognormal_per_event_seeded"
+  enabled_for_phase: ["F"]              # Phase F only; synthetic walk skipped
+  seed_source: ["session", "order_id", "trial_id"]
+  hash_function: "blake2b_64"           # deterministic, cross-platform stable
+  components:
+    order_submit:
+      p50_ms: 2.0
+      p95_ms: 8.0
+      p99_ms_nominal_target: 20.0       # cushion target; not log-normal fit
+      distribution: "lognormal"
+      mu: 0.6931                        # ln(2)
+      sigma: 0.8428                     # ln(8/2) / 1.6449
+      implied_p99_ms: 14.21              # transparency — implied < target
+    fill:
+      p50_ms: 1.0
+      p95_ms: 4.0
+      p99_ms_nominal_target: 15.0
+      distribution: "lognormal"
+      mu: 0.0000                        # ln(1)
+      sigma: 0.8428                     # ln(4/1) / 1.6449
+      implied_p99_ms: 7.10
+    cancel:
+      p50_ms: 2.0
+      p95_ms: 10.0
+      p99_ms_nominal_target: 50.0       # heaviest tail — congestion / auction
+      distribution: "lognormal"
+      mu: 0.6931                        # ln(2)
+      sigma: 0.9784                     # ln(10/2) / 1.6449
+      implied_p99_ms: 19.48              # log-normal underestimates real tail
+  slippage_integration:
+    apply_to: ["entry_fill", "barrier_exit_fill"]
+    formula: "sign × (mid_at_decision − mid_at_fill_after_latency)"
+    units: "points"
+    composition_with_existing_slippage: "additive_with_roll_and_extra_ticks"
+  to_verify:
+    - tag: "[TO-VERIFY 2026-04-29]"
+      field: "components.cancel.p99_ms_nominal_target"
+      reason: "Heavy-tail cancel under congestion may exceed 50ms; refine via Tiago live calibration post-Phase H."
+    - tag: "[TO-VERIFY 2026-04-29]"
+      field: "components.*.implied_p99_ms"
+      reason: "Log-normal calibrated to (P50, P95) pair underestimates nominal P99 cushion targets."
+  rationale: |
+    DMA2 baseline para WDO B3 broker-routed flow. Industry-baseline conservative
+    calibration. Refinement via Tiago @execution-trader live logs post-Phase H
+    per Beckett persona *tiago-calibrate command. Heavy-tail components (cancel
+    under congestion) flagged as [TO-VERIFY] for distribution-family refinement.
+
+# =============================================================================
+# MICROSTRUCTURE FLAGS — Nova RLP/rollover/auction/CB/cross_trade for Phase F
+# =============================================================================
+# Nova authority. Spec: docs/backtest/T002.6-nova-rlp-rollover-spec.md §6 verbatim.
+# Mira spec §4.1:                  consumed verbatim into Gate 4b spec body.
+# Per Aria T0b C-A4: per-session flags propagate through events_dataframe BEFORE
+# engine partition; per Aria C-A5 cross_trade default False in historic regime.
+microstructure_flags:
+  rlp_policy:
+    active_hours_brt:
+      start: "09:00"
+      end:   "17:55"
+    detection_signal:
+      live_field:   "trade_type"          # Nelo TNewTradeCallback enum, value=13
+      historic_field: null                # NOT identifiable in our parquet (BUY/SELL/NONE only)
+    fill_treatment: "B"                   # Option B per Nova §1.4 — uniform latency_dma2_profile slippage
+    fill_treatment_rationale_ref: "docs/backtest/T002.6-nova-rlp-rollover-spec.md#§1.4"
+  rollover:
+    flag_d_minus_3_to_d_minus_1: true     # per-session row carries rollover_window: bool
+    calendar_path: "config/calendar/2024-2027.yaml"
+    derivation: "walk back 3 trading days from each wdo_expirations[i], skipping br_holidays"
+    treatment: "Option B"                 # preserve sample, flag for attribution
+    carry_forward_bug_guard: true         # Dex T1 MUST resolve explicit contract code per session
+  auction:
+    exclude_open_close_minutes: 5         # last 5 minutes (17:55-18:00) excluded from continuous-price extraction
+    exit_price_rule: "last trade_type in {1,2,3,13} with timestamp < 17:55:00 BRT"
+    open_auction_treatment: "no impact on T002.6 entry windows (entries are late-day)"
+  circuit_breaker:
+    flag_per_session: true                # session feature: circuit_breaker_fired: bool
+    detection_signal_historic: "continuous aggressor=NONE gap >30min during 09:30-17:55"
+    attribution_path: "Riven 3-bucket — inconclusive | strategy_edge case-by-case"
+  cross_trade:
+    flag_per_event: true                  # event feature: cross_trade: bool (live only; historic gap documented)
+    flag_available_historic: false        # explicit gap; determinism stamp records
+    cvd_treatment: "exclude tradeType=1 from CVD / OFI / imbalance"
+
+# =============================================================================
 # CHANGELOG
 # =============================================================================
 changelog:
@@ -239,3 +342,14 @@ changelog:
       - "WDO contract spec single-source via atlas.product (no duplication)"
       - "4 open audit conditions tracked (F-02/F-03/F-04 + liquidacao_brl) — non-blocking Phase E"
       - "Article IV preserved — no invented numerical values"
+  - version: "1.1.0"
+    date_brt: "2026-04-29"
+    author: "Beckett (@backtester) + Dex (@dev T1)"
+    story: "T002.6"
+    changes:
+      - "Add latency_model block (Beckett spec docs/backtest/latency-dma2-profile-spec.md §4 verbatim)"
+      - "Add microstructure_flags block (Nova spec docs/backtest/T002.6-nova-rlp-rollover-spec.md §6 verbatim)"
+      - "Add phase_gating top-level block — synthetic E (default) vs real-tape F dispatch"
+      - "Mira Gate 4b spec v1.0.0 §4 + §5 PASS pre-condition for v1.1.0 publish"
+      - "4-sign-off chain CLOSED: T0a Mira ✅ → T0b Aria ✅ → T0c Beckett ✅ → T0d Riven ✅ → T0e Pax ✅"
+      - "Article IV preserved — no invented numerical values; both blocks consumed verbatim from Beckett/Nova source-of-truth specs"
