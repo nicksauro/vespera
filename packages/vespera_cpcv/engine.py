@@ -167,22 +167,56 @@ class CPCVEngine:
     def run(
         self,
         events: pd.DataFrame,
-        backtest_fn: Callable[[pd.DataFrame, pd.DataFrame, "CPCVSplit"], BacktestResult],
+        backtest_fn: Callable[[pd.DataFrame, pd.DataFrame, "CPCVSplit"], BacktestResult] | None = None,
         *,
+        backtest_fn_factory: Callable[
+            ["CPCVSplit", pd.DataFrame],
+            Callable[[pd.DataFrame, pd.DataFrame, "CPCVSplit"], BacktestResult],
+        ] | None = None,
         spec_snapshot: dict | None = None,  # noqa: ARG002 — reserved for Beckett §3.1
     ) -> list[BacktestResult]:
-        """Consume ``generate_splits``, invoke ``backtest_fn`` per split.
+        """Consume ``generate_splits``, invoke per-fold backtest closure.
+
+        Provide EXACTLY ONE of:
+
+        - ``backtest_fn``: a single closure used for all folds (legacy /
+          T002.0f stub path; safe when no per-fold state rebuild is needed).
+        - ``backtest_fn_factory``: a factory ``(split, split.train_events) ->
+          backtest_fn`` invoked per fold. Required when per-fold
+          ``Percentiles126dState`` rebuild is needed (T002.1.bis
+          DEFERRED-T11 M1 fix per Aria T0b architectural review:
+          ``docs/architecture/T002.1.bis-aria-archi-review.md``).
 
         Returns a list of length ``config.n_paths`` ordered by
         ``fold.path_index`` ascending (Beckett §3.2).
 
-        ``backtest_fn(train_events, test_events, split) -> BacktestResult``
-        is called once per fold. The engine handles hold-out lock + purge
-        + embargo; ``backtest_fn`` only sees post-purge train events.
+        Raises
+        ------
+        ValueError
+            When neither or both of ``backtest_fn`` / ``backtest_fn_factory``
+            are provided (mutually-exclusive contract per Aria §I.1).
+
+        Notes
+        -----
+        ``backtest_fn_factory`` MUST be pure (deterministic output for
+        deterministic input) and thread-safe — the engine reserves the
+        right to parallelize fold iteration in a future story (AC7
+        preservation).
         """
+        if (backtest_fn is None) == (backtest_fn_factory is None):
+            raise ValueError(
+                "CPCVEngine.run requires EXACTLY ONE of backtest_fn or "
+                "backtest_fn_factory to be provided (got "
+                f"{'both' if backtest_fn is not None else 'neither'})."
+            )
         results: list[BacktestResult] = []
         for split in self.generate_splits(events):
-            result = backtest_fn(split.train_events, split.test_events, split)
+            fn = (
+                backtest_fn
+                if backtest_fn is not None
+                else backtest_fn_factory(split, split.train_events)
+            )
+            result = fn(split.train_events, split.test_events, split)
             results.append(result)
         # Beckett §3.2 — sort by path_index ascending (already in order, but assert)
         results.sort(key=lambda r: r.fold.path_index)
