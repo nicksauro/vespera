@@ -59,7 +59,7 @@ import math
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Callable, Literal, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -288,6 +288,101 @@ def build_events_dataframe(
     # Sort then reset index to a clean 0..N-1 RangeIndex.
     df = df.sort_values("t_start", kind="stable").reset_index(drop=True)
     return df
+
+
+# =====================================================================
+# T002.6 T1 — Phase F microstructure flag augmentation (Aria C-A4)
+# =====================================================================
+def augment_events_with_microstructure_flags(
+    events: pd.DataFrame,
+    *,
+    calendar: CalendarData,
+    parquet_root: Path | None = None,
+    eager_circuit_breaker_scan: bool = False,
+) -> pd.DataFrame:
+    """Add Nova microstructure flag columns BEFORE engine partition (Aria C-A4).
+
+    Per Aria T0b C-A4 MEDIUM: per-session flags MUST be added to
+    `events_dataframe` schema BEFORE the engine partition step so the
+    train/test slicing preserves them. Suggested integration site: this
+    helper, invoked at the factory call site after `build_events_dataframe`
+    when phase='F'.
+
+    Adds columns (per Aria C-A4 + C-A5):
+    - `rollover_window: bool` (per Nova §2.3 — calendar's D-3..D-1 set)
+    - `circuit_breaker_fired: bool` (default False; eager scan optional)
+    - `cross_trade: bool` (Aria C-A5: historic regime default False)
+
+    Note: Under default `build_events_dataframe`, calendar.is_valid_sample_day
+    excludes rollover sessions, so `rollover_window` will be False for all
+    emitted rows. The column is added for forward-compat: if downstream
+    Phase F architecture moves to Nova §2.4 Option B (preserve sample,
+    flag for attribution), the column is already in the schema and the
+    engine partition + closure body can consume it without re-shaping.
+
+    Per Beckett C-B2 LAZY default: `eager_circuit_breaker_scan=False` keeps
+    `circuit_breaker_fired=False` placeholder; True triggers per-session
+    parquet load + scan (expensive — only enable for offline N7+ audit
+    runs, not standard CPCV iteration).
+
+    Parameters
+    ----------
+    events:
+        DataFrame from `build_events_dataframe`.
+    calendar:
+        Loaded `CalendarData` (rollover-window membership lookup).
+    parquet_root:
+        Optional WDO parquet root for eager CB scan (only consumed when
+        `eager_circuit_breaker_scan=True`).
+    eager_circuit_breaker_scan:
+        When True, lazy-loads each unique session and runs CB detection.
+        Default False keeps the augmentation O(n_events) without parquet IO.
+
+    Returns
+    -------
+    pd.DataFrame
+        New DataFrame with original columns + 3 flag columns. Dtype-preserving.
+    """
+    if events.empty:
+        # No-op for empty input — preserve schema for downstream guards.
+        out = events.copy()
+        out["rollover_window"] = pd.Series(dtype=bool)
+        out["circuit_breaker_fired"] = pd.Series(dtype=bool)
+        out["cross_trade"] = pd.Series(dtype=bool)
+        return out
+
+    out = events.copy()
+    # Per Nova §2.3 + Aria C-A4 — rollover_window per session.
+    sessions = out["session"].unique()
+    rollover_map = {
+        s: bool(calendar.is_rollover_window(s)) for s in sessions
+    }
+    out["rollover_window"] = out["session"].map(rollover_map).astype(bool)
+
+    # Per Aria C-A4 — circuit_breaker_fired per session (lazy default).
+    if eager_circuit_breaker_scan and parquet_root is not None:
+        from packages.t002_eod_unwind.feed_realtape import (
+            detect_circuit_breaker_fired,
+            load_session_trades,
+        )
+        cb_map: dict[date, bool] = {}
+        for s in sessions:
+            try:
+                tape = load_session_trades(s, parquet_root)
+            except FileNotFoundError:
+                cb_map[s] = False
+                continue
+            cb_map[s] = bool(detect_circuit_breaker_fired(tape))
+        out["circuit_breaker_fired"] = out["session"].map(cb_map).astype(bool)
+    else:
+        out["circuit_breaker_fired"] = False
+
+    # Per Aria C-A5 — cross_trade default False historic regime; per-event
+    # column kept False since Mira §4.3 confirms `tradeType` enum absent
+    # in historic parquet and the discriminator cannot be set.
+    out["cross_trade"] = False
+
+    return out
 
 
 # =====================================================================
@@ -588,8 +683,32 @@ def make_backtest_fn(
     costs: BacktestCosts,
     calendar: CalendarData,
     percentiles_state: Percentiles126dState,
+    *,
+    parquet_root: Path | None = None,
+    latency_config: Mapping[str, object] | None = None,
+    phase: Literal["E", "F"] = "E",
+    rollover_calendar: Mapping[str, object] | None = None,
 ) -> Callable[[pd.DataFrame, pd.DataFrame, CPCVSplit], BacktestResult]:
     """Return a pure-function-style backtest closure for ``CPCVEngine.run``.
+
+    T002.6 T1 — Phase F real-tape replay (additive kwargs; back-compat preserved).
+
+    The closure dispatches between two regimes per Aria T0b C-A1:
+
+    - **Phase E (default)** — `phase="E"` OR `parquet_root is None`. Synthetic
+      walk per T002.1.bis Gate 4a HARNESS_PASS (carry-forward; tests still
+      green). Closure body uses `_walk_session_path` + `_walk_to_exit`
+      seeded synthetic walks.
+
+    - **Phase F (real-tape)** — `phase="F"` AND `parquet_root` provided.
+      Closure body uses `feed_realtape.load_session_trades` (lazy per
+      session per Beckett C-B2) + `feed_realtape.replay_event_walk`
+      (real-tape barrier walk per Mira §3.3). Latency model (Beckett
+      spec §5 verbatim consumed via engine-config v1.1.0) applied to
+      fill prices per Aria C-A2.
+
+    Real-tape helper call site is INSIDE this closure body, NOT in
+    `_build_daily_metrics_from_train_events` (Aria C-A1 MEDIUM mandate).
 
     Per AC2 of T002.0f + T002.1.bis (Mira spec):
       - encloses ``costs`` (Nova cost-atlas v1.0.0 wired via
@@ -669,6 +788,16 @@ def make_backtest_fn(
     enclosed_costs = costs
     enclosed_calendar = calendar
     enclosed_percentiles = percentiles_state
+    # T002.6 T1 — Phase F real-tape captures (None under default Phase E).
+    # Per Aria C-A1: real-tape consumption helper INSIDE closure body.
+    enclosed_parquet_root = parquet_root
+    enclosed_latency_config = latency_config
+    enclosed_phase = phase
+    enclosed_rollover_calendar = rollover_calendar
+    # Real-tape regime activates when BOTH phase=='F' AND parquet_root
+    # provided; any other combination routes to legacy synthetic walk
+    # (T002.1.bis Gate 4a HARNESS_PASS back-compat invariant).
+    _real_tape_active = (enclosed_phase == "F" and enclosed_parquet_root is not None)
 
     def backtest_fn(
         train_events: pd.DataFrame,
@@ -832,15 +961,50 @@ def make_backtest_fn(
                 signed_qty = -1
 
             # Walk from entry to 17:55 — apply triple-barrier precedence.
+            # T002.6 T1: real-tape branch (Aria C-A1 INSIDE closure body) vs
+            # synthetic branch (T002.1.bis carry-forward back-compat).
             n_ticks_to_vertical = _ticks_from_entry_to_vertical(entry_ts.time())
-            exit_mid, exit_reason, ticks_held = _walk_to_exit(
-                rng,
-                entry_price=entry_price,
-                pt_offset=pt_offset,
-                sl_offset=sl_offset,
-                direction=signal.direction,
-                n_ticks_to_vertical=n_ticks_to_vertical,
-            )
+            if _real_tape_active:
+                # Phase F real-tape: lazy per-session load (Beckett C-B2) +
+                # real-tape barrier walk (Mira §3.3) + per-fill latency
+                # slippage (Aria C-A2 + Beckett §3.1 verbatim).
+                from packages.t002_eod_unwind.feed_realtape import (
+                    load_session_trades,
+                    replay_event_walk,
+                )
+                tape_df = load_session_trades(
+                    session_date, enclosed_parquet_root  # type: ignore[arg-type]
+                )
+                # Auction cutoff per Nova §3.2-α: 17:55:00 BRT same session.
+                auction_cutoff_ts = datetime.combine(
+                    session_date, time(17, 55, 0)
+                )
+                sign_int = 1 if signal.direction == Direction.LONG else -1
+                # Beckett seed inputs — anchor per-fill latency draw.
+                order_id = f"{trial_id}-{entry_window}-{split.path_id}"
+                latency_cfg = dict(enclosed_latency_config or {})
+                latency_cfg.setdefault("current_phase", enclosed_phase)
+                exit_mid, exit_reason, ticks_held = replay_event_walk(
+                    trades=tape_df,
+                    entry_ts=entry_ts,
+                    entry_price=entry_price,
+                    pt_offset=pt_offset,
+                    sl_offset=sl_offset,
+                    sign=sign_int,
+                    auction_cutoff_ts=auction_cutoff_ts,
+                    latency_config=latency_cfg,
+                    seed_inputs=(session_date, order_id, str(trial_id)),
+                )
+            else:
+                # Phase E synthetic — T002.1.bis carry-forward (back-compat).
+                exit_mid, exit_reason, ticks_held = _walk_to_exit(
+                    rng,
+                    entry_price=entry_price,
+                    pt_offset=pt_offset,
+                    sl_offset=sl_offset,
+                    direction=signal.direction,
+                    n_ticks_to_vertical=n_ticks_to_vertical,
+                )
             # Apply exit-side slippage (broker subtracts on LONG exit, adds on SHORT exit).
             if signal.direction == Direction.LONG:
                 exit_price = exit_mid - broker_slip
@@ -1373,6 +1537,7 @@ __all__ = [
     "EXIT_DEADLINE_BRT",
     "TRIALS_DEFAULT",
     "assert_warmup_satisfied",
+    "augment_events_with_microstructure_flags",
     "build_events_dataframe",
     "make_backtest_fn",
     "run_5_trial_fanout",
