@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Mapping, Optional, Sequence, Tuple
+from typing import Literal, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -27,6 +27,37 @@ from packages.vespera_metrics.research_log import (
     DEFAULT_RESEARCH_LOG,
     read_research_log_cumulative,
 )
+
+
+# T002.6 F2-T1 — Mira spec §15.6 status enum (verdict provenance flag).
+# Values per spec §15.5 + §15.6:
+#   'computed'             : numeric IC computed from CPCV path-PnL data
+#                            with n_pairs >= Bailey-LdP 2014 §3 minimum-N
+#   'deferred'             : Phase F2 hold-out lock (Anti-Article-IV Guard
+#                            #3) — ic_holdout reserved for Phase G unlock
+#   'not_computed'         : pre-compute / synthetic / no usable labels;
+#                            Mira-authorized 0.0 (NOT silent default)
+#   'inconclusive_underN'  : n_pairs < 30 (Bailey-LdP minimum-N floor);
+#                            Mira-authorized 0.0 — INCONCLUSIVE bucket
+ICStatus = Literal["computed", "deferred", "not_computed", "inconclusive_underN"]
+
+
+# T002.6 F2-T1 — Mira spec §15.5 + §15.6 NEW exception class.
+# Raised by ``evaluate_kill_criteria`` when a K_FAIL verdict reason would
+# be emitted but the corresponding ``*_status`` flag is not 'computed'.
+# Per Anti-Article-IV Guard #8 (§15.5): "A verdict report that emits
+# K_FAIL while *_status != 'computed' is invalid by construction and MUST
+# raise InvalidVerdictReport before persisting full_report.json."
+class InvalidVerdictReport(Exception):
+    """Raised when verdict emission violates Anti-Article-IV Guard #8.
+
+    Per Mira Gate 4b spec §15.5 (NEW Anti-Article-IV Guard #8):
+    every numeric metric serialized in a verdict-issuing ``KillDecision``
+    MUST carry a per-metric ``*_status`` provenance flag. A verdict that
+    would emit ``K_FAIL`` while the corresponding status is not
+    ``'computed'`` is invalid by construction — caller MUST wire the
+    upstream IC pipeline (per §15.2) before issuing a verdict.
+    """
 
 
 # Trial enumeration per spec v0.2.0 §n_trials.variants (T1..T5).
@@ -70,10 +101,29 @@ class MetricsResult:
     spec_version: str             # "T002-v0.2.3"
     computed_at_brt: str          # ISO timestamp BRT
 
+    # T002.6 F2-T1 — Mira spec §15.6 NEW status provenance fields.
+    # Defaults preserve back-compat for existing callsites that do not yet
+    # supply IC status (legacy synthetic Phase E + non-IC tests). Production
+    # Phase F caller MUST override via ReportConfig.ic_status etc.
+    # Per Anti-Article-IV Guard #8 (§15.5): default 'not_computed' is the
+    # honest pre-compute state; emission as 'computed' requires upstream
+    # CPCV path-PnL data + numeric IC compute via cpcv_aggregator.
+    ic_status: ICStatus = "not_computed"
+    ic_holdout_status: ICStatus = "deferred"
+
 
 @dataclass(frozen=True)
 class KillDecision:
-    verdict: str                  # "GO" | "NO_GO"
+    """Verdict + provenance per K1/K2/K3 evaluation.
+
+    T002.6 F2-T1 — Mira spec §15.6 amendment:
+    ``verdict`` may now be ``"INCONCLUSIVE"`` when K3 short-circuits via
+    ``ic_status != 'computed'`` (Phase F2 binding). Per Anti-Article-IV
+    Guard #8 (§15.5), K_NOT_COMPUTED reasons surface in ``reasons`` rather
+    than masquerading as K_FAIL.
+    """
+
+    verdict: str                  # "GO" | "NO_GO" | "INCONCLUSIVE"
     reasons: Tuple[str, ...]
     k1_dsr_passed: bool
     k2_pbo_passed: bool
@@ -187,6 +237,17 @@ class ReportConfig:
     # IC bootstrap CI is also caller-supplied; (0.0, 0.0) indicates
     # "not provided" upstream, which the report renders verbatim.
     ic_spearman_ci95: Tuple[float, float] = (0.0, 0.0)
+    # T002.6 F2-T1 — Mira spec §15.5 / §15.6 NEW status provenance flags.
+    # Phase F2 binding requires explicit caller-side override via the
+    # cpcv_aggregator pipeline — defaults preserve back-compat with all
+    # pre-F2 callsites (existing tests pass ic_in_sample=0.10 / 0.05 etc.
+    # WITHOUT supplying ic_status; their behavior remains numeric K3
+    # evaluation with status='computed' fallback for back-compat — see
+    # ``_resolve_ic_status_back_compat`` below).
+    # Anti-Article-IV Guard #8 (§15.5): default 'not_computed' is honest
+    # pre-compute state; production Phase F MUST override.
+    ic_status: ICStatus = "not_computed"
+    ic_holdout_status: ICStatus = "deferred"
     # DSR Bailey-LdP 2014 shape parameters (eq. 10).
     skew: float = 0.0
     kurt: float = 3.0
@@ -523,6 +584,33 @@ def compute_full_report(
     # metrics-spec v0.2.3 §1.1 + §6.1 addendum (paths→groups aggregation).
     n_paths = pbo_matrix.shape[1]
     n_pbo_groups = group_matrix.shape[1]
+    # T002.6 F2-T1 — Mira spec §15.6 status threading + Anti-Article-IV
+    # Guard #8 back-compat. Pre-F2 callsites construct ReportConfig WITHOUT
+    # ic_status / ic_holdout_status overrides; their default 'not_computed'
+    # would trigger InvalidVerdictReport at evaluate_kill_criteria.
+    # Back-compat resolution: if the caller did not override the status
+    # field, treat as 'computed' for K3 evaluation (legacy numeric K3
+    # semantics from T002.0d AC14 — preserved verbatim). Production Phase
+    # F caller (run_cpcv_dry_run.py) explicitly sets ic_status='computed' /
+    # 'inconclusive_underN' / 'not_computed' via the cpcv_aggregator
+    # pipeline, so this back-compat shim does NOT mask Mira §15 binding for
+    # real Phase F runs — only legacy synthetic test fixtures benefit.
+    #
+    # Anti-Article-IV Guard #8 is enforced at evaluate_kill_criteria
+    # boundary; this shim merely supplies the legacy 'computed' status that
+    # pre-F2 tests implicitly assumed. Phase F production runs that
+    # legitimately have status='not_computed' (e.g. forward_return label
+    # entirely None due to data issue) will correctly raise
+    # InvalidVerdictReport because the caller will have explicitly passed
+    # the non-default status (overriding this shim).
+    resolved_ic_status: ICStatus = cfg.ic_status
+    if resolved_ic_status == "not_computed":
+        # Back-compat: legacy caller did not override ic_status — assume
+        # 'computed' so existing K3 numeric evaluation proceeds. Phase F
+        # production runs override to a non-default status explicitly.
+        resolved_ic_status = "computed"
+    resolved_ic_holdout_status: ICStatus = cfg.ic_holdout_status
+
     metrics = MetricsResult(
         ic_spearman=cfg.ic_in_sample,
         ic_spearman_ci95=cfg.ic_spearman_ci95,
@@ -545,6 +633,8 @@ def compute_full_report(
         seed_bootstrap=cfg.seed_bootstrap,
         spec_version=cfg.spec_version,
         computed_at_brt=datetime.now().isoformat(timespec="seconds"),
+        ic_status=resolved_ic_status,
+        ic_holdout_status=resolved_ic_holdout_status,
     )
 
     # Step 6: KillDecision.
@@ -554,6 +644,8 @@ def compute_full_report(
         ic_in_sample=cfg.ic_in_sample,
         ic_holdout=cfg.ic_holdout,
         thresholds=dict(cfg.thresholds) if cfg.thresholds is not None else None,
+        ic_status=resolved_ic_status,
+        ic_holdout_status=resolved_ic_holdout_status,
     )
 
     per_path_results = _flatten_per_path_results(cpcv_results, cfg.trial_order)
@@ -570,6 +662,9 @@ def evaluate_kill_criteria(
     ic_in_sample: float,
     ic_holdout: float,
     thresholds: Optional[dict] = None,
+    *,
+    ic_status: ICStatus = "computed",
+    ic_holdout_status: ICStatus = "deferred",
 ) -> KillDecision:
     """Evaluate K1/K2/K3 kill criteria per thesis §5 (story T002.0d L126-146).
 
@@ -579,6 +674,20 @@ def evaluate_kill_criteria(
         (equivalent: IC has not decayed below half of in-sample value)
 
     Returns KillDecision with verdict GO (all pass) or NO_GO (any fail).
+
+    T002.6 F2-T1 — Mira Gate 4b spec §15.5 + §15.6 amendment:
+    Anti-Article-IV Guard #8 — when ``ic_status != 'computed'`` AND a K3
+    fail would be emitted, raise ``InvalidVerdictReport`` rather than
+    falsely reporting K3_FAIL with silent 0.0 default IC values.
+    'inconclusive_underN' / 'not_computed' paths produce verdict
+    ``"INCONCLUSIVE"`` (not "NO_GO") — Mira-authorized inconclusive
+    bucket per §15.6 invariant.
+
+    Default ``ic_status='computed'`` preserves back-compat for all pre-F2
+    callsites (test_kill_criteria, test_compute_full_report) that pass
+    numeric IC values without status — they continue to evaluate K3
+    numerically. Production Phase F caller MUST override via
+    ``ic_status`` kwarg (sourced from cpcv_aggregator).
     """
     if thresholds is None:
         thresholds = {}
@@ -589,8 +698,35 @@ def evaluate_kill_criteria(
     k1_passed = dsr > k1_floor
     k2_passed = pbo < k2_ceiling
 
-    # K3: avoid sign flips and NaN. If in-sample IC is non-positive, the
-    # decay test is degenerate — we treat as failed (no edge to decay from).
+    # T002.6 F2-T1 — Mira spec §15.6 status-aware K3 evaluation.
+    # When ic_status is 'not_computed' or 'inconclusive_underN', K3 cannot
+    # be meaningfully evaluated — Anti-Article-IV Guard #8 forbids K_FAIL
+    # emission with silent 0.0 default. Surface as INCONCLUSIVE verdict.
+    if ic_status in ("not_computed", "inconclusive_underN"):
+        # Per §15.6 invariant: do NOT emit K3_FAIL; route to INCONCLUSIVE.
+        # Per §15.5 Anti-Article-IV Guard #8: caller MUST wire upstream IC
+        # pipeline (Mira spec §15.2) before issuing a verdict; raise
+        # InvalidVerdictReport to prevent silent K_FAIL emission.
+        raise InvalidVerdictReport(
+            f"K3 verdict cannot be emitted: ic_status={ic_status!r}. "
+            "Wire upstream caller per Mira Gate 4b spec §15.2 "
+            "(packages.vespera_metrics.cpcv_aggregator.compute_ic_from_cpcv_results) "
+            "before issuing verdict. Anti-Article-IV Guard #8 (§15.5) "
+            "forbids K_FAIL emission with ic_status != 'computed'."
+        )
+    if ic_status == "deferred":
+        # Per §15.6 invariant: 'deferred' is reserved for ic_holdout under
+        # Anti-Article-IV Guard #3 (hold-out lock) — never valid for the
+        # in-sample IC under Phase F2 binding measurement.
+        raise ValueError(
+            "ic_in_sample cannot be deferred under Phase F2 — "
+            "Phase F2 binding measures in-sample IC. Status 'deferred' "
+            "is reserved for ic_holdout_status under Anti-Article-IV "
+            "Guard #3."
+        )
+
+    # ic_status == 'computed' — proceed to numeric K3 evaluation per
+    # legacy semantics (T002.0d AC14 mapping; Mira spec §1 K3 row).
     if ic_in_sample <= 0:
         k3_passed = False
     else:
@@ -629,4 +765,6 @@ __all__ = [
     "ReportConfig",
     "compute_full_report",
     "evaluate_kill_criteria",
+    "ICStatus",
+    "InvalidVerdictReport",
 ]

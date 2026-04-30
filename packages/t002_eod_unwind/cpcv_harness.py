@@ -1086,6 +1086,51 @@ def make_backtest_fn(
                 ),
                 reason="exit_triple_barrier" if exit_reason != "vertical" else "exit_hard_stop",
             )
+            # T002.6 F2-T1 — Mira spec §15.1 + §15.3 per-event predictor/label.
+            # Predictor: -intraday_flow_direction (FADE sign convention).
+            # When direction is SHORT (entered_fade_short), original flow was
+            # positive ⇒ predictor = -(+1) = -1. When LONG, flow was negative
+            # ⇒ predictor = -(-1) = +1.
+            predictor_signal = (
+                -1.0 if signal.direction == Direction.SHORT else 1.0
+            )
+            # Forward return label: signed PnL-direction-equivalent return
+            # in WDO points from entry to 17:55:00 BRT close.
+            #
+            # Phase F (real-tape) path: derive close_at_1755 from session
+            # tape lazily; vertical exits at 17:55 itself yield None
+            # (degenerate label — zero forward window per §15.3).
+            #
+            # Phase E (synthetic) path: real close-at-17:55 is undefined —
+            # set None per §15.2 phase guard so IC compute downstream marks
+            # status='deferred' rather than emit silent 0.0 (Anti-Article-IV
+            # Guard #8 §15.5).
+            forward_return_pts: float | None
+            if exit_reason == "vertical":
+                # Vertical exit price IS the 17:55 close (or last tape print
+                # before 17:55 in real-tape regime); forward window is zero.
+                forward_return_pts = None
+            elif _real_tape_active:
+                # Phase F: tape_df already loaded above; resolve close-at-17:55
+                # via the same auction cutoff used for the barrier walk.
+                # close_at_1755 = last trade price strictly before 17:55:00.
+                cutoff_ts_pd = pd.Timestamp(
+                    datetime.combine(session_date, time(17, 55, 0))
+                )
+                pre_cutoff = tape_df[tape_df["ts"] < cutoff_ts_pd]
+                if len(pre_cutoff) == 0:
+                    forward_return_pts = None
+                else:
+                    close_at_1755 = float(pre_cutoff.iloc[-1]["price"])
+                    direction_sign = 1 if signal.direction == Direction.LONG else -1
+                    forward_return_pts = float(
+                        (close_at_1755 - mid_price) * direction_sign
+                    )
+            else:
+                # Phase E synthetic — no real close reference; deferred per
+                # §15.2 phase guard. Downstream IC compute marks status=
+                # 'deferred' or 'not_computed' depending on caller wiring.
+                forward_return_pts = None
             trades_list.append(
                 TradeRecord(
                     session_date=session_date,
@@ -1100,6 +1145,8 @@ def make_backtest_fn(
                     duration_seconds=int(exit_offset_seconds),
                     forced_exit=exit_reason == "vertical",
                     flags=frozenset({exit_reason, signal.reason}),
+                    predictor_signal_per_trade=float(predictor_signal),
+                    forward_return_at_1755_pts=forward_return_pts,
                 )
             )
 

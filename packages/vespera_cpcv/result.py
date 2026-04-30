@@ -36,6 +36,26 @@ from packages.t002_eod_unwind.core.signal_rule import Direction
 class TradeRecord:
     """One round-trip in the fold. AC14 contract — entry+exit are the same
     ``Fill`` type used by live broker (``packages/...adapters/exec_*.py``).
+
+    T002.6 F2-T1 — additive fields per Mira Gate 4b spec §15.3 (Phase F2 IC
+    pipeline wiring; Beckett consumer audit §T0c additive frozen-dataclass
+    extension; semver minor bump). Fields are populated by the
+    ``make_backtest_fn`` closure at trade-record time:
+
+    - ``predictor_signal_per_trade`` — signed value
+      ``-intraday_flow_direction`` per §15.1 sign convention (predictor for
+      C1 + C2 IC computation). FADE strategy: positive flow → SHORT
+      (predictor = -1); negative flow → LONG (predictor = +1).
+    - ``forward_return_at_1755_pts`` — forward return in WDO points from
+      entry to 17:55:00 BRT close, signed by trade direction (label for C1
+      IC). ``None`` when exit was vertical at 17:55 itself (degenerate
+      label — zero forward window) or when the close-at-17:55 reference
+      price is unavailable (synthetic walk Phase E — IC compute deferred).
+
+    Back-compat: defaults preserve existing callsites (``test_result_dataclasses``
+    + any cached pickled artifacts whose mathematical content is unchanged).
+    Round 1 N7 cached artifacts MUST be regenerated for IC computation per
+    F2-T4 Beckett N7-prime re-run mandate (Mira spec §15.3 / §15.11).
     """
 
     session_date: date
@@ -50,6 +70,12 @@ class TradeRecord:
     duration_seconds: int
     forced_exit: bool
     flags: frozenset[str]
+    # T002.6 F2-T1 additive fields (Mira spec §15.3 — predictor + label).
+    # Default 0.0 / None preserve back-compat for existing callsites that
+    # do not yet emit per-event predictor/label (synthetic Phase E + legacy
+    # test fixtures); the real Phase F closure populates them per §15.1.
+    predictor_signal_per_trade: float = 0.0
+    forward_return_at_1755_pts: float | None = None
 
 
 # ---------------------------------------------------------------
