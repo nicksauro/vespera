@@ -1,9 +1,10 @@
-# T002 — Gate 4b Real-Tape Edge-Existence Clearance Spec (Final v1.1.0)
+# T002 — Gate 4b Real-Tape Edge-Existence Clearance Spec (Final v1.2.0)
 
 > **Author:** Mira (@ml-researcher) — ML/statistical authority
-> **Date (BRT):** 2026-04-29 (skeleton drafted pre-merge ESC-011 R11; finalized T0a same day) — **2026-04-30 BRT v1.1.0 Phase F2 Amendment** appended (§15 IC Pipeline Wiring Spec; §12 sign-off chain extended F2-T0a..F2-T6)
-> **Status:** **Final v1.1.0** — Phase F2 amendment applied (§15 NEW; §12 extended). v1.0.0 skeleton finalized 2026-04-29 BRT consumable by Aria T0b / Beckett T0c / Riven T0d / Pax T0e sign-offs and Dex T1 implementation; v1.1.0 (2026-04-30 BRT) appends §15 IC Pipeline Wiring Spec per Mira deep audit + Aria Option D + Beckett consumer audit + Sable F-01..F-04 procedural recommendations. Body §0-§14 v1.0.0 content UNCHANGED — append-only revision.
-> **Phase F2 Amendment 2026-04-30:** §15 NEW (IC Pipeline Wiring Spec, 11 sub-sections); §12 extended F2-T0a..F2-T6 (sign-off chain for §15 amendment + N7-prime re-run + re-clearance); Change Log entry below. NO mutation of §1 thresholds (Anti-Article-IV Guard #4 preserved); NO mutation of hold-out lock; NO mutation of Round 1 T5 sign-off.
+> **Date (BRT):** 2026-04-29 (skeleton drafted pre-merge ESC-011 R11; finalized T0a same day) — **2026-04-30 BRT v1.1.0 Phase F2 Amendment** appended (§15 IC Pipeline Wiring Spec §15.1..§15.12; §12 sign-off chain extended F2-T0a..F2-T6) — **2026-04-30 BRT v1.2.0 Phase G OOS Unlock Amendment** appended (§15.13 NEW; §12.2 sign-off chain extended F2-T8-T0a..F2-T8-T7; §14.4 cosign ledger Round 3 added) per ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B ratification
+> **Status:** **Final v1.2.0** — Phase G OOS unlock protocol applied per ESC-012 R2 ratification (§15.13 NEW; §12.2 extended; §14.4 added). v1.0.0 skeleton finalized 2026-04-29 BRT; v1.1.0 (2026-04-30 BRT) appended §15.1..§15.12 IC Pipeline Wiring Spec; v1.2.0 (2026-04-30 BRT) appends §15.13 Phase G OOS Unlock Protocol per ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B (Aria + Kira + Mira + Beckett + Pax APPROVE; Riven minority Path C dissenting with explicit fallback). Body §0-§14 v1.0.0 content UNCHANGED + §15.1-§15.12 v1.1.0 content UNCHANGED — append-only revision.
+> **Phase F2 Amendment 2026-04-30 (v1.1.0):** §15 NEW (IC Pipeline Wiring Spec, sub-sections §15.1..§15.12); §12 extended F2-T0a..F2-T6 (sign-off chain for §15 amendment + N7-prime re-run + re-clearance); Change Log entry below. NO mutation of §1 thresholds (Anti-Article-IV Guard #4 preserved); NO mutation of hold-out lock; NO mutation of Round 1 T5 sign-off.
+> **Phase G OOS Unlock Amendment 2026-04-30 (v1.2.0):** §15.13 NEW (Phase G OOS Unlock Protocol — 13 sub-sections §15.13.1..§15.13.13); §12.2 sign-off chain extended F2-T8-T0a..F2-T8-T7 (Round 3 — spec amendment + Phase G N8 OOS run + re-clearance + reclassify + close); §14.4 cosign ledger added; Change Log entry below. Authority: ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B + 17 conditions R1-R17 (`docs/councils/COUNCIL-2026-04-30-ESC-012-resolution.md` §4.1 R2). NO mutation of §1 thresholds (Anti-Article-IV Guard #4 preserved); NO mutation of hold-out lock policy (Phase G unlock IS the authorized §15.10 transition, NOT a guard violation per ESC-012 R10 K1 strict bar UNMOVABLE preservation); NO mutation of §0-§14 v1.0.0 body content; NO mutation of §15.1-§15.12 v1.1.0 content; NO mutation of Round 1 T5 sign-off; NO mutation of Round 2 F2-T5 sign-off (`docs/qa/gates/T002.6-mira-gate-4b-signoff-round2.md` OBS-1 surfaced).
 > **Council provenance:** ESC-011 5/5 UNANIMOUS APPROVE_OPTION_C ratification (Beckett+Mira+Riven+Aria+Pax) — `docs/councils/COUNCIL-2026-04-29-ESC-011-resolution.md`
 > **Authority chain:** Mira ML/statistical authority under ESC-011 R11 (fence-against-drift mandate — Mira drafts Gate 4b spec ANTES de Gate 4a verdict; this finalize lifts the skeleton into a full binding contract for T002.6 execution).
 > **Predecessor / sibling docs:**
@@ -582,6 +583,28 @@ The following stages F2-T0a..F2-T6 govern the §15 IC Pipeline Wiring Spec amend
 
 Round 1 T0a..T6 chain (Phase F skeleton-finalize → Beckett N7 → Mira clearance → Riven reclassify) PRESERVED above without mutation. Phase F2 amendment chain F2-T0a..F2-T6 is **append-only** continuation per Pax governance + ESC-011 R10 (Phase F as separate story T002.6) + Mira deep audit Round 1 attribution finding (IC pipeline wiring gap is bucket A `harness_gap` not bucket B `strategy_edge`).
 
+### §12.2 Phase G OOS unlock sign-off chain (added 2026-04-30 BRT v1.2.0)
+
+The following stages F2-T8-T0a..F2-T8-T7 govern the §15.13 Phase G OOS Unlock Protocol amendment and its downstream Beckett N8 OOS run + Mira F2-T9 re-clearance Round 3 (supersedes Round 2 via append-only ledger entry) + Riven Round 3 reclassify + Pax T002.7 close. Authority chain: ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B ratification (`docs/councils/COUNCIL-2026-04-30-ESC-012-resolution.md` §4.1 R2) + Aria F2-T0b' archi review APPROVE_OPTION_D + 7 conditions C-A8..C-A14 carry-forward + Mira F2-T5 Round 2 OBS-1 surface + Riven minority Path C explicit fallback preserved.
+
+| Stage | Owner | Action | Gate (input) | Status |
+|---|---|---|---|---|
+| **F2-T8-T0a** | Mira (@ml-researcher) | Apply §15.13 Phase G OOS Unlock Protocol amendment (13 sub-sections §15.13.1..§15.13.13) per ESC-012 R2 ratification + Aria F2-T0b' APPROVE_OPTION_D + 7 conditions C-A8..C-A14 + Mira F2-T5 Round 2 OBS-1 | Round 1 T5 sign-off + Round 2 F2-T5 sign-off + ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B + 17 conditions R1-R17 + this v1.2.0 publish | ⏳ in-progress (this artifact) |
+| **F2-T8-T0b** | Aria (@architect) | Small archi review — gated em F2-T8-T0a; verify C-A8/C-A9 carry-forward conditions held (factory contract preservation across Phase F2 → Phase G transition; Aria Option D module placement intact in `vespera_metrics`); no new architectural surface introduced (only `holdout_locked` flag flip + `--phase G` CLI flag) | F2-T8-T0a PASS | ⏳ pending |
+| **F2-T8-T0c** | Beckett (@backtester) | Consumer sign-off — Phase G run plan + budget; smoke-fixture viability OOS context; wall-time §15.13.10 (~3h wall, ~600 MB RSS peak); cost-atlas `bbe1ddf7…` + rollover `c6174922…` SHAs IDENTICAL F2 per ESC-012 R6; new `run_id` generation protocol; ADR-1 v3 RSS ≤ 6 GiB | F2-T8-T0a + F2-T8-T0b PASS | ⏳ pending |
+| **F2-T8-T0d** | Riven (@risk-manager) | Cost-atlas + Gate 5 fence preserve (carry-forward) — §10.2 footer verbatim mandatory; §15.13.6 K1 strict bar UNMOVABLE preserved; bucket A `IC_pipeline_wiring_gap` CLOSED upon F2-T5 Round 2 (no change); new entry path per F2-T8-T4 verdict (bucket B/C/both per §15.13.8 + §7) | F2-T8-T0a + F2-T8-T0b PASS | ⏳ pending |
+| **F2-T8-T0e** | Pax (@po) | 10-point `*validate-story-draft` over §15.13 amendment scope (covers §15.13.1..§15.13.13 dimensions; verifies status field updated v1.1.0 → v1.2.0; sign-off chain extended F2-T8-T0a..F2-T8-T7; Anti-Article-IV Guards #3 + #4 + #8 preserved verbatim; no §1 threshold mutation; no hold-out lock policy mutation; no §0-§14 + §15.1-§15.12 mutation); register PRR-20260430-1 via `python scripts/pax_cosign.py register` (hash-freeze 4-branch disposition rule §15.13.8 BEFORE N8 run per ESC-012 R3) | F2-T8-T0a + F2-T8-T0b + F2-T8-T0c + F2-T8-T0d PASS | ⏳ pending |
+| **F2-T8-T1** | Dex (@dev) | Implementation per §15.13.2 — small ~10-20 LoC change at `scripts/run_cpcv_dry_run.py:~1050-1071` insertion zone: (a) flip `holdout_locked=False` for Phase G context; (b) introduce `--phase G` CLI flag gating the unlock; (c) propagate `MetricsResult.ic_holdout_status` `'deferred' → 'computed'`; preserve Anti-Article-IV Guard #8 verdict-issuing protocol; no `TradeRecord` shape change (F2 v1.1.0 fields sufficient — additive frozen-dataclass extension already in place per F2-T1) | ALL F2-T8-T0 sign-offs PASS (Anti-Article-IV Guard #1) + PRR-20260430-1 hash-frozen | ⏳ blocked on F2-T8-T0 chain |
+| **F2-T8-T2/T3** | Quinn (@qa) | QA Gate 8-point + Check 8 retained — Phase G unlock invariant tests (`holdout_locked=False` propagation per §15.13.2 mechanism; `ic_holdout_status='computed'` invariant per §15.6); regression vs F2 N7-prime baseline (TradeRecord shape unchanged — F2-T2/T3 4 NEW tests in `tests/vespera_metrics/test_ic_pipeline_wired.py` continue to PASS); Article IV trace test for §15.13 anchors (17 source anchors per §15.13.13); ruff + lint + regression | F2-T8-T1 PASS | ⏳ blocked |
+| **F2-T8-T4** | Beckett (@backtester) | N8 OOS run — Phase G window 2025-07-01..2026-04-21 (~10 months ~210 trading days; ~3000-4000 events × 5 trials × 45 paths CPCV combinatorial); ~3h wall + ~600 MB RSS peak per §15.13.10; sha256-stamped new `run_id`; cost atlas `bbe1ddf7…` + rollover calendar `c6174922…` SHAs IDENTICAL F2 per ESC-012 R6; engine_config_sha256 `ccfb575a…` IDENTICAL F2; ADR-1 v3 RSS ≤ 6 GiB; predictor↔label IDENTICAL F2 per ESC-012 R7 (predictor=`-intraday_flow_direction`, label=`ret_forward_to_17:55_pts`); single-shot OOS discipline per ESC-012 R9 (cannot re-run / expand / reformulate / average) | F2-T8-T2/T3 PASS + F2-T8-T0a..F2-T8-T0e spec compliance retained + PRR-20260430-1 hash-frozen | ⏳ blocked |
+| **F2-T8-T5** | Mira (@ml-researcher) | F2-T9 Gate 4b re-clearance Round 3 sign-off (supersedes F2-T5 Round 2 via append-only ledger entry — `docs/qa/gates/T002.6-mira-gate-4b-signoff-round3.md`) — verdict per §15.13.8 4-branch disposition rule (`PASS K1+K2+K3` → ESC-013 escalate / `FAIL_K3_collapse` → T002 falsified clean / `FAIL_K1+K3_sustains` → costed_out_edge OOS-confirmed / `INCONCLUSIVE` → ESC escalation); §10.2 Gate 5 footer mandatory; Anti-Article-IV Guard #8 verdict-issuing protocol enforced (`ic_holdout_status='computed'` invariant — `K_FAIL` cannot be emitted with `ic_holdout_status != 'computed'`); §15.13.5 decay test full evaluation (`IC_holdout > 0.5 × IC_in_sample` BINDING per K3 sub-clause); §15.13.6 K1 strict bar UNMOVABLE preservation; §15.13.7 OOS one-shot discipline | F2-T8-T4 PASS | ⏳ blocked |
+| **F2-T8-T6** | Riven (@risk-manager) | 3-bucket attribution reclassify Round 3 — `docs/risk/post-mortems/T002-synthetic-vs-real-tape-attribution.md` append-only ledger entry; bucket A `IC_pipeline_wiring_gap` CLOSED (carry-forward Round 2); new entry per F2-T8-T4 verdict (bucket B `strategy_edge_falsified_OOS` / bucket B `costed_out_edge_OOS_confirmed` / bucket C `data_quality_addressed_then_edge_OOS_falsified` / `both` disambiguation per §15.13.8 + §7) | F2-T8-T5 verdict issued | ⏳ blocked |
+| **F2-T8-T7** | Pax (@po) | T002.7 close per outcome — story status transition per §15.13.8 disposition rule branch: PASS → ESC-013 escalate (council convene to ratify pathway to T002.7 Phase G/H paper-mode audit; K1 strict bar UNMOVABLE preserved upstream of capital ramp per ESC-012 R10) / FAIL_K3_collapse → T002 falsified clean (epic deprecate; retire ceremony at `docs/risk/post-mortems/T002-retire-ceremony-{date}.md`; institutional knowledge captured for H_next) / FAIL_K1+K3_sustains → T002 retire with refined diagnostic (institutional knowledge for H_next on cost-atlas calibration / latency-budget refinement / sizing economics) / INCONCLUSIVE → ESC escalation defer to council | F2-T8-T6 reclassify issued | ⏳ blocked |
+
+Round 1 T0a..T6 + Round 2 F2-T0a..F2-T6 chains PRESERVED above without mutation. Phase G OOS unlock chain F2-T8-T0a..F2-T8-T7 is **append-only** Round 3 continuation per Pax governance + ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B ratification + Mira F2-T5 Round 2 sign-off OBS-1 surface (decay test deferred under `ic_holdout_status='deferred'` Phase F2 → activated under `ic_holdout_status='computed'` Phase G).
+
+Riven minority Path C explicit fallback preserved per ESC-012 ballot dissent: IF Phase G run cannot proceed within 14 calendar days (i.e. by 2026-05-14 BRT), retire-clean Path C activates (T002 retire without OOS measurement; institutional knowledge captured per Riven dissent rationale).
+
 ---
 
 ## §13 Article IV self-audit
@@ -661,6 +684,27 @@ Cosign: Mira @ml-researcher 2026-04-30 BRT — F2-T0a spec amendment §15 IC Pip
 | F2-T0c | Beckett (@backtester) | ⏳ pending | — | Consumer sign-off — additive `TradeRecord` fields wired in `make_backtest_fn`; smoke fixture; wall-time §15.9 |
 | F2-T0d | Riven (@risk-manager) | ⏳ pending | — | Gate 5 fence preservation §15.10 + post-mortem ledger entry path |
 | F2-T0e | Pax (@po) | ⏳ pending | — | 10-point validate §15 amendment scope; verifies v1.0.0 → v1.1.0; sign-off chain extended; no §1-§14 mutation |
+
+### §14.4 Phase G OOS unlock cosign + sign-off ledger (added 2026-04-30 BRT v1.2.0)
+
+```
+Author: Mira (@ml-researcher) — ML/statistical authority
+Phase G OOS unlock authority: ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B ratification (`docs/councils/COUNCIL-2026-04-30-ESC-012-resolution.md` §4.1 R2 — pre-authored Phase G unlock per spec §3.1 + §15.10) + Aria F2-T0b' archi review APPROVE_OPTION_D + 7 conditions C-A8..C-A14 carry-forward (`docs/councils/COUNCIL-2026-04-30-ESC-012-T002-strategy-fate-aria-vote.md`) + Mira F2-T5 Round 2 sign-off OBS-1 surface (`docs/qa/gates/T002.6-mira-gate-4b-signoff-round2.md` §6) + Riven minority Path C explicit fallback preserved (`docs/councils/COUNCIL-2026-04-30-ESC-012-T002-strategy-fate-riven-vote.md`)
+Article IV: every clause in §15.13.1-§15.13.13 traces to (a) ESC-012 ratification R1-R17, (b) Mira spec § anchor (§1 thresholds + §3.1 hold-out + §6 sample-size + §7 attribution + §10.2 footer + §15.1-§15.12 IC pipeline + §15.13 self), (c) PRR-20260430-1 disposition rule (hash-frozen BEFORE N8 run via `python scripts/pax_cosign.py register`), (d) N8 run artifact (Beckett OOS run report, sha256-stamped, ADR-1 v3 RSS verified), (e) Bailey-LdP 2014 §3+§6 / Bailey-Borwein-LdP 2014 / AFML 2018 §8.6 citation — verified §15.13.13 self-audit row above
+Article II: no push (this is a write-only amendment; Gage authority preserved for any future commit)
+Anti-Article-IV Guards: #1-#8 preserved verbatim (Guard #4 DSR>0.95 / PBO<0.5 / IC>0 UNMOVABLE; Guard #3 hold-out window structurally preserved — Phase G unlock IS the authorized §15.10 transition pre-authored at spec §3.1, NOT a guard violation per ESC-012 R10 K1 strict bar UNMOVABLE preservation; Guard #5 OOS one-shot discipline extended per ESC-012 R9 — cannot re-run / expand trials / reformulate / average; Guard #8 verdict-issuing protocol — `K_FAIL` cannot be emitted with `ic_holdout_status != 'computed'` in Phase G context)
+Scope discipline: NO §1 thresholds mutation (Anti-Article-IV Guard #4 UNMOVABLE: DSR>0.95 / PBO<0.5 / IC>0); NO Round 1 T5 sign-off mutation; NO Round 2 F2-T5 sign-off mutation (F2-T8-T5 Round 3 supersedes via append-only ledger entry NOT mutation); NO hold-out lock policy mutation (Phase G unlock IS authorized §15.10 transition); NO §0-§14 v1.0.0 body content mutation; NO §15.1-§15.12 v1.1.0 content mutation — append-only revision per Pax governance
+Sign-off: F2-T8-T0a Mira amendment → F2-T8-T0b Aria small archi review → F2-T8-T0c Beckett consumer (Phase G run plan + budget) → F2-T8-T0d Riven (cost-atlas + Gate 5 fence preserve) → F2-T8-T0e Pax 10-point validate amendment + register PRR-20260430-1 → F2-T8-T1 Dex caller wiring (`holdout_locked=False` + `--phase G` flag, ~10-20 LoC) → F2-T8-T2/T3 Quinn QA Gate (8-point + Check 8 retained) → F2-T8-T4 Beckett N8 OOS run (~3h wall, ~600 MB RSS peak) → F2-T8-T5 Mira F2-T9 re-clearance Round 3 (supersedes Round 2 via append-only ledger) → F2-T8-T6 Riven 3-bucket reclassify Round 3 → F2-T8-T7 Pax T002.7 close per outcome
+Cosign: Mira @ml-researcher 2026-04-30 BRT — F2-T8-T0a spec amendment §15.13 Phase G OOS Unlock Protocol applied (v1.1.0 → v1.2.0)
+```
+
+| Stage | Owner | Cosign | Date (BRT) | Notes |
+|---|---|---|---|---|
+| F2-T8-T0a | Mira (@ml-researcher) | ✅ Mira | 2026-04-30 | §15.13 Phase G OOS Unlock Protocol applied (13 sub-sections §15.13.1..§15.13.13); v1.1.0 → v1.2.0 bump; §12.2 sign-off chain extended F2-T8-T0a..F2-T8-T7; §14.4 cosign ledger added; Change Log entry below; ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B ratification operationalized; 17 conditions R1-R17 consumed where applicable; Aria F2-T0b' APPROVE_OPTION_D + 7 conditions C-A8..C-A14 carry-forward; Mira F2-T5 Round 2 OBS-1 fix activated (decay test full evaluation under `ic_holdout_status='computed'`); Riven minority Path C explicit fallback preserved (14-day window 2026-05-14 BRT) |
+| F2-T8-T0b | Aria (@architect) | ⏳ pending | — | Small archi review — verify C-A8/C-A9 carry-forward conditions held; no new architectural surface (only `holdout_locked` flag flip + `--phase G` CLI flag) |
+| F2-T8-T0c | Beckett (@backtester) | ⏳ pending | — | Consumer sign-off — Phase G run plan + budget; smoke-fixture viability OOS context; wall-time §15.13.10; cost-atlas + rollover SHAs IDENTICAL F2 per ESC-012 R6; new `run_id` generation |
+| F2-T8-T0d | Riven (@risk-manager) | ⏳ pending | — | Cost-atlas + Gate 5 fence preserve (carry-forward) §10.2 footer verbatim; §15.13.6 K1 strict bar UNMOVABLE preserved; bucket A CLOSED carry-forward; new entry path per F2-T8-T4 verdict |
+| F2-T8-T0e | Pax (@po) | ⏳ pending | — | 10-point validate §15.13 amendment scope; verifies v1.1.0 → v1.2.0; sign-off chain extended F2-T8-T0a..F2-T8-T7; Anti-Article-IV Guards #3 + #4 + #8 preserved; register PRR-20260430-1 via `python scripts/pax_cosign.py register` (hash-freeze 4-branch disposition rule §15.13.8 BEFORE N8 run per ESC-012 R3) |
 
 ---
 
@@ -866,11 +910,205 @@ Reproduced from §12.1 above for §15-local readability:
 
 ---
 
+### §15.13 Phase G OOS Unlock Protocol (Phase G amendment 2026-04-30 BRT v1.2.0)
+
+> **Provenance:** This §15.13 is the operationalization of ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B ratification (`docs/councils/COUNCIL-2026-04-30-ESC-012-resolution.md` §4.1 R2 — "Pre-authored Phase G unlock per spec §3.1 + §15.10"). Authority chain: Aria archi review F2-T0b' APPROVE_OPTION_D + 7 conditions C-A8..C-A14 carry-forward to Phase G (`docs/councils/COUNCIL-2026-04-30-ESC-012-T002-strategy-fate-aria-vote.md`); Mira F2-T5 Round 2 sign-off OBS-1 surface (`docs/qa/gates/T002.6-mira-gate-4b-signoff-round2.md` §6); ESC-012 17 ratified conditions R1-R17.
+
+> **Scope discipline:** §15.13 ADDS sub-section to §15. It does NOT mutate §1 thresholds (Anti-Article-IV Guard #4 honored: DSR>0.95 / PBO<0.5 / IC>0 UNMOVABLE), §3 real-tape data interface, §4 Nova RLP, §5 Beckett latency, §6 sample-size mandate, §7 3-bucket attribution, §8 milestones (a-f), §9 verdict-label discipline, §10 Gate 5 conjunction, §11 Article IV trace, §12 sign-off chain (extends in §12.2, does not mutate), §13 self-audit, §14 cosign ledger (extends in §14.4, does not mutate), §15.1-§15.12 v1.1.0 content. Phase G unlock IS the authorized §15.10 transition (pre-authored at spec §3.1 + §15.10), NOT a hold-out lock violation per ESC-012 R10 K1 strict bar UNMOVABLE preservation. Round 1 T5 + Round 2 F2-T5 sign-offs UNMOVED. Append-only revision per Pax governance.
+
+#### §15.13.1 Phase G unlock authorization
+
+Per ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B ratification:
+
+| Voter | Vote | Ballot artifact |
+|---|---|---|
+| Aria (@architect) | APPROVE_PATH_B | `docs/councils/COUNCIL-2026-04-30-ESC-012-T002-strategy-fate-aria-vote.md` |
+| Kira (@quant-researcher) | APPROVE_PATH_B | `docs/councils/COUNCIL-2026-04-30-ESC-012-T002-strategy-fate-kira-vote.md` |
+| Mira (@ml-researcher) | APPROVE_PATH_B | `docs/councils/COUNCIL-2026-04-30-ESC-012-T002-strategy-fate-mira-vote.md` |
+| Beckett (@backtester) | APPROVE_PATH_B | `docs/councils/COUNCIL-2026-04-30-ESC-012-T002-strategy-fate-beckett-vote.md` |
+| Pax (@po) | APPROVE_PATH_B | `docs/councils/COUNCIL-2026-04-30-ESC-012-T002-strategy-fate-pax-vote.md` |
+| Riven (@risk-manager) | DISSENT — Path C minority | `docs/councils/COUNCIL-2026-04-30-ESC-012-T002-strategy-fate-riven-vote.md` |
+
+Tally: 5/6 APPROVE_PATH_B (supermajority threshold met; ≥ 5/6 cleared). Riven minority dissent preserved: Path C explicit fallback IF Phase G run cannot proceed within 14 calendar days (i.e. by 2026-05-14 BRT) — preserves the disciplined retire-clean option.
+
+Pre-authored unlock per spec §3.1 (real-tape data interface — hold-out window structurally defined) + §15.10 (Gate 5 fence preservation — fence is reinforced, not relaxed) + Mira parent spec yaml v0.2.3 §3 hold-out window. Phase G unlocks for SINGLE OOS confirmation run.
+
+#### §15.13.2 Unlock mechanism
+
+```python
+ic_result = compute_ic_from_cpcv_results(
+    results,
+    seed_bootstrap=42,
+    n_resample=10000,
+    holdout_locked=False,  # Phase G unlock: holdout=AVAILABLE
+)
+# Propagation: ic_holdout_status='computed' (was 'deferred' Phase F2)
+# Decay test full evaluation: IC_holdout > 0.5 × IC_in_sample becomes BINDING K3 sub-clause
+```
+
+Caller site: same `scripts/run_cpcv_dry_run.py:~1050-1071` insertion zone wired in F2-T1 (Aria Option D — `vespera_metrics` orchestration module). Dex F2-T8-T1 implementation: small ~10-20 LoC change to (a) flip `holdout_locked=False` for Phase G; (b) introduce `--phase G` CLI flag gating the unlock; (c) propagate `ic_holdout_status='computed'` through `MetricsResult` extension §15.6 invariant. Anti-Article-IV Guard #8 (§15.5) verdict-issuing protocol applies verbatim — `K_FAIL` cannot be emitted with `ic_holdout_status != 'computed'` in Phase G context.
+
+#### §15.13.3 Phase G run window
+
+| Field | Value |
+|---|---|
+| **in-sample-start** | 2025-07-01 |
+| **in-sample-end** | 2026-04-21 |
+| **Window length** | ~10 months ~210 trading days |
+| **Expected event count** | ~3000-4000 events × 5 trials × 45 paths (CPCV combinatorial) |
+
+**Reusability invariants per ESC-012 R6 (binding — engine_config + spec yaml + cost atlas + rollover + Bonferroni + latency + RLP + microstructure flags ALL IDENTICAL to F2 N7-prime):**
+
+| Invariant | F2 N7-prime stamp | Phase G N8 (MUST be IDENTICAL) |
+|---|---|---|
+| `engine_config_sha256` | `ccfb575a…` | `ccfb575a…` (no change) |
+| Spec yaml `T002-end-of-day-inventory-unwind-wdo-v0.2.3.yaml` thresholds | DSR>0.95 / PBO<0.5 / IC | UNMOVABLE (Anti-Article-IV Guard #4) |
+| Cost atlas v1.0.0 SHA-locked | `bbe1ddf7…` | `bbe1ddf7…` (no change) |
+| Rollover calendar SHA-locked | `c6174922…` | `c6174922…` (no change) |
+| Bonferroni `n_trials` | 5 (T1..T5 verbatim) | 5 (T1..T5 verbatim — IDENTICAL) |
+| `latency_dma2_profile` | per Beckett spec §5 | IDENTICAL (no parameter tweak) |
+| RLP detection (Nova §4) | per Nova spec | IDENTICAL |
+| Microstructure flags (Nova §4) | per Nova spec | IDENTICAL |
+
+#### §15.13.4 Predictor↔label semantics IDENTICAL F2 (ESC-012 R7)
+
+Per §15.1 Phase F2 binding paradigm — Phase G consumes the SAME predictor↔label pair without modification:
+
+- **predictor** = `-intraday_flow_direction` (sign de fade — verbatim §15.1 binding)
+- **label** = `ret_forward_to_17:55_pts` em pontos WDO (verbatim §15.1 binding)
+
+NO refinement / no parameter tweak / no Bonferroni expansion / no horizon shift / no triple-barrier reformulation. ESC-012 R7 enforces predictor↔label IDENTICALITY because Phase G is **single-shot OOS confirmation**, not a research iteration.
+
+#### §15.13.5 Decay test full evaluation
+
+Phase G unlock activates the canonical K3 decay sub-clause (§1 carry-forward — Mira spec yaml v0.2.3 L209 + parent §6 K3 row):
+
+```
+K3_decay_passed = (IC_holdout > 0.5 × IC_in_sample)
+```
+
+**Phase F2 short-circuit (per OBS-1 fix in F2-T5 Round 2 sign-off + ESC-012 R1) NO LONGER applies** in Phase G context because `ic_holdout_status='computed'` (vs `'deferred'` in F2). The full BINDING K3 evaluation activates: IC_holdout magnitude must preserve in-sample IC sign AND retain ≥ 50% of in-sample magnitude. Decay below this threshold = K3 FAIL = Gate 4b FAIL.
+
+This IS the canonical Lopez de Prado AFML §8.6 IC-stability rolling decay paradigm activated in OOS measurement form per Bailey-LdP 2014 §6 reproducible-backtest gating.
+
+#### §15.13.6 K1 strict bar UNMOVABLE preservation (ESC-012 R10)
+
+Phase G PASS does NOT pre-disarm Gate 4b alone under K1 strict bar (DSR>0.95 spec §1; Mira spec yaml v0.2.3 L207). Gate 5 capital ramp dual-sign STILL requires:
+
+- **K1 PASS** (DSR > 0.95) — UNMOVABLE per Anti-Article-IV Guard #4
+- **K2 PASS** (PBO < 0.5) — UNMOVABLE per Anti-Article-IV Guard #4
+- **K3 PASS** (IC > 0 with CI95 lower > 0; decay stable per §15.13.5) — UNMOVABLE per Anti-Article-IV Guard #4
+- **+ paper-mode Phase G/H audit (T002.7 future scope)** — bucket C of Riven 3-bucket framework
+
+K1 strict bar UNMOVABLE per Anti-Article-IV Guard #4. ESC-012 R10 explicitly preserves the K1 fence: a Phase G PASS on K2+K3 with K1 borderline does NOT relax K1; verdict pathway routes through §7 decision tree (3-bucket attribution).
+
+#### §15.13.7 OOS one-shot discipline (ESC-012 R9)
+
+Phase G window 2025-07-01..2026-04-21 is **single-shot**. The result is binding regardless of outcome:
+
+- CANNOT be re-run with adjusted parameters (would constitute IS-fit on hold-out — Anti-Article-IV Guard #3 + #4 violation)
+- CANNOT be expanded with additional trials beyond Bonferroni n=5 carry-forward (would violate ESC-012 R6 reusability invariant)
+- CANNOT be reformulated mid-flight (would violate ESC-012 R7 predictor↔label IDENTICALITY)
+- CANNOT be averaged with subsequent re-runs (Anti-Article-IV Guard #5 sub-sample averaging prohibition extended to OOS)
+
+The hold-out window collapses to a **single committed measurement**. This is the Bailey-LdP 2014 §6 + §3 selection-bias guarantee — once we look at the hold-out, the hold-out is consumed.
+
+#### §15.13.8 Pre-committed disposition rule (ESC-012 R3 — PRR-20260430-1)
+
+Hash-frozen BEFORE Phase G N8 run via `python scripts/pax_cosign.py register` (per MANIFEST R15 spec versioning protocol). 4 explicit branches per ESC-012 decision tree:
+
+| Outcome | Definition | Action (per ESC-012 decision tree) |
+|---|---|---|
+| **PASS K1+K2+K3** | DSR>0.95 AND PBO<0.5 AND IC>0 with CI95 lower>0 AND IC_holdout > 0.5 × IC_IS | **ESC-013 escalate** (K1 strict bar surprise PASS — would still require paper-mode Phase G/H per R10 fence; council convene to ratify pathway to T002.7 Phase G/H paper-mode audit; K1 strict bar UNMOVABLE preserved upstream of capital ramp) |
+| **FAIL_K3_collapse** | IC_holdout drops significantly (e.g., <0.3 or sign-flip from in-sample) | **T002 falsified clean per spec §0**; retire ceremony (`docs/risk/post-mortems/T002-retire-ceremony-{date}.md`); epic deprecate; bucket B `strategy_edge_falsified_OOS` per §7; institutional knowledge captured for H_next |
+| **FAIL_K1+K3_sustains** | IC stable holdout but DSR<0.95 (cost gates dominate edge magnitude) | **costed_out_edge OOS-confirmed**; T002 retire with refined diagnostic; bucket B `costed_out_edge_OOS_confirmed` per §7; institutional knowledge for H_next (cost-atlas calibration / latency-budget refinement / sizing economics) |
+| **INCONCLUSIVE** | E.g., IC borderline + K2 borderline + N events under floor (§6 ≥ 150-250 mandate violated in OOS context) | **ESC escalation**; defer to council; route per §7 INCONCLUSIVE branch (R9 1-of-4 verdict possibilities); cannot pre-empt fate without council ratification |
+
+The PRR-20260430-1 hash freeze BEFORE the run is the Article IV (No Invention) defense: every disposition pathway is enumerated, anchored, and binding ex-ante. NO post-hoc rationalization of an unanticipated outcome (Anti-Article-IV Guard #3 + #4 + #8 collectively).
+
+#### §15.13.9 Sample-size considerations
+
+| Phase | Window | Trials × Paths | Expected events |
+|---|---|---|---|
+| **F2 N7-prime** (in-sample) | spec yaml §3 in-sample | 5 × 45 | ~3800 events (Beckett N7-prime report) |
+| **Phase G N8** (out-of-sample) | 2025-07-01..2026-04-21 (~10 months) | 5 × 45 | ~3000-4000 events (estimated — comparable order of magnitude) |
+
+Phase G ~3000-4000 events vs Phase F2 ~3800 events — **comparable order of magnitude**. Floor mandate per §6 + Bailey-LdP 2014 §3 (≥ 150-250 events) is comfortably cleared in expectation. Bonferroni `n_trials=5` carry-forward (T1..T5 verbatim — IDENTICAL to F2; ESC-012 R6); bootstrap `n_resample=10000` PCG64 `seed=42` IDENTICAL (per §15.4 + §15.13.2 mechanism). Sample-size INCONCLUSIVE branch (§15.13.8) only triggers if actual N falls below floor — to be verified post-run, NOT pre-emptively assumed.
+
+#### §15.13.10 Wall-time + RSS budget
+
+Beckett N8 OOS run constraints:
+
+- **Wall-time:** ~3h (same envelope as F2 N7-prime per Beckett consumer §T0c — single OOS run squad-tolerable at this duration)
+- **RSS peak:** ~600 MB (well under ADR-1 v3 6 GiB cap)
+- **Engine_config v1.2.0 perf optimization:** OPTIONAL (single OOS run within budget without optimization — perf work deferable to post-Phase-G if T002.7 Phase G/H paper-mode pathway activates)
+- **Sha256 stamping:** new `run_id` generated; cost atlas + rollover calendar SHAs IDENTICAL to F2 N7-prime per ESC-012 R6 reusability invariant
+
+#### §15.13.11 Article IV trace policy
+
+Every Phase G verdict claim traces to:
+
+- **(a)** ESC-012 ratification R1-R17 — `docs/councils/COUNCIL-2026-04-30-ESC-012-resolution.md`
+- **(b)** Mira spec § anchor (§1 thresholds + §3.1 hold-out + §6 sample-size + §7 attribution + §10.2 footer + §15.1-§15.12 IC pipeline + §15.13 this section)
+- **(c)** PRR-20260430-1 disposition rule (hash-frozen BEFORE N8 run via `scripts/pax_cosign.py register`)
+- **(d)** N8 run artifact (Beckett OOS run report, sha256-stamped, ADR-1 v3 RSS verified)
+- **(e)** Bailey-LdP 2014 §3+§6 / Bailey-Borwein-LdP 2014 / AFML 2018 §8.6 citation
+
+**NO INVENTION.** Phase G verdict label discipline carries forward §9 (`GATE_4_PASS` / `GATE_4_FAIL_*` / `INCONCLUSIVE` per §15.13.8 4 branches × §7 3-bucket disambiguation; never `HARNESS_PASS`).
+
+#### §15.13.12 Sign-off chain F2-T8
+
+Reproduced from §12.2 below for §15.13-local readability:
+
+| Stage | Owner | Action |
+|---|---|---|
+| **F2-T8-T0a** | Mira (@ml-researcher) | Apply §15.13 spec amendment (this artifact) — operationalize ESC-012 R2 Phase G OOS unlock pre-authored protocol |
+| **F2-T8-T0b** | Aria (@architect) | Small archi review — gated em T0a; verify C-A8/C-A9 carry-forward conditions held (factory contract preservation across Phase F2 → Phase G transition; Aria Option D module placement intact in `vespera_metrics`) |
+| **F2-T8-T0c** | Beckett (@backtester) | Consumer sign-off — Phase G run plan + budget; smoke-fixture viability OOS context; wall-time §15.13.10; cost-atlas + rollover SHAs IDENTICAL F2 per ESC-012 R6 |
+| **F2-T8-T0d** | Riven (@risk-manager) | Cost-atlas + Gate 5 fence preserve (carry-forward §10.2 footer verbatim; §15.13.6 K1 strict bar UNMOVABLE preserved; bucket A `IC_pipeline_wiring_gap` CLOSED upon F2-T5 Round 2 already; new entry per F2-T8-T4 verdict) |
+| **F2-T8-T0e** | Pax (@po) | 10-point `*validate-story-draft` over §15.13 amendment scope; verifies v1.1.0 → v1.2.0; sign-off chain extended F2-T8-T0a..F2-T8-T7; Anti-Article-IV Guards #3 + #4 + #8 preserved verbatim; register PRR-20260430-1 via `python scripts/pax_cosign.py register` (hash-freeze disposition rule BEFORE N8 run) |
+| **F2-T8-T1** | Dex (@dev) | Caller wiring `holdout_locked=False` + `--phase G` CLI flag (small ~10-20 LoC) — `scripts/run_cpcv_dry_run.py:~1050-1071` insertion zone; `MetricsResult.ic_holdout_status` propagation `'deferred' → 'computed'`; Anti-Article-IV Guard #8 verdict-issuing protocol preserved |
+| **F2-T8-T2/T3** | Quinn (@qa) | QA Gate (8-point + Check 8 retained) — Phase G unlock invariant tests (`holdout_locked=False` propagation); regression vs F2 N7-prime baseline (TradeRecord shape unchanged — F2-T2/T3 4 NEW tests in `tests/vespera_metrics/test_ic_pipeline_wired.py` continue to PASS); Article IV trace test for §15.13 anchors |
+| **F2-T8-T4** | Beckett (@backtester) | N8 OOS run (~3h wall, ~600 MB RSS peak per §15.13.10) — Phase G window 2025-07-01..2026-04-21; sha256-stamped new `run_id`; cost atlas + rollover SHAs IDENTICAL F2 per ESC-012 R6; ADR-1 v3 RSS ≤ 6 GiB |
+| **F2-T8-T5** | Mira (@ml-researcher) | F2-T9 re-clearance Round 3 (supersedes F2-T5 Round 2 sign-off via append-only ledger entry — `docs/qa/gates/T002.6-mira-gate-4b-signoff-round3.md`) — verdict per §15.13.8 disposition rule (PASS / FAIL_K3_collapse / FAIL_K1+K3_sustains / INCONCLUSIVE); §10.2 footer mandatory; Anti-Article-IV Guard #8 verdict-issuing protocol enforced (`ic_holdout_status='computed'` invariant) |
+| **F2-T8-T6** | Riven (@risk-manager) | 3-bucket attribution reclassify Round 3 (`docs/risk/post-mortems/T002-synthetic-vs-real-tape-attribution.md` append-only ledger entry) — bucket A `IC_pipeline_wiring_gap` CLOSED (carry-forward Round 2); new entry per F2-T8-T4 verdict (bucket B/C/both per §15.13.8 + §7 disambiguation) |
+| **F2-T8-T7** | Pax (@po) | T002.7 close per outcome — story status transition per §15.13.8 disposition rule; epic deprecate or T002.7 Phase G/H paper-mode pathway activate per ESC-012 R10 fence + ESC-013 escalate if surprise PASS |
+
+#### §15.13.13 Article IV self-audit (§15.13 amendment)
+
+| §15.13 claim | Source anchor (verified) |
+|---|---|
+| ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B (Aria + Kira + Mira + Beckett + Pax APPROVE; Riven Path C dissent) | `docs/councils/COUNCIL-2026-04-30-ESC-012-resolution.md` §1 outcome table — 6 voters, 5 APPROVE_PATH_B ballots, 1 Path C dissent; individual ballot artifacts referenced in §15.13.1 table |
+| Phase G unlock pre-authored at spec §3.1 + §15.10 | This spec §3.1 (real-tape data interface — hold-out window structurally defined) + §15.10 (Gate 5 fence preservation — fence reinforced not relaxed); ESC-012 R2 verbatim |
+| Phase G window 2025-07-01..2026-04-21 (~10 months ~210 trading days) | Mira parent spec yaml v0.2.3 §3 hold-out window; ESC-012 R6 reusability invariant table this spec §15.13.3 |
+| Reusability invariants (engine_config + spec yaml + cost atlas + rollover + Bonferroni + latency + RLP + microstructure ALL IDENTICAL F2) | ESC-012 R6 verbatim; Beckett N7-prime sha256 stamps (`engine_config_sha256=ccfb575a…`, cost atlas `bbe1ddf7…`, rollover `c6174922…`); spec yaml §kill_criteria L207-209 UNMOVABLE; spec §1.2 Bonferroni n=5; Beckett spec §5 latency; Nova spec §6 RLP / microstructure |
+| Predictor↔label IDENTICAL F2 (predictor=`-intraday_flow_direction`, label=`ret_forward_to_17:55_pts`) | §15.1 binding paradigm verbatim; ESC-012 R7 enforce IDENTICALITY for single-shot OOS; deep audit §1.4 |
+| Decay test full evaluation `IC_holdout > 0.5 × IC_in_sample` BINDING in Phase G context | §1 K3 row + spec yaml §kill_criteria.k3_ic L209 + AFML §8.6 IC stability + Bailey-LdP 2014 §6 reproducible-backtest gating; F2 OBS-1 fix per F2-T5 Round 2 sign-off + ESC-012 R1 |
+| K1 strict bar UNMOVABLE in Phase G PASS context (does NOT pre-disarm Gate 4b alone; Gate 5 STILL requires K1+K2+K3 + paper-mode Phase G/H) | Anti-Article-IV Guard #4 verbatim; ESC-012 R10 K1 strict bar fence preservation; this spec §10 Gate 5 conjunction; Riven §9 HOLD #2 Gate 5 ledger |
+| OOS one-shot discipline (cannot re-run / expand trials / reformulate / average) | ESC-012 R9 verbatim; Bailey-LdP 2014 §3 + §6 selection-bias guarantee; Anti-Article-IV Guards #3 + #4 + #5 collective application to OOS |
+| 4-branch pre-committed disposition rule (PRR-20260430-1 hash-frozen BEFORE N8 run) | ESC-012 R3 verbatim; MANIFEST R15 spec versioning protocol; `scripts/pax_cosign.py register` interface; Anti-Article-IV Guards #3 + #4 + #8 collective |
+| Phase G ~3000-4000 events comparable F2 ~3800 events | Beckett N7-prime report event count; Mira spec yaml §3 hold-out window length × intraday event rate estimate |
+| Wall-time ~3h + RSS ~600 MB (well under ADR-1 v3 6 GiB cap) | Beckett consumer §T0c F2-T0c sign-off precedent; ADR-1 v3 RSS cap; this spec §15.9 wall-time budget pattern |
+| Article IV trace 5-source policy (a-e) | ESC-012 resolution + this spec §-anchors + PRR-20260430-1 + N8 artifact + Bailey-LdP / BBLP / AFML citations |
+| Sign-off chain F2-T8-T0a..F2-T8-T7 (Round 3 — supersedes F2-T5 Round 2 via append-only ledger) | This §15.13.12 + §12.2 (pending edit below) + §14.4 (pending edit below); Aria archi review F2-T0b' APPROVE_OPTION_D conditions C-A8/C-A9 carry-forward; Mira F2-T5 Round 2 sign-off `docs/qa/gates/T002.6-mira-gate-4b-signoff-round2.md` §6 OBS-1 |
+| No §1 threshold mutation (Anti-Article-IV Guard #4 UNMOVABLE: DSR>0.95 / PBO<0.5 / IC>0) | This spec §1 reaffirmation; §15.13.6 K1 strict bar UNMOVABLE; ESC-012 R10 |
+| No hold-out lock policy mutation (Phase G unlock IS authorized §15.10 transition, NOT Anti-Article-IV Guard #3 violation) | This spec §3.1 hold-out window definition + §15.10 fence preservation; ESC-012 R2 pre-authored unlock; Anti-Article-IV Guard #3 verbatim (hold-out is for OOS measurement, not training) |
+| No §0-§14 v1.0.0 body mutation | §0-§14 content preserved verbatim in this artifact; v1.0.0 / v1.1.0 / v1.2.0 are append-only revisions |
+| No §15.1-§15.12 v1.1.0 content mutation | §15.1-§15.12 content preserved verbatim; this §15.13 is append-only sub-section |
+| No Round 1 T5 sign-off mutation; No Round 2 F2-T5 sign-off mutation | §12 + §14.2 Round 1 chain preserved; §12.1 + §14.3 Round 2 chain preserved; F2-T8-T5 Round 3 supersedes via append-only ledger entry NOT mutation |
+
+**Article IV self-audit verdict (§15.13 amendment):** every clause traces. **NO INVENTION.** §15.13 is the **operationalization** of ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B ratification + 17 conditions R1-R17 + Aria F2-T0b' archi review APPROVE_OPTION_D + 7 conditions C-A8..C-A14 carry-forward + Mira F2-T5 Round 2 OBS-1 surface + Riven minority Path C explicit fallback preserve. K1 strict bar UNMOVABLE; hold-out unlock IS authorized §15.10 transition NOT violation; Round 1 + Round 2 sign-offs UNMOVED; §0-§14 v1.0.0 + §15.1-§15.12 v1.1.0 body content UNCHANGED; append-only revision per Pax governance.
+
+**Anchor count (§15.13-local):** 17 source anchors verified — ESC-012 resolution + 6 ballot artifacts (§15.13.1 table); Mira parent spec yaml v0.2.3 §3 hold-out + §kill_criteria L207-209 UNMOVABLE; this spec §1 K3 + §3.1 hold-out + §10.2 footer + §11.2 Anti-Article-IV Guards + §15.1 IC binding paradigm + §15.5 Guard #8 + §15.10 fence preservation; ESC-012 R1-R17 (R1 OBS-1 fix, R2 pre-authored unlock, R3 PRR disposition, R6 reusability invariants, R7 predictor↔label IDENTICALITY, R9 OOS one-shot, R10 K1 strict bar UNMOVABLE); Aria F2-T0b' archi review APPROVE_OPTION_D + 7 conditions C-A8..C-A14; Mira F2-T5 Round 2 sign-off OBS-1; Riven minority Path C dissent ballot; AFML 2018 §8.6 (IC stability); Bailey-LdP 2014 §3+§6 (minimum-N + reproducible-backtest gating); Bailey-Borwein-LdP 2014 PBO; ADR-1 v3 (6 GiB RSS); MANIFEST R15 spec versioning; `scripts/pax_cosign.py register` (PRR hash-freeze interface); Beckett N7-prime sha256 stamps (`ccfb575a…` / `bbe1ddf7…` / `c6174922…`); Beckett spec §5 latency; Nova spec §4 RLP/microstructure.
+
+---
+
 ## Change Log
 
 | Version | Date (BRT) | Author | Change |
 |---|---|---|---|
 | **v1.0.0** | 2026-04-29 | Mira (@ml-researcher) | Skeleton drafted pre-merge ESC-011 R11 (fence-against-drift); finalized T0a same day — full spec consumable by Aria T0b / Beckett T0c / Riven T0d / Pax T0e + Dex T1; 8 dimensions covered (T002.6 §Spec-first protocol); Beckett latency spec §5 + Nova RLP/rollover spec §4 consumed verbatim |
 | **v1.1.0** | 2026-04-30 | Mira (@ml-researcher) | **Phase F2 amendment §15 IC Pipeline Wiring Spec applied** per Mira deep audit `docs/ml/audits/T002.6-mira-ic-pipeline-deep-audit.md` §6 + Aria archi review `docs/architecture/T002.6-phase-f2-aria-ic-wiring-review.md` (APPROVE_OPTION_D — separate orchestration module in `vespera_metrics`; conditions C-A1..C-A7) + Beckett consumer audit `docs/backtest/T002.6-beckett-consumer-signoff.md` §T0c + Sable audit `docs/audits/AUDIT-2026-04-30-T002.6-backtester-ic-gap-coherence.md` (8 findings — F-01..F-04 procedural recommendations consumed). §12.1 sign-off chain extended F2-T0a..F2-T6; §14.3 cosign ledger added; §15.5 Anti-Article-IV Guard #8 NEW (verdict-issuing protocol — IC field default 0.0 reserved for pre-compute state only; `*_status` provenance flag mandatory; `InvalidVerdictReport` raise on `K_FAIL` with `*_status != "computed"`); §15.8 4 NEW tests in `tests/vespera_metrics/test_ic_pipeline_wired.py` (`test_ic_computed_non_zero`, `test_ic_deterministic`, `test_ic_status_flag`, `test_ic_inconclusive_path`). NO mutation of §1 thresholds (Anti-Article-IV Guard #4 UNMOVABLE: DSR>0.95 / PBO<0.5 / IC>0); NO mutation of hold-out lock (Anti-Article-IV Guard #3); NO mutation of Round 1 T5 sign-off; NO §0-§14 v1.0.0 body content mutation — append-only revision. Cosign Mira @ml-researcher 2026-04-30 BRT — F2-T0a spec amendment applied. |
+| **v1.2.0** | 2026-04-30 | Mira (@ml-researcher) | **Mira spec amendment v1.1.0 → v1.2.0 §15.13 Phase G OOS unlock protocol applied per ESC-012 R2 ratification (5/6 supermajority APPROVE_PATH_B + 17 conditions R1-R17).** §15.13 NEW (Phase G OOS Unlock Protocol — 13 sub-sections §15.13.1..§15.13.13 covering: unlock authorization 5/6 supermajority + Riven minority Path C dissent preserved; unlock mechanism `holdout_locked=False`; Phase G run window 2025-07-01..2026-04-21; reusability invariants engine_config + cost atlas + rollover + Bonferroni + latency + RLP + microstructure ALL IDENTICAL F2 per ESC-012 R6; predictor↔label IDENTICAL F2 per ESC-012 R7; decay test full evaluation `IC_holdout > 0.5 × IC_in_sample` BINDING; K1 strict bar UNMOVABLE preservation per ESC-012 R10; OOS one-shot discipline per ESC-012 R9; pre-committed 4-branch disposition rule PRR-20260430-1 hash-frozen BEFORE N8 run per ESC-012 R3; sample-size considerations ~3000-4000 events; wall-time + RSS budget ~3h/~600 MB; Article IV trace policy 5-source; sign-off chain F2-T8-T0a..F2-T8-T7; self-audit 17 source anchors). §12.2 sign-off chain extended F2-T8-T0a..F2-T8-T7 (Round 3 — spec amendment + Phase G N8 OOS run + re-clearance + reclassify + close). §14.4 cosign ledger added (Round 3). NO mutation of §1 thresholds (Anti-Article-IV Guard #4 UNMOVABLE: DSR>0.95 / PBO<0.5 / IC>0); NO mutation of hold-out lock policy (Phase G unlock IS the authorized §15.10 transition pre-authored at spec §3.1, NOT a guard violation per ESC-012 R10 K1 strict bar UNMOVABLE preservation); NO mutation of Round 1 T5 sign-off; NO mutation of Round 2 F2-T5 sign-off (`docs/qa/gates/T002.6-mira-gate-4b-signoff-round2.md`; F2-T8-T5 Round 3 supersedes via append-only ledger entry NOT mutation); NO §0-§14 v1.0.0 body content mutation; NO §15.1-§15.12 v1.1.0 content mutation — append-only revision. Cosign Mira @ml-researcher 2026-04-30 BRT — F2-T8-T0a spec amendment v1.2.0 applied. |
 
 — Mira, mapeando o sinal 🗺️

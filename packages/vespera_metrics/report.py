@@ -670,8 +670,10 @@ def evaluate_kill_criteria(
 
     K1: DSR > 0
     K2: PBO < 0.4
-    K3: IC_holdout >= 0.5 × IC_in_sample
-        (equivalent: IC has not decayed below half of in-sample value)
+    K3: Phase F2 binding: IC_in_sample > 0 (decay sub-clause deferred
+        per spec §15.10 when ``ic_holdout_status == 'deferred'``).
+        Phase G unlocked: IC_holdout >= 0.5 × IC_in_sample
+        (equivalent: IC has not decayed below half of in-sample value).
 
     Returns KillDecision with verdict GO (all pass) or NO_GO (any fail).
 
@@ -682,6 +684,15 @@ def evaluate_kill_criteria(
     'inconclusive_underN' / 'not_computed' paths produce verdict
     ``"INCONCLUSIVE"`` (not "NO_GO") — Mira-authorized inconclusive
     bucket per §15.6 invariant.
+
+    T002.7 F2-T5-OBS-1 fix per ESC-012 R1 (Aria C-A8 + Mira C-M2 +
+    Kira C-K2): when ``ic_holdout_status == 'deferred'`` (Phase F2
+    hold-out lock under Anti-Article-IV Guard #3), the K3 decay
+    sub-clause MUST short-circuit to ``K3_DEFERRED`` reason text rather
+    than emit misleading decay-clause comparison against the sentinel
+    ``ic_holdout=0.0``. Per spec §15.10 strict reading: K3 in-sample is
+    the sole Phase F2 binding determinant; the decay sub-clause is
+    Phase G (test ``test_k3_deferred_short_circuit``).
 
     Default ``ic_status='computed'`` preserves back-compat for all pre-F2
     callsites (test_kill_criteria, test_compute_full_report) that pass
@@ -725,28 +736,76 @@ def evaluate_kill_criteria(
             "Guard #3."
         )
 
-    # ic_status == 'computed' — proceed to numeric K3 evaluation per
-    # legacy semantics (T002.0d AC14 mapping; Mira spec §1 K3 row).
-    if ic_in_sample <= 0:
-        k3_passed = False
-    else:
-        k3_passed = ic_holdout >= k3_decay * ic_in_sample
+    # ic_status == 'computed' — proceed to K3 evaluation.
+    #
+    # T002.7 F2-T5-OBS-1 fix per ESC-012 R1 (Aria C-A8 + Mira C-M2 + Kira C-K2):
+    # When ic_holdout_status == 'deferred' (Phase F2 hold-out lock under
+    # Anti-Article-IV Guard #3) AND ic_holdout is the Mira-authorized sentinel
+    # 0.0 (per spec §15.5 Anti-Article-IV Guard #8: "field default 0.0 is
+    # RESERVED for pre-compute state only; emit value of 0.0 only if explicitly
+    # Mira-authorized inconclusive case"), the K3 decay sub-clause MUST
+    # short-circuit to K3_DEFERRED rather than emit misleading decay-clause
+    # text comparing sentinel 0.0 against real ic_in_sample. Per Mira spec
+    # §15.6 invariant body + §15.10 strict reading: "the decay sub-clause is
+    # Phase G; not Phase F2".
+    #
+    # Back-compat: legacy callsites (test_kill_criteria, test_ic_status_flag)
+    # pass numeric ic_holdout != 0.0 with default ic_holdout_status='deferred'
+    # — they semantically request the decay sub-clause path (Phase G-style
+    # numeric evaluation). For these callsites, ic_holdout != 0.0 disambiguates
+    # legacy intent from Phase F2 production sentinel intent. Phase F2
+    # production caller (run_cpcv_dry_run.py via cpcv_aggregator) emits
+    # ic_holdout == 0.0 with ic_holdout_status='deferred' — this combination
+    # triggers the short-circuit.
+    is_phase_f2_deferred_sentinel = (
+        ic_holdout_status == "deferred" and ic_holdout == 0.0
+    )
 
-    reasons = []
+    reasons: list[str] = []
+    if is_phase_f2_deferred_sentinel:
+        # Phase F2 holdout-locked path: K3 decay test deferred.
+        # Per spec §15.10: K3 in-sample is the sole Phase F2 binding
+        # determinant. The decay sub-clause CANNOT be tested in Phase F2
+        # because OOS measurement is forbidden until Phase G unlock chain.
+        k3_passed = ic_in_sample > 0
+        if not k3_passed:
+            reasons_k3 = (
+                f"K3: IC_in_sample={ic_in_sample:.6f} non-positive — "
+                "no edge (Phase F2 binding)"
+            )
+        else:
+            reasons_k3 = (
+                f"K3: DEFERRED — ic_holdout_status='deferred' — decay test "
+                "pending Phase G unlock per Mira spec §15.10 "
+                f"(Phase F2 binding: IC_in_sample={ic_in_sample:.6f} > 0 PASS)"
+            )
+    else:
+        # Phase G unlocked path OR legacy callsite providing numeric
+        # ic_holdout: full decay evaluation per legacy semantics
+        # (T002.0d AC14 mapping; Mira spec §1 K3 row + §15.13 Phase G
+        # OOS unlock protocol per ESC-012 R2).
+        if ic_in_sample <= 0:
+            k3_passed = False
+            reasons_k3 = (
+                f"K3: IC_in_sample={ic_in_sample:.6f} non-positive — no edge"
+            )
+        else:
+            k3_passed = ic_holdout >= k3_decay * ic_in_sample
+            reasons_k3 = (
+                f"K3: IC_holdout={ic_holdout:.6f} < "
+                f"{k3_decay} × IC_in_sample={ic_in_sample:.6f}"
+            )
+
     if not k1_passed:
         reasons.append(f"K1: DSR={dsr:.6f} <= {k1_floor} (kill criterion)")
     if not k2_passed:
         reasons.append(f"K2: PBO={pbo:.6f} >= {k2_ceiling} (kill criterion)")
-    if not k3_passed:
-        if ic_in_sample <= 0:
-            reasons.append(
-                f"K3: IC_in_sample={ic_in_sample:.6f} non-positive — no edge"
-            )
-        else:
-            reasons.append(
-                f"K3: IC_holdout={ic_holdout:.6f} < "
-                f"{k3_decay} × IC_in_sample={ic_in_sample:.6f}"
-            )
+    if is_phase_f2_deferred_sentinel:
+        # Always surface DEFERRED reason for traceability under Phase F2
+        # (whether K3 passed or failed in-sample).
+        reasons.append(reasons_k3)
+    elif not k3_passed:
+        reasons.append(reasons_k3)
 
     verdict = "GO" if (k1_passed and k2_passed and k3_passed) else "NO_GO"
     return KillDecision(

@@ -407,6 +407,87 @@ def test_ic_aggregate_result_is_frozen():
         ic_result.ic_in_sample = 0.99  # type: ignore[misc]
 
 
+def test_k3_deferred_short_circuit():
+    """K3 decay clause short-circuits to K3_DEFERRED under Phase F2 holdout lock.
+
+    T002.7 F2-T5-OBS-1 fix per ESC-012 R1 (Aria C-A8 + Mira C-M2 + Kira C-K2):
+    When ``ic_holdout_status == 'deferred'`` AND ``ic_holdout == 0.0`` (the
+    Mira-authorized sentinel for Phase F2 hold-out lock under Anti-Article-IV
+    Guard #3), the K3 decay sub-clause MUST short-circuit to ``K3_DEFERRED``
+    rather than emit misleading decay-clause comparison text.
+
+    Per Mira spec §15.6 invariant body + §15.10 strict reading: "the decay
+    sub-clause is Phase G; not Phase F2". Phase F2 K3 binding clause is
+    in-sample only: ``k3_passed = (ic_in_sample > 0)``.
+
+    Direct regression on F2-T5-OBS-1 enforcement gap surfaced in Mira Round 2
+    Gate 4b sign-off §6 — verdict-layer was emitting decay-clause text
+    ``IC_holdout=0.000000 < 0.5 × IC_in_sample=0.866010`` which is
+    informationally misleading under deferred-holdout semantics.
+    """
+    # Phase F2 production sentinel: ic_holdout=0.0 with status='deferred'.
+    # Real-world ic_in_sample from N7-prime run was 0.866010.
+    decision = evaluate_kill_criteria(
+        dsr=0.95,
+        pbo=0.2,
+        ic_in_sample=0.866010,
+        ic_holdout=0.0,  # Mira-authorized sentinel (Phase F2 holdout-locked)
+        ic_status="computed",
+        ic_holdout_status="deferred",
+    )
+
+    # Per ESC-012 R1: K3 decay test MUST NOT execute under deferred holdout;
+    # K3 short-circuits to in-sample-only Phase F2 binding clause.
+    # ic_in_sample=0.866 > 0 ⇒ K3 PASS (in-sample binding).
+    assert decision.k3_ic_decay_passed is True, (
+        f"expected K3 PASS (in-sample binding under Phase F2 deferred-holdout); "
+        f"got k3_ic_decay_passed={decision.k3_ic_decay_passed!r}"
+    )
+    assert decision.verdict == "GO"
+
+    # K3_DEFERRED reason text MUST be surfaced for traceability.
+    assert any(
+        "DEFERRED" in r and "deferred" in r for r in decision.reasons
+    ), (
+        f"expected K3_DEFERRED reason text under deferred holdout; "
+        f"got reasons={decision.reasons!r}"
+    )
+
+    # Per Mira spec §15.10 strict reading: decay-clause comparison text MUST
+    # NOT be emitted under deferred holdout (informationally misleading).
+    decay_text_present = any(
+        ("0.5 × IC_in_sample" in r) or ("0.5 * IC_in_sample" in r)
+        for r in decision.reasons
+    )
+    assert not decay_text_present, (
+        f"K3 decay-clause comparison text emitted under deferred holdout — "
+        f"F2-T5-OBS-1 enforcement gap regression: reasons={decision.reasons!r}"
+    )
+
+    # Sub-case: ic_in_sample=0 under deferred holdout — K3 in-sample FAIL
+    # (no edge), verdict NO_GO. Decay text still suppressed.
+    decision_zero = evaluate_kill_criteria(
+        dsr=0.95,
+        pbo=0.2,
+        ic_in_sample=0.0,
+        ic_holdout=0.0,
+        ic_status="computed",
+        ic_holdout_status="deferred",
+    )
+    assert decision_zero.k3_ic_decay_passed is False
+    assert decision_zero.verdict == "NO_GO"
+    assert any(
+        "non-positive" in r and "Phase F2" in r for r in decision_zero.reasons
+    ), (
+        f"expected K3 in-sample non-positive reason under Phase F2 binding; "
+        f"got reasons={decision_zero.reasons!r}"
+    )
+    decay_text_zero = any(
+        "0.5 ×" in r or "0.5 *" in r for r in decision_zero.reasons
+    )
+    assert not decay_text_zero
+
+
 def test_ic_dedup_per_event():
     """Mira §15.7 dedup invariant — same (session, trial, window) tuple
     appearing in multiple folds collapses to ONE event (lowest path_index
