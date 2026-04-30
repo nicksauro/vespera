@@ -35,10 +35,18 @@ from packages.vespera_metrics.report import (
     ReportConfig,
     compute_full_report,
     evaluate_kill_criteria,
+    ICStatus,
+    InvalidVerdictReport,
 )
 from packages.vespera_metrics.research_log import (
     DEFAULT_RESEARCH_LOG,
     read_research_log_cumulative,
+)
+# T002.6 F2-T1 — IC pipeline orchestrator (Aria Option D — separate
+# submodule decoupled from cpcv_harness and report.py per Mira spec §15.2).
+from packages.vespera_metrics.cpcv_aggregator import (
+    ICAggregateResult,
+    compute_ic_from_cpcv_results,
 )
 
 __all__ = [
@@ -60,6 +68,10 @@ __all__ = [
     "ReportConfig",
     "compute_full_report",
     "evaluate_kill_criteria",
+    "ICStatus",
+    "InvalidVerdictReport",
+    "ICAggregateResult",
+    "compute_ic_from_cpcv_results",
     "read_research_log_cumulative",
     "DEFAULT_RESEARCH_LOG",
 ]

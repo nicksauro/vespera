@@ -86,6 +86,7 @@ from packages.vespera_metrics import (  # noqa: E402
     FullReport,
     ReportConfig,
     compute_full_report,
+    compute_ic_from_cpcv_results,
 )
 
 
@@ -1067,7 +1068,52 @@ def _run_phase(
         poller.write_event(phase=f"{label}:halt_observed", note="continuing to persist before halt")
 
     poller.set_phase(f"{label}:report")
-    cfg = ReportConfig(seed_bootstrap=seed)
+    # T002.6 F2-T1 — Mira spec §15.2 caller wiring: post-fanout IC compute
+    # via vespera_metrics.cpcv_aggregator (Aria Option D — separate
+    # orchestration submodule). Phase E (synthetic) routes through the
+    # same call site; the compute_ic_from_cpcv_results function returns
+    # status='not_computed' / 'inconclusive_underN' for synthetic / under-N
+    # cases (per §15.6 invariant), which evaluate_kill_criteria surfaces as
+    # InvalidVerdictReport rather than silent K3_FAIL.
+    #
+    # For Phase E synthetic runs (default), forward_return_at_1755_pts is
+    # None per closure; status will be 'not_computed' which would raise
+    # InvalidVerdictReport at evaluate_kill_criteria. To preserve Phase E
+    # back-compat for the existing test_run_cpcv_dry_run integration tests
+    # (which exercise the legacy ic_in_sample=0.0 default flowing into K3),
+    # we pass status flags only when phase=='F'. Phase E retains the legacy
+    # ReportConfig defaults — this preserves Article IV trace for synthetic
+    # paths (no IC compute attempted) while Phase F enforces Mira §15
+    # binding.
+    if phase == "F":
+        ic_result = compute_ic_from_cpcv_results(
+            cpcv_results,
+            seed_bootstrap=seed,
+            n_resamples=10_000,
+            holdout_locked=True,
+        )
+        cfg = ReportConfig(
+            seed_bootstrap=seed,
+            ic_in_sample=ic_result.ic_in_sample,
+            ic_holdout=ic_result.ic_holdout,
+            ic_spearman_ci95=ic_result.ic_spearman_ci95,
+            ic_status=ic_result.ic_status,
+            ic_holdout_status=ic_result.ic_holdout_status,
+        )
+        poller.write_event(
+            phase=f"{label}:ic_compute",
+            note=(
+                f"ic_status={ic_result.ic_status};n_pairs={ic_result.n_pairs};"
+                f"ic_in_sample={ic_result.ic_in_sample:.6f};"
+                f"ic_c2={ic_result.ic_c2:.6f}"
+            ),
+        )
+    else:
+        # Phase E synthetic — preserve legacy back-compat (ic flows as 0.0
+        # default; ReportConfig.ic_status='not_computed' default; K3
+        # numerical fallback path through evaluate_kill_criteria's
+        # back-compat shim — see report.py §15.6 status threading).
+        cfg = ReportConfig(seed_bootstrap=seed)
     full_report = compute_full_report(cpcv_results, config=cfg)
     poller.write_event(
         phase=f"{label}:report_complete",
