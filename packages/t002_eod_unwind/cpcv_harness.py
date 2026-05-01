@@ -686,7 +686,7 @@ def make_backtest_fn(
     *,
     parquet_root: Path | None = None,
     latency_config: Mapping[str, object] | None = None,
-    phase: Literal["E", "F"] = "E",
+    phase: Literal["E", "F", "G"] = "E",
     rollover_calendar: Mapping[str, object] | None = None,
 ) -> Callable[[pd.DataFrame, pd.DataFrame, CPCVSplit], BacktestResult]:
     """Return a pure-function-style backtest closure for ``CPCVEngine.run``.
@@ -794,10 +794,14 @@ def make_backtest_fn(
     enclosed_latency_config = latency_config
     enclosed_phase = phase
     enclosed_rollover_calendar = rollover_calendar
-    # Real-tape regime activates when BOTH phase=='F' AND parquet_root
-    # provided; any other combination routes to legacy synthetic walk
-    # (T002.1.bis Gate 4a HARNESS_PASS back-compat invariant).
-    _real_tape_active = (enclosed_phase == "F" and enclosed_parquet_root is not None)
+    # Real-tape regime activates when phase IN {'F', 'G'} AND parquet_root
+    # provided; phase 'E' or any other combination routes to legacy synthetic
+    # walk (T002.1.bis Gate 4a HARNESS_PASS back-compat invariant). Phase G
+    # added per ESC-013 R18 + R19 (5/5 UNANIMOUS APPROVE_PATH_IV) — Phase G
+    # OOS unlock uses identical real-tape replay machinery as Phase F; the
+    # only difference is at the IC aggregator level (holdout_locked=False
+    # propagates ic_holdout_status='computed' per Mira spec §15.13.2).
+    _real_tape_active = (enclosed_phase in ("F", "G") and enclosed_parquet_root is not None)
 
     def backtest_fn(
         train_events: pd.DataFrame,

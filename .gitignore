@@ -31,6 +31,7 @@ config_local.py
 # manifest.csv is committed separately (source of truth for hashes)
 data/in_sample/
 data/hold_out/
+data/holdout/
 # Pre-cache layer (ADR-4; local mirror of raw Sentinel trades — regenerable)
 data/cache/
 

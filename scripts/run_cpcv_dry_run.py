@@ -356,13 +356,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--phase",
         type=str,
-        choices=["E", "F"],
+        choices=["E", "F", "G"],
         default=DEFAULT_PHASE,
         help=(
             "Backtest regime — 'E' = synthetic walk (default; T002.1.bis "
             "Gate 4a HARNESS_PASS carry-forward), 'F' = real-tape replay "
-            "(T002.6 Phase F Gate 4b). 'F' requires --parquet-root to point "
-            "at the WDO trade-tape parquet root."
+            "in-sample (T002.6 Phase F Gate 4b; ic_holdout deferred under "
+            "Anti-Article-IV Guard #3), 'G' = real-tape OOS hold-out unlock "
+            "proper (T002.7 Phase G per Mira spec §15.13; holdout_locked=False "
+            "propagates to compute_ic_from_cpcv_results, ic_holdout_status "
+            "flips to 'computed', K3 decay sub-clause binds with computed "
+            "numbers per ESC-013 R18-R20). 'F' / 'G' require --parquet-root "
+            "to point at the WDO trade-tape parquet root."
         ),
     )
     p.add_argument(
@@ -948,7 +953,11 @@ def _run_phase(
     # BEFORE engine partition so train/test slicing preserves them. Under
     # phase='E' the augmentation is still applied (forward-compat) but the
     # closure body ignores the columns since real_tape_active is False.
-    if phase == "F":
+    if phase in ("F", "G"):
+        # T002.7 F2-T8-T1 per ESC-013 R18: Phase G inherits Phase F real-tape
+        # microstructure augmentation; the OOS unlock differs only at the
+        # IC compute boundary (holdout_locked=False) — upstream events,
+        # parquet root, and latency model are identical real-tape inputs.
         events = augment_events_with_microstructure_flags(
             events,
             calendar=calendar,
@@ -979,11 +988,14 @@ def _run_phase(
     # T002.6 T1 — Phase F latency model resolved from engine-config v1.1.0.
     # Under phase='E' (default), latency_config is None and synthetic walk
     # path is exercised in the closure (T002.1.bis carry-forward).
-    latency_model = _resolve_latency_model(engine_config_path) if phase == "F" else None
-    # Per Aria C-A1: parquet_root passed through factory→closure ONLY when
-    # phase='F' (real-tape regime active); under phase='E' factory receives
+    latency_model = (
+        _resolve_latency_model(engine_config_path) if phase in ("F", "G") else None
+    )
+    # Per Aria C-A1: parquet_root passed through factory→closure when
+    # phase in ('F', 'G') (real-tape regime active — Phase F in-sample OR
+    # Phase G OOS unlock per ESC-013 R18); under phase='E' factory receives
     # parquet_root=None which preserves synthetic walk dispatch.
-    real_tape_root = parquet_root if phase == "F" else None
+    real_tape_root = parquet_root if phase in ("F", "G") else None
 
     def _backtest_fn_factory(split: CPCVSplit, train_events):
         """Per-fold factory — rebuilds P126 from THIS fold's train slice.
@@ -1085,12 +1097,26 @@ def _run_phase(
     # ReportConfig defaults — this preserves Article IV trace for synthetic
     # paths (no IC compute attempted) while Phase F enforces Mira §15
     # binding.
-    if phase == "F":
+    if phase in ("F", "G"):
+        # T002.7 F2-T8-T1 caller wiring per ESC-013 R18 unanimous
+        # APPROVE_PATH_IV (Aria + Mira + Beckett + Kira + Casey, 2026-04-30
+        # BRT). Phase F (in-sample) sets ``holdout_locked=True`` per Mira
+        # spec §15.5 Anti-Article-IV Guard #3 — ic_holdout sentinel 0.0 with
+        # ic_holdout_status='deferred' propagates through ReportConfig and
+        # the verdict layer short-circuits K3 decay sub-clause to
+        # K3_DEFERRED (T002.7 F2-T5-OBS-1 fix per ESC-012 R1).
+        # Phase G (OOS hold-out unlock proper) sets ``holdout_locked=False``
+        # per Mira spec §15.13 — ic_holdout is computed from real OOS pairs,
+        # ic_holdout_status flips to 'computed', and the K3 decay sub-clause
+        # binds with computed numbers (ESC-013 R20 verdict-vs-reason
+        # contract: reason text MUST contain numeric IC values, NOT the
+        # 'DEFERRED' sentinel string, when ic_holdout_status='computed').
+        holdout_locked = phase == "F"
         ic_result = compute_ic_from_cpcv_results(
             cpcv_results,
             seed_bootstrap=seed,
             n_resamples=10_000,
-            holdout_locked=True,
+            holdout_locked=holdout_locked,
         )
         cfg = ReportConfig(
             seed_bootstrap=seed,
@@ -1103,8 +1129,11 @@ def _run_phase(
         poller.write_event(
             phase=f"{label}:ic_compute",
             note=(
-                f"ic_status={ic_result.ic_status};n_pairs={ic_result.n_pairs};"
+                f"ic_status={ic_result.ic_status};"
+                f"ic_holdout_status={ic_result.ic_holdout_status};"
+                f"n_pairs={ic_result.n_pairs};"
                 f"ic_in_sample={ic_result.ic_in_sample:.6f};"
+                f"ic_holdout={ic_result.ic_holdout:.6f};"
                 f"ic_c2={ic_result.ic_c2:.6f}"
             ),
         )
@@ -1138,7 +1167,7 @@ def _run_phase(
         # T002.6 T1 — backtest regime + real-tape provenance for audit.
         "backtest_phase": phase,
         "parquet_root": parquet_root.as_posix() if real_tape_root is not None else None,
-        "latency_model_active": latency_model is not None and phase == "F",
+        "latency_model_active": latency_model is not None and phase in ("F", "G"),
     }
     return full_report, determinism_stamp, events_metadata
 
