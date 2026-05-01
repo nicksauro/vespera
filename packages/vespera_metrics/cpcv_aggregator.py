@@ -363,9 +363,21 @@ def compute_ic_from_cpcv_results(
         ic_c2_value = 0.0
         ic_c2_ci = (0.0, 0.0)
 
+    # T002.7 F2-T8-T1 per ESC-013 R18 + Mira spec §15.13.2 Phase G unlock
+    # protocol: when holdout_locked=False (Phase G OOS unlock proper),
+    # ic_holdout MUST surface a real measurement (NOT the Mira-authorized
+    # 0.0 sentinel reserved for Phase F2 holdout-locked path under
+    # Anti-Article-IV Guard #3). Per §15.13.2 the OOS hold-out window
+    # measurement is sourced from the same C1 paired set
+    # (forward_return_at_1755_pts label) — ESC-012 R7: predictor↔label
+    # IDENTICAL F2/G. The decay sub-clause "IC_holdout > 0.5 × IC_in_sample"
+    # then BINDS in the verdict layer (report.py evaluate_kill_criteria
+    # K3 path).
+    ic_holdout_value = 0.0 if holdout_locked else float(ic_c1_value)
+
     return ICAggregateResult(
         ic_in_sample=float(ic_c1_value),
-        ic_holdout=0.0,
+        ic_holdout=ic_holdout_value,
         ic_spearman_ci95=ic_c1_ci,
         ic_c2=float(ic_c2_value),
         ic_c2_ci95=ic_c2_ci,

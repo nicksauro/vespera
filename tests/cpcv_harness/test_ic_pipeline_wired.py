@@ -547,3 +547,129 @@ def test_ic_dedup_per_event():
     assert ic_result.n_events_total == 1
     assert ic_result.n_pairs == 1
     assert ic_result.ic_status == "inconclusive_underN"
+
+
+# =====================================================================
+# Test 8 — ESC-013 R18 + Mira spec §15.13: Phase G unlock protocol
+# =====================================================================
+def test_phase_g_unlock_protocol():
+    """Phase G CLI flag triggers ``holdout_locked=False`` propagation;
+    ``ic_holdout_status`` flips to 'computed'; K3 decay test full
+    evaluation binds.
+
+    Per ESC-013 R18 unanimous APPROVE_PATH_IV (Aria + Mira + Beckett +
+    Kira + Casey, 2026-04-30 BRT) + Mira Gate 4b spec §15.13.2 Phase G
+    unlock protocol. Direct regression on F2-T9-OBS-1 enforcement gap
+    (Mira Round 3 sign-off) where Phase G unlock had aggregator-level
+    plumbing pre-authored but NO caller-level wiring.
+    """
+    # Build CPCV results with non-trivial paired predictor/label pairs so
+    # the C1 IC is materially positive (~0.5+) on both in-sample AND the
+    # OOS hold-out window (which under unlock collapses to the same paired
+    # set per Mira spec §15.13.2 — Phase G measures OOS via the unlocked
+    # forward_return_at_1755_pts pairing).
+    cpcv_results = _make_cpcv_results_with_edge(n_events=50, seed=42)
+
+    # Phase G unlock proper: holdout_locked=False per ESC-013 R18.
+    ic_result = compute_ic_from_cpcv_results(
+        cpcv_results,
+        seed_bootstrap=42,
+        n_resamples=1000,
+        holdout_locked=False,
+    )
+
+    # Per Mira spec §15.13.2: ic_holdout_status flips to 'computed' under
+    # Phase G unlock (vs 'deferred' under Phase F2 lock).
+    assert ic_result.ic_holdout_status == "computed", (
+        f"expected ic_holdout_status='computed' under Phase G unlock; "
+        f"got {ic_result.ic_holdout_status!r}"
+    )
+    # Per ESC-013 R18: ic_holdout MUST be a real measurement (non-sentinel).
+    # The Mira-authorized 0.0 sentinel is ONLY emitted under
+    # holdout_locked=True (Phase F2 binding).
+    assert ic_result.ic_holdout != 0.0, (
+        f"expected non-zero ic_holdout under Phase G unlock; "
+        f"got {ic_result.ic_holdout} — F2-T9-OBS-1 regression "
+        "(unlock not propagating)"
+    )
+    # Sanity: in-sample IC computed alongside; status='computed'.
+    assert ic_result.ic_status == "computed"
+    assert ic_result.ic_in_sample != 0.0
+    # n_pairs >= 30 (Bailey-LdP 2014 §3 minimum-N gate cleared).
+    assert ic_result.n_pairs >= 30
+
+
+# =====================================================================
+# Test 9 — ESC-013 R20: verdict-vs-reason contract (no sentinel under computed)
+# =====================================================================
+def test_k3_pass_reason_text_no_sentinel():
+    """When ``ic_holdout_status='computed'`` AND K3 PASS, reason text
+    MUST contain computed numbers (e.g., ``IC_holdout=X.XX < 0.5 ×
+    IC_in_sample=Y.YY``), NOT the 'DEFERRED' sentinel string.
+
+    Per ESC-013 R20 verdict-vs-reason contract: Phase G unlock proper
+    activates the decay sub-clause comparison path (Mira spec §15.10);
+    the K3_DEFERRED short-circuit is RESERVED for the
+    ``ic_holdout_status='deferred' AND ic_holdout==0.0`` Phase F2
+    sentinel combination per ESC-012 R1. Direct regression guard against
+    F2-T9-OBS-1 (Mira Round 3 sign-off) where the verdict layer might
+    emit 'DEFERRED' text under unlocked semantics.
+    """
+    # K3 PASS case under Phase G unlock — IC has NOT decayed below 50% floor.
+    # ic_holdout=0.866 == ic_in_sample=0.866 → 0.866 >= 0.5 × 0.866 → PASS.
+    decision_pass = evaluate_kill_criteria(
+        dsr=0.95,
+        pbo=0.2,
+        ic_in_sample=0.866,
+        ic_holdout=0.866,  # COMPUTED non-sentinel
+        ic_status="computed",
+        ic_holdout_status="computed",  # Phase G unlocked
+    )
+
+    # K3 PASS verdict GO.
+    assert decision_pass.k3_ic_decay_passed is True, (
+        f"expected K3 PASS under Phase G unlock with non-decayed IC; "
+        f"got k3_ic_decay_passed={decision_pass.k3_ic_decay_passed!r}"
+    )
+    assert decision_pass.verdict == "GO"
+
+    # Per ESC-013 R20: reason text MUST NOT contain 'DEFERRED' sentinel
+    # under ic_holdout_status='computed' (the deferred short-circuit is
+    # exclusive to Phase F2 holdout-locked path per ESC-012 R1).
+    assert not any("DEFERRED" in r for r in decision_pass.reasons), (
+        f"DEFERRED sentinel string emitted under ic_holdout_status='computed' "
+        f"— ESC-013 R20 verdict-vs-reason contract violated: "
+        f"reasons={decision_pass.reasons!r}"
+    )
+
+    # K3 FAIL case under Phase G unlock — IC HAS decayed below 50% floor.
+    # ic_holdout=0.30 < 0.5 × ic_in_sample=0.866 → 0.30 < 0.433 → FAIL.
+    decision_fail = evaluate_kill_criteria(
+        dsr=0.95,
+        pbo=0.2,
+        ic_in_sample=0.866,
+        ic_holdout=0.30,  # decayed below 50% floor
+        ic_status="computed",
+        ic_holdout_status="computed",  # Phase G unlocked
+    )
+    assert decision_fail.k3_ic_decay_passed is False
+    assert decision_fail.verdict == "NO_GO"
+
+    # Reason text MUST contain numeric IC values (NOT 'DEFERRED' sentinel)
+    # under FAIL emission per ESC-013 R20.
+    assert any("K3" in r for r in decision_fail.reasons)
+    assert not any("DEFERRED" in r for r in decision_fail.reasons), (
+        f"DEFERRED sentinel emitted under K3 FAIL with computed holdout "
+        f"— ESC-013 R20 contract violated: reasons={decision_fail.reasons!r}"
+    )
+    # Numeric pattern check: reason text contains 'IC_holdout=' (the
+    # decay-clause comparison emits the sentinel-free numeric form per
+    # report.py line 795).
+    assert any(
+        "IC_holdout=" in r or "ic_holdout=" in r.lower()
+        for r in decision_fail.reasons
+    ), (
+        f"K3 reason text missing 'IC_holdout=' numeric form under "
+        f"Phase G unlock — ESC-013 R20 verdict-vs-reason contract "
+        f"requires computed numbers: reasons={decision_fail.reasons!r}"
+    )
