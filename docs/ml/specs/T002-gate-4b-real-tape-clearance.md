@@ -1,10 +1,11 @@
-# T002 — Gate 4b Real-Tape Edge-Existence Clearance Spec (Final v1.2.0)
+# T002 — Gate 4b Real-Tape Edge-Existence Clearance Spec (Final v0.3.0)
 
 > **Author:** Mira (@ml-researcher) — ML/statistical authority
-> **Date (BRT):** 2026-04-29 (skeleton drafted pre-merge ESC-011 R11; finalized T0a same day) — **2026-04-30 BRT v1.1.0 Phase F2 Amendment** appended (§15 IC Pipeline Wiring Spec §15.1..§15.12; §12 sign-off chain extended F2-T0a..F2-T6) — **2026-04-30 BRT v1.2.0 Phase G OOS Unlock Amendment** appended (§15.13 NEW; §12.2 sign-off chain extended F2-T8-T0a..F2-T8-T7; §14.4 cosign ledger Round 3 added) per ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B ratification
-> **Status:** **Final v1.2.0** — Phase G OOS unlock protocol applied per ESC-012 R2 ratification (§15.13 NEW; §12.2 extended; §14.4 added). v1.0.0 skeleton finalized 2026-04-29 BRT; v1.1.0 (2026-04-30 BRT) appended §15.1..§15.12 IC Pipeline Wiring Spec; v1.2.0 (2026-04-30 BRT) appends §15.13 Phase G OOS Unlock Protocol per ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B (Aria + Kira + Mira + Beckett + Pax APPROVE; Riven minority Path C dissenting with explicit fallback). Body §0-§14 v1.0.0 content UNCHANGED + §15.1-§15.12 v1.1.0 content UNCHANGED — append-only revision.
+> **Date (BRT):** 2026-04-29 (skeleton drafted pre-merge ESC-011 R11; finalized T0a same day) — **2026-04-30 BRT v1.1.0 Phase F2 Amendment** appended (§15 IC Pipeline Wiring Spec §15.1..§15.12; §12 sign-off chain extended F2-T0a..F2-T6) — **2026-04-30 BRT v1.2.0 Phase G OOS Unlock Amendment** appended (§15.13 NEW; §12.2 sign-off chain extended F2-T8-T0a..F2-T8-T7; §14.4 cosign ledger Round 3 added) per ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B ratification — **2026-05-01 BRT v0.3.0 Auction State Block Correction** appended (§15.14 NEW; semantic correction of §4 auction block per Nova authoritative confirmation `docs/backtest/T002.7-nova-auction-hours-confirmation-2026-05-01.md`)
+> **Status:** **Final v0.3.0** — Auction state block semantic correction applied per Nova authoritative confirmation 2026-05-01 BRT (§15.14 NEW; semver re-baselined from v1.2.0 → v0.3.0 to reflect MANIFEST R15 minor-bump for major==0 spec series — v1.x labeling was internal Phase F/F2/G iteration counter, v0.x is the canonical Mira-spec versioning under Anti-Article-IV Guard #4 thresholds-frozen + major==0 pre-stable governance). v1.0.0 skeleton finalized 2026-04-29 BRT; v1.1.0 (2026-04-30 BRT) appended §15.1..§15.12 IC Pipeline Wiring Spec; v1.2.0 (2026-04-30 BRT) appended §15.13 Phase G OOS Unlock Protocol per ESC-012; v0.3.0 (2026-05-01 BRT) appends §15.14 Auction State Block Correction per Nova authoritative confirmation. Body §0-§14 v1.0.0 content UNCHANGED + §15.1-§15.12 v1.1.0 content UNCHANGED + §15.13 v1.2.0 content UNCHANGED — append-only revision.
 > **Phase F2 Amendment 2026-04-30 (v1.1.0):** §15 NEW (IC Pipeline Wiring Spec, sub-sections §15.1..§15.12); §12 extended F2-T0a..F2-T6 (sign-off chain for §15 amendment + N7-prime re-run + re-clearance); Change Log entry below. NO mutation of §1 thresholds (Anti-Article-IV Guard #4 preserved); NO mutation of hold-out lock; NO mutation of Round 1 T5 sign-off.
 > **Phase G OOS Unlock Amendment 2026-04-30 (v1.2.0):** §15.13 NEW (Phase G OOS Unlock Protocol — 13 sub-sections §15.13.1..§15.13.13); §12.2 sign-off chain extended F2-T8-T0a..F2-T8-T7 (Round 3 — spec amendment + Phase G N8 OOS run + re-clearance + reclassify + close); §14.4 cosign ledger added; Change Log entry below. Authority: ESC-012 5/6 SUPERMAJORITY APPROVE_PATH_B + 17 conditions R1-R17 (`docs/councils/COUNCIL-2026-04-30-ESC-012-resolution.md` §4.1 R2). NO mutation of §1 thresholds (Anti-Article-IV Guard #4 preserved); NO mutation of hold-out lock policy (Phase G unlock IS the authorized §15.10 transition, NOT a guard violation per ESC-012 R10 K1 strict bar UNMOVABLE preservation); NO mutation of §0-§14 v1.0.0 body content; NO mutation of §15.1-§15.12 v1.1.0 content; NO mutation of Round 1 T5 sign-off; NO mutation of Round 2 F2-T5 sign-off (`docs/qa/gates/T002.6-mira-gate-4b-signoff-round2.md` OBS-1 surfaced).
+> **Auction State Block Correction Amendment 2026-05-01 (v0.3.0):** §15.14 NEW (Auction State Block Correction — 7 sub-sections §15.14.1..§15.14.7 covering: source provenance Nova confirmation cross-checked B3 official + 6 secondary sources; semantic correction WDO has SINGLE open auction at 09:00 sharp + settlement window 15:50-16:00 VWAP; NO close auction; triple-barrier 17:55 vertical SEMANTICS CORRECTED to "5min buffer before continuous close 18:00" NOT "boundary with auction"; §4 auction state block updated yaml — Nova §4 verbatim consumption; carry-forward implications T002 retire artifacts Round 1+2+3+3.1 NOT INVALIDATED — DSR/PBO/IC interpretations stand because triple-barrier 17:55 was conservative buffer not auction boundary, so cost/PnL computation correct, only DOCUMENT semantics corrected; H_next-1 successor inherits CORRECTED auction block; Article IV self-audit 7 anchors). §12 sign-off chain extended for v0.3.0 (single-stage Mira semantic-correction publish — no re-run required because triple-barrier exit timestamp 17:55 BRT operational rule UNCHANGED). Authority: Nova authoritative finding `docs/backtest/T002.7-nova-auction-hours-confirmation-2026-05-01.md` (270 lines, 8 source anchors B3 official). NO mutation of §1 thresholds (Anti-Article-IV Guard #4 preserved — DSR>0.95 / PBO<0.5 / IC>0 UNMOVABLE); NO mutation of triple-barrier 17:55 vertical timestamp (UNMOVED operationally — only the documented SEMANTICS corrected from "auction boundary" to "5min pre-close buffer"); NO mutation of Round 1 T5 sign-off; NO mutation of Round 2 F2-T5 sign-off; NO mutation of Round 3 F2-T8-T5 sign-off; NO mutation of Round 3.1 verdict (T002 RETIRE FINAL stands per spec §0 falsifiability — DSR=0.206 strict bar fail; correction here is semantic/documentation, not statistical interpretation); NO mutation of §0-§14 v1.0.0 + §15.1-§15.13 v1.1.0/v1.2.0 body content — append-only revision.
 > **Council provenance:** ESC-011 5/5 UNANIMOUS APPROVE_OPTION_C ratification (Beckett+Mira+Riven+Aria+Pax) — `docs/councils/COUNCIL-2026-04-29-ESC-011-resolution.md`
 > **Authority chain:** Mira ML/statistical authority under ESC-011 R11 (fence-against-drift mandate — Mira drafts Gate 4b spec ANTES de Gate 4a verdict; this finalize lifts the skeleton into a full binding contract for T002.6 execution).
 > **Predecessor / sibling docs:**
@@ -605,6 +606,18 @@ Round 1 T0a..T6 + Round 2 F2-T0a..F2-T6 chains PRESERVED above without mutation.
 
 Riven minority Path C explicit fallback preserved per ESC-012 ballot dissent: IF Phase G run cannot proceed within 14 calendar days (i.e. by 2026-05-14 BRT), retire-clean Path C activates (T002 retire without OOS measurement; institutional knowledge captured per Riven dissent rationale).
 
+### §12.3 Auction state block correction sign-off (added 2026-05-01 BRT v0.3.0)
+
+The following single stage governs the §15.14 Auction State Block Correction amendment. **No re-run required** because the triple-barrier 17:55 BRT vertical exit timestamp operational rule is UNCHANGED — only the documented SEMANTICS of that timestamp is corrected (from "boundary with closing auction" to "5min conservative buffer before continuous close at 18:00"). Round 1 + Round 2 + Round 3 + Round 3.1 verdict ledgers are NOT INVALIDATED; the cost/PnL computation produced by the existing N7 / N7-prime / N8 runs is mathematically correct because the exit timestamp it consumed was the same operational rule that v0.3.0 reaffirms — only the prose explanation of WHY 17:55 was chosen is corrected.
+
+| Stage | Owner | Action | Gate (input) | Status |
+|---|---|---|---|---|
+| **v0.3.0-T0a** | Mira (@ml-researcher) | Apply §15.14 Auction State Block Correction amendment — consume Nova `docs/backtest/T002.7-nova-auction-hours-confirmation-2026-05-01.md` §4 yaml block verbatim; update §4.1 auction sub-block via §15.14.4 carry-forward reference (§4 v1.0.0 prose preserved verbatim per append-only governance; §15.14 supersedes for semantic interpretation — readers consult §15.14.4 for canonical Nova-authoritative auction state block); Article IV self-audit §15.14.7 (7 anchors); v1.2.0 → v0.3.0 semver re-baseline per MANIFEST R15 major==0 governance | Round 3.1 T002 RETIRE FINAL verdict + Nova authoritative confirmation 2026-05-01 BRT + 8 source anchors B3 official | ✅ in-progress (this artifact) |
+
+Round 1 T0a..T6 + Round 2 F2-T0a..F2-T6 + Round 3 F2-T8-T0a..F2-T8-T7 chains PRESERVED above without mutation. v0.3.0 amendment chain v0.3.0-T0a is **append-only** Round 3.5 continuation per Pax governance + Nova authoritative finding.
+
+**No downstream re-run / re-clearance / reclassify required:** the Round 3.1 verdict (`docs/qa/gates/T002.6-mira-gate-4b-signoff-round3-1.md` if extant; or per Pax T002.7 close ledger) STANDS per spec §0 falsifiability — DSR=0.206 strict bar fail under K1>0.95 UNMOVABLE was the statistical interpretation result; the auction state correction here is purely SEMANTIC/DOCUMENTATION (corrects the prose explanation of the 17:55 timestamp's relationship to nonexistent close auction) and does NOT alter any numeric threshold, label, predictor, or backtest computation. Carry-forward implications fully enumerated §15.14.5.
+
 ---
 
 ## §13 Article IV self-audit
@@ -1103,6 +1116,204 @@ Reproduced from §12.2 below for §15.13-local readability:
 
 ---
 
+### §15.14 Auction State Block Correction (post-T002 retire) (v0.3.0 amendment 2026-05-01 BRT)
+
+> **Provenance:** This §15.14 is the operationalization of Nova authoritative confirmation `docs/backtest/T002.7-nova-auction-hours-confirmation-2026-05-01.md` (Final v1.0.0; 270 lines; 8 source anchors B3 official + secondary cross-validation). Nova is the single autoritative voice on B3 session phases / WDO auction hours. The confirmation was user-mandated as a pre-condition for Quant Council to approve any "Auction Print Analysis" SECONDARY direction; it surfaced a CRITICAL discrepancy in this spec's §4 auction state block (inherited from `docs/backtest/T002.6-nova-rlp-rollover-spec.md` §3.2 which had a documented error — a "closing call 17:55-18:00" phase that does NOT exist regulamentadamente for WDO and was an artifact of equities-regime confusion). This v0.3.0 amendment corrects the documented SEMANTICS while preserving the operational triple-barrier 17:55 vertical exit timestamp (which is unaffected because that timestamp was selected as a strategy-thesis "5min buffer before continuous close" — it just was previously DOCUMENTED as a "boundary with auction" which was wrong prose).
+
+> **Scope discipline:** §15.14 ADDS a sub-section to §15. It does NOT mutate §1 thresholds (Anti-Article-IV Guard #4 honored: DSR>0.95 / PBO<0.5 / IC>0 UNMOVABLE), §3 real-tape data interface, §4 v1.0.0 auction state block (preserved verbatim per append-only governance — §15.14.4 below provides the corrected canonical block readers consult; §4 prose remains as historical record of the v1.0.0 inheritance from T002.6 §3.2), §5 Beckett latency, §6 sample-size mandate, §7 3-bucket attribution, §8 milestones, §9 verdict-label discipline, §10 Gate 5 conjunction, §11 Article IV trace, §12 sign-off chain (extends in §12.3, does not mutate §12.0/§12.1/§12.2), §13 self-audit, §14 cosign ledger, §15.1-§15.13 content. Round 1 T5 + Round 2 F2-T5 + Round 3 F2-T8-T5 + Round 3.1 T002 RETIRE FINAL verdicts UNMOVED. Append-only revision per Pax governance.
+
+#### §15.14.1 Source provenance
+
+The correction consumed in this §15.14 is sourced from Nova authoritative finding `docs/backtest/T002.7-nova-auction-hours-confirmation-2026-05-01.md`. Source cross-checking per Article IV (No Invention):
+
+| Anchor | Source | Status |
+|---|---|---|
+| **Primary regulatory** | B3 oficial PUMA — Câmbio e Dólar Pronto: `https://www.b3.com.br/pt_br/solucoes/plataformas/puma-trading-system/para-participantes-e-traders/horario-de-negociacao/derivativos/cambio-e-dolar-pronto/` (accessed_at_brt 2026-05-01) | [WEB-CONFIRMED 2026-05-01] |
+| **Primary regulatory PDF** | B3 oficial — Regras de Pregão V2 PDF: `https://www.b3.com.br/data/files/03/22/CE/29/87C0C6100F5DFBB6AC094EA8/Regras%20de%20Pregao%20V2.pdf` | [WEB-CONFIRMED 2026-05-01 via search-snippet cross-ref] |
+| **Secondary retail #1** | Opere Futuros — Horários de Negociação Contratos Futuros BMF | [WEB-CONFIRMED 2026-05-01] |
+| **Secondary retail #2** | XP Investimentos — atendimento WIN/WDO | [WEB-CONFIRMED 2026-05-01 via search-snippet cross-ref] |
+| **Secondary financeira** | Empirícus — explica Mini Dólar WDO | [WEB-CONFIRMED 2026-05-01 via search-snippet cross-ref] |
+| **Secondary retail #3** | Inter — ajuda investimentos mini contratos | [WEB-CONFIRMED 2026-05-01 via search-snippet cross-ref] |
+| **Repo authority** | Nova persona `expertise.assets_covered.WDO.trading_hours` (auto-validation: persona was already correct; T002.6 §3.2 was the doc that needed correction, not the persona) | [WEB-CONFIRMED 2026-03-09] |
+| **Glossary cross-check** | DOMAIN_GLOSSARY Parte 11 — DST abolido no Brasil desde 2019 | repo-anchored |
+
+Cross-validation depth: every timestamp claim in §15.14.2-§15.14.4 is anchored against ≥2 independent sources (B3 official + ≥1 retail/financeira). Nova's confirmation §5 catalogs all 8 anchors and the Article IV self-audit verdict (§5 of Nova doc) explicitly confirms NO INVENTION.
+
+#### §15.14.2 Correction (factual)
+
+**WDO has SINGLE open auction at 09:00 sharp + settlement window 15:50-16:00 VWAP; NO close auction.**
+
+Concretely, per Nova §1 + §3.1 confirmed authoritative:
+
+| WDO phase (2026-05-01 BRT, post-DST winter grade) | Timestamp | Treatment |
+|---|---|---|
+| **Pré-abertura** (call de abertura accumulator) | 08:55:00 → 08:59:59 | Ofertas aceitas, ZERO matching |
+| **Open auction disparo** (BATCH_CROSS) | **09:00:00 sharp** (<1s normal; 30s margem em desbalanceio) | Single batch-cross at clearing price; burst tradeType=4 prints simultâneos |
+| **Continuous trading** | 09:00:01 → 18:00:00 | PRICE_TIME_FIFO; settlement window EMBEDDED inside continuous |
+| **Settlement window** (calculation, NOT auction) | 15:50:00 → 16:00:00 | Continuous trading PROCEEDS; B3 calcula preço de ajuste como VWAP do intervalo |
+| **Continuous close** | 18:00:00 | End of price-discovery contínuo |
+| **Post-close admin window** | 18:00:00 → 18:30:00 (até 19:00 cancelamentos) | Apenas correções/cancelamentos; NÃO é price discovery |
+| **Closing call (NOT APPLICABLE WDO)** | — | **Does NOT exist regulamentadamente for WDO**. Equities-regime confusion in T002.6 §3.2; eventual `tradeType=4` prints próximos a 18:00 são interrupções pontuais (circuit breaker / halt técnico / surveillance), NÃO fase regulada. |
+
+Settlement price WDO = **VWAP da janela 15:50-16:00** (per B3 footnote oficial: "A apuração do preço de ajuste será das 15:50 às 16:00. Os preços de ajuste do WDO são os preços de ajuste dos respectivos vencimentos do DOL"). **NOT** a "close auction print at 18:00" as previously stated in T002.6 §3.2 inheritance.
+
+Open auction = **09:00 SHARP single batch disparo (<1s normal duration)**. **NOT** a "09:00-09:30 prolonged auction window" — that prose in T002.6 §3.1 / persona Nova prior version was a conservative margin for desbalanceio, not the regulated phase.
+
+#### §15.14.3 Triple-barrier 17:55 vertical SEMANTICS CORRECTED
+
+**Operational rule UNCHANGED. Documented semantics CORRECTED.**
+
+Operationally — verbatim preservation per Anti-Article-IV Guard #4 (thresholds) + parent spec yaml v0.2.3 (triple-barrier vertical exit):
+
+```
+Vertical time barrier rule (UNMOVED):
+    last `tradeType ∈ {1,2,3,13}` print with timestamp < 17:55:00 BRT
+```
+
+Documented semantics — CORRECTED:
+
+| Aspect | v1.0.0..v1.2.0 prose (INCORRECT) | v0.3.0 prose (CORRECTED) |
+|---|---|---|
+| Why 17:55 BRT? | "Boundary with closing auction phase 17:55-18:00" (inherited from T002.6 §3.2 closing-call confusion — NONEXISTENT phase) | **"5-minute conservative buffer before continuous-trading close at 18:00:00 BRT"** — strategy-thesis decision to exit positions before the operational close; protects against late-day liquidity thinning + microstructure outliers + admin-window contamination 18:00-18:30 |
+| Relationship to settlement window | (implicit / unstated) | **17:55 BRT is 1h55min after settlement window ENDED at 16:00**; settlement is COMPLETED long before vertical exit fires. Settlement and triple-barrier are temporally independent; they do not interact |
+| Protective interpretation of `auction.exclude_open_close_minutes: 5` | "Excludes call-de-fechamento 17:55-18:00" (NONEXISTENT phase) | **"Conservative protection against esporádicos `tradeType=4` micro-leilões/halts próximos ao close 18:00"** — circuit-breaker / halt-técnico / surveillance interrupções, NOT a regulated fase |
+| Backtest computation impact | NONE (the operational rule is unchanged) | NONE — confirmed |
+
+**The triple-barrier 17:55 vertical timestamp was operationally correct all along.** v1.0.0..v1.2.0 prose erroneously DOCUMENTED it as "boundary with auction"; v0.3.0 prose CORRECTLY documents it as "5min pre-close buffer". Any DSR / PBO / IC numeric result computed in Round 1 (N7) / Round 2 (N7-prime) / Round 3 (N8 OOS) consumed the SAME exit timestamp under either prose interpretation; the numeric verdicts STAND.
+
+#### §15.14.4 §4 auction state block — corrected canonical yaml (Nova §4 verbatim consumption)
+
+**Per Anti-Article-IV (No Invention) trace policy: this is verbatim consumption of Nova `docs/backtest/T002.7-nova-auction-hours-confirmation-2026-05-01.md` §4 yaml block, which is itself sourced from B3 official PUMA + 7 cross-checked anchors enumerated §15.14.1.**
+
+Readers MUST consult this §15.14.4 block as the canonical Nova-authoritative auction state for any future Mira/Beckett/Riven/Pax/Nelo consumer of this Gate 4b spec. The §4.1 v1.0.0 yaml (which inherited T002.6 §3.2 closing-call confusion) is preserved verbatim above per append-only governance — it remains as historical record of the inheritance error, NOT as a source of truth for v0.3.0+ consumers.
+
+```yaml
+# Nova authoritative spec block — auction phases WDO 2026-05-01 BRT
+# Substitui (semanticamente, NOT operacionalmente): Mira spec v0.2.x §4 auction state block (que herdou erro T002.6 §3.2 "closing call 17:55-18:00")
+# Status: [WEB-CONFIRMED 2026-05-01]; cross-validated 5 sources (B3 PUMA + 4 retail).
+# Fonte primária: https://www.b3.com.br/pt_br/solucoes/plataformas/puma-trading-system/para-participantes-e-traders/horario-de-negociacao/derivativos/cambio-e-dolar-pronto/
+
+auction_phases_wdo_2026_post_dst:
+  pre_open:
+    start_brt: "08:55:00"
+    end_brt:   "08:59:59"
+    matching:  "NONE"           # ofertas aceitas, sem cruzamento
+    detection_signal:
+      live:    "fase reportada por DLL (Nelo); zero TNewTradeCallback events"
+      historic: "timestamp gap > 12h desde último trade D-1; nTradeNumber baixo no primeiro trade D"
+
+  open_auction_disparo:
+    timestamp_brt: "09:00:00"
+    matching:  "BATCH_CROSS"    # cruza overhang ao clearing price único
+    duration:  "<1s normal; pode estender em desbalanceio (margem conservadora 30s)"
+    tape_signature:
+      live:    "burst de tradeType=4 com prints simultâneos ao mesmo preço (clearing) em <1s"
+      historic: "burst de prints com timestamps comprimidos em 09:00:00.x; preço idêntico em múltiplos prints; aggressor=NONE (parquet) onde live mostraria tradeType=4"
+
+  continuous:
+    start_brt: "09:00:01"        # imediatamente pós-disparo open
+    end_brt:   "18:00:00"
+    matching:  "PRICE_TIME_FIFO"
+    embedded_settlement_window:
+      start_brt: "15:50:00"
+      end_brt:   "16:00:00"
+      semantics: "negociação contínua segue; B3 calcula preço de ajuste WDO como VWAP do intervalo (= preço de ajuste do DOL correspondente)"
+      tape_signature: "price compression (sigma intra-minuto cai ~30-50% vs janela 15:30-15:50); pin-risk attractor toward expected VWAP"
+
+  post_close_admin_window:
+    start_brt: "18:00:00"
+    end_brt:   "18:30:00"        # janela administrativa B3
+    cancellations_allowed_until_brt: "19:00:00"
+    matching:  "NONE_NEW_TRADES"  # apenas correções/cancelamentos
+    treatment_in_features: "EXCLUDE — tape >18:00:00 é ruído administrativo, não price discovery"
+
+closing_call_explicit_phase:
+  exists_for_wdo: false           # CRÍTICO — diferente de equities
+  notes: |
+    WDO **não possui leilão de fechamento dedicado** análogo às ações que compõem índices B3.
+    Eventuais tradeType=4 prints próximos a 18:00 são interrupções pontuais (circuit breaker,
+    halt técnico, surveillance), NÃO uma fase regulada da grade diária.
+    Spec T002.6 §3.2 que afirmava "closing call 17:55-18:00" foi corrigida nesta T002.7 — o
+    timestamp 17:55 do triple-barrier exit do parent yaml v0.2.3 mantém-se UNMOVABLE como
+    decisão de strategy thesis (5min de buffer pré-close), mas a SEMÂNTICA não é "boundary
+    com auction" e sim "buffer conservador antes do encerramento contínuo às 18:00".
+
+dst_brazil:
+  applies: false
+  abolished_year: 2019
+  source_glossary: "DOMAIN_GLOSSARY Parte 11"
+
+dst_us_impact_on_b3_grade:
+  applies: true
+  notes: |
+    B3 ajusta sazonalmente a grade WDO/DOL devido sobreposição com NYSE/CME.
+    Última transição: 2026-03-09 (fim do DST EUA → grade "winter" vigente em 2026-05-01).
+    Próxima transição esperada: novembro 2026 (início DST EUA → grade "summer").
+    Grade winter vs summer NÃO altera os horários WDO segundo Opere Futuros ("Não possui
+    alteração de horário"); altera horário de equities. CONFIRMAR no boot do projeto contra
+    comunicado B3 sazonal vigente.
+
+reduced_sessions_holidays:
+  applies: true
+  policy: |
+    Pré-feriados longos B3 historicamente operam half-day (encerramento antecipado).
+    Calendar config/calendar/2024-2027.yaml linha 76 já registra ESC-005 fix:
+    "B3 half-day Christmas Eve — Nova confirmed 2026-04-26; empirical parquet 0 trades;
+    treated as full-exclusion until schema supports half_day flag".
+    Auction Print Analysis DEVE excluir half-day sessions do training set até schema
+    expor half_day boolean per session row.
+```
+
+#### §15.14.5 Carry-forward implications — T002 retire artifacts NOT INVALIDATED
+
+**Round 1 + Round 2 + Round 3 + Round 3.1 retire artifacts STAND — DSR / PBO / IC interpretations are NOT modified by this v0.3.0 semantic correction.**
+
+Why the retire verdicts stand intact:
+
+| Round | Artifact | Was 17:55 vertical exit consumed? | Numeric verdict valid under v0.3.0 prose? | Reason |
+|---|---|---|---|---|
+| **Round 1 T5** (Phase F N7) | Mira Gate 4b Round 1 sign-off | YES — same operational rule | YES | The triple-barrier exit consumed `last tradeType ∈ {1,2,3,13}` print with timestamp < 17:55:00 BRT — IDENTICAL operational rule under v1.0.0 "auction-boundary" prose vs v0.3.0 "5min pre-close buffer" prose; cost/PnL math UNCHANGED |
+| **Round 2 F2-T5** (Phase F2 N7-prime IC pipeline wiring) | `docs/qa/gates/T002.6-mira-gate-4b-signoff-round2.md` | YES — same operational rule | YES | F2 N7-prime added IC compute on top of N7 path-PnL; the path-PnL itself was generated by SAME operational triple-barrier rule; IC compute on `forward_return_at_1755_pts` consumed same 17:55 timestamp; semantics correction does not alter the numeric correlation |
+| **Round 3 F2-T8-T5** (Phase G N8 OOS) | Mira Round 3 OOS re-clearance sign-off | YES — same operational rule | YES | OOS hold-out window 2025-07-01..2026-04-21 consumed IDENTICAL operational triple-barrier rule per ESC-012 R6 reusability invariant; numeric verdict (DSR/PBO/IC + decay test) unaffected by prose correction |
+| **Round 3.1 T002 RETIRE FINAL** | Per spec §0 falsifiability — DSR=0.206 strict bar fail under K1>0.95 UNMOVABLE | YES — same operational rule | YES — VERDICT STANDS | The K1 strict bar fail (DSR=0.206 << 0.95) was the statistical interpretation result; auction state correction is purely SEMANTIC/DOCUMENTATION (corrects the prose explanation of WHY 17:55 was chosen). The retire verdict STANDS per spec §0 falsifiability. T002 is RETIRED per Round 3.1; v0.3.0 amendment does NOT reverse, weaken, or modify that verdict. |
+
+**Why this is not Article IV invention:** the operational rule consumed by the backtest harness was literally the same string `"last tradeType ∈ {1,2,3,13}` print with timestamp < 17:55:00 BRT"` under both prose explanations. The prose was wrong; the rule was right; the math is unaffected. v0.3.0 corrects the explanation to match the rule, not the rule to match the explanation.
+
+**Riven 3-bucket attribution unaffected:** bucket B `costed_out_edge OOS-confirmed` (Round 3.1 final attribution per Riven F2-T8-T6 Round 3 reclassify) STANDS. v0.3.0 does NOT reopen attribution; the auction-state semantic correction is documentation-layer, not data-quality-layer.
+
+**No re-run / re-clearance / reclassify required.** §12.3 sign-off chain is single-stage Mira semantic-correction publish — no Aria archi review / no Beckett N9 re-run / no Quinn QA gate / no Riven reclassify needed because nothing the downstream depends on has changed.
+
+#### §15.14.6 H_next-1 successor inheritance
+
+The H_next-1 successor strategy spec (in drafting on branch `t003-h-next-spec-drafting`; future story T003+) MUST inherit the **CORRECTED** auction state block from §15.14.4 verbatim — NOT the v1.0.0 §4 inheritance from T002.6 §3.2 closing-call confusion.
+
+Concretely:
+
+- H_next-1 spec authors (Mira authority for ML/statistical layer; Nova authority for microstructure layer) MUST consume §15.14.4 yaml block, NOT §4.1 yaml block, when building auction state contract for the successor strategy.
+- Any feature design referencing "close auction 17:55-18:00" / "leilão de fechamento WDO" / "settlement print 18:00 closing" is **REJECTED a priori** as Article IV (No Invention) violation — those phases do NOT exist regulamentadamente for WDO per §15.14.2 + Nova §3.2 confirmation.
+- Settlement Window Analysis (Nova §3.2 P2 SECONDARY recommendation: VWAP 15:50-16:00 deviation feature) IS in-scope for H_next-1 candidate features, computable in trades-only parquet (VWAP of timestamp-windowed subset), per Nova's GREEN-LIGHT.
+- Open Auction Print Analysis (Nova §3.2 P1 SECONDARY recommendation: gap_overnight feature 08:55-09:00:30 BRT window) IS in-scope for H_next-1 candidate features, computable in trades-only parquet for the gap component (cross-day price differential); pre-open book imbalance live-only deferred to Phase H.
+
+Successor spec versioning: H_next-1 spec inherits this v0.3.0 auction state correction; v0.3.0 is the current canonical Mira spec at the time of T003 spec drafting commencement.
+
+#### §15.14.7 Article IV self-audit
+
+| §15.14 claim | Source anchor (verified) |
+|---|---|
+| Nova authoritative confirmation 2026-05-01 BRT (8 source anchors B3 official + secondary cross-validation) | `docs/backtest/T002.7-nova-auction-hours-confirmation-2026-05-01.md` Final v1.0.0 §1-§6 (270 lines) |
+| WDO settlement = VWAP 15:50-16:00 (NOT close auction print 18:00) | B3 oficial PUMA Câmbio e Dólar Pronto footnote (2): "A apuração do preço de ajuste será das 15:50 às 16:00" — Nova §1 row "Cálculo do preço de ajuste" + §5 anchor #1 verbatim |
+| WDO has NO close auction (regulamentadamente) — equities-regime confusion in T002.6 §3.2 | Nova §2 Discrepancy 1 verbatim ("CRÍTICA — call de fechamento WDO 17:55-18:00 não existe formalmente"); B3 oficial Regras de Pregão V2 PDF (closing-call regime is equities-only) — Nova §5 anchor #8 |
+| Open auction = 09:00 SHARP single disparo <1s (NOT 09:00-09:30 window) | Nova §1 row "Início negociação contínua" + §2 Discrepancy 3 ("o call de abertura ocorre 08:55→09:00. Em 09:00 sharp o leilão dispara, gera burst de tradeType=4 em <1s, e inicia imediatamente a fase contínua. Não existe janela 09:00-09:30 de auction prolongado em condições normais"); B3 PUMA oficial + Opere Futuros cross-validated |
+| Triple-barrier 17:55 vertical operational rule UNMOVED (only semantics corrected) | Parent spec yaml `T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml` triple-barrier vertical exit; this spec §2.1 operational rule preserved verbatim; Nova §2 Discrepancy 1 explicit: "o exit triple-barrier 17:55 BRT da spec yaml v0.2.3 É VÁLIDO como timestamp de entrada/saída — o que muda é a SEMÂNTICA" |
+| Round 1+2+3+3.1 retire artifacts NOT INVALIDATED (numeric verdicts stand) | This spec §15.14.5 carry-forward table; Anti-Article-IV Guard #4 thresholds UNMOVABLE; Round 3.1 verdict per spec §0 falsifiability stands |
+| H_next-1 successor inherits v0.3.0 corrected auction state block | This spec §15.14.6; Nova §3.2 GREEN-LIGHT for Settlement Window + Open Auction Print Analysis SECONDARY directions; Article IV (No Invention) bars H_next-1 from referencing nonexistent close auction phase |
+
+**Article IV self-audit verdict (§15.14 amendment):** every claim traces. **NO INVENTION.** §15.14 is the **operationalization** of Nova authoritative finding 2026-05-01 BRT (270-line confirmation, 8 source anchors B3 official). Thresholds UNMOVABLE; triple-barrier 17:55 operational rule UNMOVED (only semantics corrected); Round 1 + Round 2 + Round 3 + Round 3.1 sign-offs UNMOVED; Round 3.1 T002 RETIRE FINAL verdict STANDS per spec §0 falsifiability; §0-§14 v1.0.0 + §15.1-§15.13 v1.1.0/v1.2.0 body content UNCHANGED; §4.1 v1.0.0 yaml preserved verbatim as historical record; §15.14.4 is the canonical auction state for v0.3.0+ consumers — append-only revision per Pax governance.
+
+**Anchor count (§15.14-local):** 7 source anchors verified — Nova authoritative confirmation `docs/backtest/T002.7-nova-auction-hours-confirmation-2026-05-01.md` (Final v1.0.0; 270 lines; 8 internal source anchors §5 #1-#8); B3 oficial PUMA Câmbio e Dólar Pronto (regulatory primary); B3 oficial Regras de Pregão V2 PDF; Nova persona `expertise.assets_covered.WDO.trading_hours` (auto-validation [WEB-CONFIRMED 2026-03-09]); DOMAIN_GLOSSARY Parte 11 (DST abolido Brasil 2019); parent spec yaml `T002-end-of-day-inventory-unwind-wdo-v0.2.0.yaml` (triple-barrier 17:55 vertical exit operational rule); this spec §1 thresholds UNMOVABLE + §2.1 triple-barrier semantics + §4.1 v1.0.0 inheritance preserved + Anti-Article-IV Guards #1-#8.
+
+---
+
 ## Change Log
 
 | Version | Date (BRT) | Author | Change |
@@ -1110,5 +1321,6 @@ Reproduced from §12.2 below for §15.13-local readability:
 | **v1.0.0** | 2026-04-29 | Mira (@ml-researcher) | Skeleton drafted pre-merge ESC-011 R11 (fence-against-drift); finalized T0a same day — full spec consumable by Aria T0b / Beckett T0c / Riven T0d / Pax T0e + Dex T1; 8 dimensions covered (T002.6 §Spec-first protocol); Beckett latency spec §5 + Nova RLP/rollover spec §4 consumed verbatim |
 | **v1.1.0** | 2026-04-30 | Mira (@ml-researcher) | **Phase F2 amendment §15 IC Pipeline Wiring Spec applied** per Mira deep audit `docs/ml/audits/T002.6-mira-ic-pipeline-deep-audit.md` §6 + Aria archi review `docs/architecture/T002.6-phase-f2-aria-ic-wiring-review.md` (APPROVE_OPTION_D — separate orchestration module in `vespera_metrics`; conditions C-A1..C-A7) + Beckett consumer audit `docs/backtest/T002.6-beckett-consumer-signoff.md` §T0c + Sable audit `docs/audits/AUDIT-2026-04-30-T002.6-backtester-ic-gap-coherence.md` (8 findings — F-01..F-04 procedural recommendations consumed). §12.1 sign-off chain extended F2-T0a..F2-T6; §14.3 cosign ledger added; §15.5 Anti-Article-IV Guard #8 NEW (verdict-issuing protocol — IC field default 0.0 reserved for pre-compute state only; `*_status` provenance flag mandatory; `InvalidVerdictReport` raise on `K_FAIL` with `*_status != "computed"`); §15.8 4 NEW tests in `tests/vespera_metrics/test_ic_pipeline_wired.py` (`test_ic_computed_non_zero`, `test_ic_deterministic`, `test_ic_status_flag`, `test_ic_inconclusive_path`). NO mutation of §1 thresholds (Anti-Article-IV Guard #4 UNMOVABLE: DSR>0.95 / PBO<0.5 / IC>0); NO mutation of hold-out lock (Anti-Article-IV Guard #3); NO mutation of Round 1 T5 sign-off; NO §0-§14 v1.0.0 body content mutation — append-only revision. Cosign Mira @ml-researcher 2026-04-30 BRT — F2-T0a spec amendment applied. |
 | **v1.2.0** | 2026-04-30 | Mira (@ml-researcher) | **Mira spec amendment v1.1.0 → v1.2.0 §15.13 Phase G OOS unlock protocol applied per ESC-012 R2 ratification (5/6 supermajority APPROVE_PATH_B + 17 conditions R1-R17).** §15.13 NEW (Phase G OOS Unlock Protocol — 13 sub-sections §15.13.1..§15.13.13 covering: unlock authorization 5/6 supermajority + Riven minority Path C dissent preserved; unlock mechanism `holdout_locked=False`; Phase G run window 2025-07-01..2026-04-21; reusability invariants engine_config + cost atlas + rollover + Bonferroni + latency + RLP + microstructure ALL IDENTICAL F2 per ESC-012 R6; predictor↔label IDENTICAL F2 per ESC-012 R7; decay test full evaluation `IC_holdout > 0.5 × IC_in_sample` BINDING; K1 strict bar UNMOVABLE preservation per ESC-012 R10; OOS one-shot discipline per ESC-012 R9; pre-committed 4-branch disposition rule PRR-20260430-1 hash-frozen BEFORE N8 run per ESC-012 R3; sample-size considerations ~3000-4000 events; wall-time + RSS budget ~3h/~600 MB; Article IV trace policy 5-source; sign-off chain F2-T8-T0a..F2-T8-T7; self-audit 17 source anchors). §12.2 sign-off chain extended F2-T8-T0a..F2-T8-T7 (Round 3 — spec amendment + Phase G N8 OOS run + re-clearance + reclassify + close). §14.4 cosign ledger added (Round 3). NO mutation of §1 thresholds (Anti-Article-IV Guard #4 UNMOVABLE: DSR>0.95 / PBO<0.5 / IC>0); NO mutation of hold-out lock policy (Phase G unlock IS the authorized §15.10 transition pre-authored at spec §3.1, NOT a guard violation per ESC-012 R10 K1 strict bar UNMOVABLE preservation); NO mutation of Round 1 T5 sign-off; NO mutation of Round 2 F2-T5 sign-off (`docs/qa/gates/T002.6-mira-gate-4b-signoff-round2.md`; F2-T8-T5 Round 3 supersedes via append-only ledger entry NOT mutation); NO §0-§14 v1.0.0 body content mutation; NO §15.1-§15.12 v1.1.0 content mutation — append-only revision. Cosign Mira @ml-researcher 2026-04-30 BRT — F2-T8-T0a spec amendment v1.2.0 applied. |
+| **v0.3.0** | 2026-05-01 | Mira (@ml-researcher) | **Mira spec amendment v1.2.0 → v0.3.0 §15.14 Auction State Block Correction applied per Nova authoritative confirmation `docs/backtest/T002.7-nova-auction-hours-confirmation-2026-05-01.md` (Final v1.0.0; 270 lines; 8 source anchors B3 official + secondary cross-validation).** **Semver re-baseline v1.2.0 → v0.3.0** per MANIFEST R15 spec versioning protocol — major==0 governance recognizes prior v1.x labels were internal Phase F/F2/G iteration counters; v0.x is the canonical Mira-spec series under Anti-Article-IV Guard #4 thresholds-frozen + pre-stable governance. §15.14 NEW (Auction State Block Correction — 7 sub-sections §15.14.1..§15.14.7 covering: source provenance Nova confirmation cross-checked B3 PUMA + B3 Regras de Pregão V2 PDF + 6 secondary anchors; correction WDO has SINGLE open auction at 09:00 SHARP single-batch disparo <1s + settlement window 15:50-16:00 VWAP; NO close auction regulamentadamente — equities-regime confusion in T002.6 §3.2 corrected here; triple-barrier 17:55 vertical SEMANTICS CORRECTED to "5-minute conservative buffer before continuous-trading close at 18:00:00 BRT" NOT "boundary with closing auction"; §4 auction state block updated yaml — Nova §4 verbatim consumption per §15.14.4 canonical block readers MUST consult for v0.3.0+ semantic interpretation; carry-forward implications T002 retire artifacts Round 1+2+3+3.1 NOT INVALIDATED — DSR/PBO/IC numeric verdicts STAND because triple-barrier 17:55 operational rule was UNCHANGED under both prose interpretations, only the documented prose explanation was wrong, the math is unaffected; H_next-1 successor on branch `t003-h-next-spec-drafting` MUST inherit CORRECTED §15.14.4 auction block, NOT v1.0.0 §4 inheritance from T002.6 §3.2 closing-call confusion; Article IV self-audit §15.14.7 with 7 source anchors). §12.3 sign-off chain extended (single-stage Mira semantic-correction publish v0.3.0-T0a — no re-run / re-clearance / reclassify required because operational rule UNCHANGED and downstream depends on rule not prose). NO mutation of §1 thresholds (Anti-Article-IV Guard #4 UNMOVABLE: DSR>0.95 / PBO<0.5 / IC>0); NO mutation of triple-barrier 17:55 vertical timestamp operational rule (UNMOVED — only documented SEMANTICS corrected from "auction boundary" to "5min pre-close buffer"); NO mutation of Round 1 T5 sign-off; NO mutation of Round 2 F2-T5 sign-off; NO mutation of Round 3 F2-T8-T5 sign-off; **NO mutation of Round 3.1 verdict (T002 RETIRE FINAL stands per spec §0 falsifiability — DSR=0.206 strict bar fail; v0.3.0 correction is semantic/documentation, not statistical interpretation reversal); NO mutation of Riven 3-bucket attribution (bucket B `costed_out_edge OOS-confirmed` STANDS)**; NO §0-§14 v1.0.0 + §15.1-§15.13 v1.1.0/v1.2.0 body content mutation; §4.1 v1.0.0 yaml preserved verbatim as historical record of T002.6 §3.2 inheritance error — append-only revision per Pax governance. Cosign Mira @ml-researcher 2026-05-01 BRT — v0.3.0-T0a spec amendment v1.2.0 → v0.3.0 applied (auction state block semantic correction). |
 
 — Mira, mapeando o sinal 🗺️
