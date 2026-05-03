@@ -13,6 +13,12 @@ htmlcov/
 build/
 dist/
 
+# Agent scratchpads (per-cycle work artifacts at repo root, never committed)
+/_audit_*.py
+/_audit_*.out
+/_audit_*.csv
+/_audit_*.json
+
 # Virtualenv (project-local, provisioned by @dev — NOT committed)
 .venv/
 venv/
