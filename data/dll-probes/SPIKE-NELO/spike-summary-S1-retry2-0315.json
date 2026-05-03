@@ -1,0 +1,21 @@
+{
+  "batch": "S1-retry2-0315",
+  "spikes": [
+    {
+      "label": "S1-2023-03-15-retry2",
+      "start_date": "2023-03-15",
+      "end_date": "2023-03-15",
+      "ticker": "WDOFUT",
+      "exit_code": 1,
+      "wall_clock_s": 111.8,
+      "return_code": 0,
+      "return_code_name": "NL_OK",
+      "trades_total": 979337,
+      "trades_persisted": 979337,
+      "queue_full_drops": 84543,
+      "reached_100": true,
+      "outcome": "partial_coverage",
+      "telemetry_path": "data\\dll-probes\\SPIKE-NELO\\S1-2023-03-15-retry2\\probe-telemetry-8426bf7a8b2c.json"
+    }
+  ]
+}
