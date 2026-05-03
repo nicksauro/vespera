@@ -1,0 +1,29 @@
+2026-05-02 14:53:58 [INFO] ==============================================================================
+2026-05-02 14:53:58 [INFO] A1 DLL probe started — run_id=348d9425a247
+2026-05-02 14:53:58 [INFO] Spec: A1-spec-2023-12-WDOFUT-v1.0
+2026-05-02 14:53:58 [INFO] Council: COUNCIL-2026-05-01-DATA-resolution.md
+2026-05-02 14:53:58 [INFO] Window: 2023-11-16..2023-11-16 ticker=WDOFUT
+2026-05-02 14:53:58 [INFO] ==============================================================================
+2026-05-02 14:53:58 [INFO] Loading DLL: C:\Users\Pichau\Desktop\profitdll\DLLs\Win64\ProfitDLL.dll
+2026-05-02 14:53:58 [INFO] Calling DLLInitializeMarketLogin (market-only mode)...
+2026-05-02 14:53:58 [INFO] DLLInitializeMarketLogin OK; awaiting login event (timeout=60s)...
+2026-05-02 14:53:58 [INFO] Login ready after 0.6s (condition: result==2 and conn_type==2)
+2026-05-02 14:53:58 [INFO] Dispatching GetHistoryTrades(ticker='WDOFUT', bolsa='F', start='16/11/2023 09:00:00', end='16/11/2023 18:00:00')
+2026-05-02 14:53:58 [INFO] GetHistoryTrades returned: 0 (0=NL_OK)
+2026-05-02 14:53:58 [INFO] Engine consumer draining queue...
+2026-05-02 14:54:02 [INFO] Schema validation (first 1000): pass=True
+2026-05-02 14:55:07 [INFO] Draining residual queue (size=0)...
+2026-05-02 14:55:07 [INFO] Engine consumer drained: 698622 records total
+2026-05-02 14:55:09 [INFO] Pre-finalize snapshot written (status=pre_finalize, rows=698622)
+2026-05-02 14:55:09 [INFO] DLL quiesced (idle=2.37s since last cb) — calling DLLFinalize
+2026-05-02 14:55:12 [INFO] dll.DLLFinalize() succeeded
+2026-05-02 14:55:12 [INFO] ==============================================================================
+2026-05-02 14:55:12 [INFO] Outcome: partial_coverage (R4(b))
+2026-05-02 14:55:12 [INFO] Rationale: trades=698,622 schema_pass=True reached_100=True watchdog_idle=False timeout_hit=False
+2026-05-02 14:55:12 [INFO] Total trades: 698622
+2026-05-02 14:55:12 [INFO] Schema pass: True
+2026-05-02 14:55:12 [INFO] Reached 100%: True
+2026-05-02 14:55:12 [INFO] Watchdog idle: False; Timeout hit: False
+2026-05-02 14:55:12 [INFO] Telemetry: C:\Users\Pichau\Desktop\Algotrader\data\dll-probes\SPIKE-NELO\S1-2023-11-16\probe-telemetry-348d9425a247.json
+2026-05-02 14:55:12 [INFO] Parquet: C:\Users\Pichau\Desktop\Algotrader\data\dll-probes\SPIKE-NELO\S1-2023-11-16\wdofut-2023-12-348d9425a247.parquet (698622 rows)
+2026-05-02 14:55:12 [INFO] ==============================================================================

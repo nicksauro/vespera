@@ -1,0 +1,70 @@
+{
+  "probe_run_id": "affcbbe65764",
+  "probe_spec_version": "A1-spec-2023-12-WDOFUT-v1.0",
+  "council_resolution_ref": "COUNCIL-2026-05-01-DATA-resolution.md",
+  "start_ts_brt": "2026-05-02T14:42:02.922218",
+  "end_ts_brt": "2026-05-02T14:43:33.144694",
+  "wall_clock_duration_s": 90.222,
+  "request": {
+    "function": "GetHistoryTrades",
+    "ticker": "WDOFUT",
+    "exchange": "F",
+    "start_str": "2023-03-15",
+    "end_str": "2023-03-15"
+  },
+  "dll_response": {
+    "return_code": null,
+    "return_code_name": "NL_None",
+    "login_ready": false,
+    "login_ready_condition_observed": null,
+    "login_wait_s": 0.0
+  },
+  "trades": {
+    "total_received": 0,
+    "first_trade_ts_brt": null,
+    "last_trade_ts_brt": null,
+    "first_trade_ts_raw": null,
+    "ts_separator_observed": null,
+    "queue_full_drops": 0,
+    "persisted_rows": 0
+  },
+  "progress": {
+    "timeline_event_count": 0,
+    "progress_99_dwell_s": null,
+    "reached_100": false,
+    "last_progress_seen": 0
+  },
+  "schema_validation": {
+    "first_1000_complete": false,
+    "checks": {}
+  },
+  "watchdogs": {
+    "watchdog_idle_triggered": false,
+    "watchdog_idle_at_progress": null,
+    "timeout_hit": false
+  },
+  "anti_patterns_audit": {
+    "AP-D-01": "PASS",
+    "AP-D-02": "PASS",
+    "AP-D-03": "PASS",
+    "AP-D-04": "PASS",
+    "AP-D-05": "PASS",
+    "AP-D-06": "CHECK",
+    "AP-D-07": "N/A",
+    "AP-D-08": "N/A",
+    "AP-D-09": "N/A",
+    "AP-D-10": "N/A",
+    "AP-D-11": "PASS",
+    "AP-D-12": "PASS",
+    "AP-D-13": "N/A"
+  },
+  "outcome_classification": "error",
+  "outcome_decision_tree_branch": "out_of_R4",
+  "outcome_rationale": "uncaught error: TimeoutError: Login did not become ready within 60.0s (last conn_type=0, result=0)",
+  "error": "TimeoutError: Login did not become ready within 60.0s (last conn_type=0, result=0)",
+  "artifacts": {
+    "parquet": "data\\dll-probes\\SPIKE-NELO\\S1-2023-03-15\\wdofut-2023-12-affcbbe65764.parquet",
+    "progress_timeline_csv": "data\\dll-probes\\SPIKE-NELO\\S1-2023-03-15\\progress-timeline-affcbbe65764.csv",
+    "telemetry_json": "data\\dll-probes\\SPIKE-NELO\\S1-2023-03-15\\probe-telemetry-affcbbe65764.json"
+  }
+}
