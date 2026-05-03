@@ -1,0 +1,82 @@
+{
+  "probe_run_id": "ae03dec6b8d3",
+  "probe_spec_version": "A1-spec-2023-12-WDOFUT-v1.0",
+  "council_resolution_ref": "COUNCIL-2026-05-01-DATA-resolution.md",
+  "start_ts_brt": "2026-05-02T14:40:11.553346",
+  "end_ts_brt": "2026-05-02T14:41:32.731197",
+  "wall_clock_duration_s": 81.178,
+  "request": {
+    "function": "GetHistoryTrades",
+    "ticker": "WDOFUT",
+    "exchange": "F",
+    "start_str": "2023-01-16",
+    "end_str": "2023-01-16"
+  },
+  "dll_response": {
+    "return_code": 0,
+    "return_code_name": "NL_OK",
+    "login_ready": true,
+    "login_ready_condition_observed": "result==2 and conn_type==2",
+    "login_wait_s": 0.945
+  },
+  "trades": {
+    "total_received": 734902,
+    "first_trade_ts_brt": "2023-01-16T09:00:58.101000",
+    "last_trade_ts_brt": "2023-01-16T17:59:59.978000",
+    "first_trade_ts_raw": "16/01/2023 09:00:58.101",
+    "ts_separator_observed": ".",
+    "queue_full_drops": 0,
+    "persisted_rows": 734902
+  },
+  "progress": {
+    "timeline_event_count": 37,
+    "progress_99_dwell_s": 75.104,
+    "reached_100": true,
+    "last_progress_seen": 100
+  },
+  "schema_validation": {
+    "first_1000_complete": true,
+    "checks": {
+      "dtype_timestamp": true,
+      "dtype_price_double": true,
+      "dtype_qty_int": true,
+      "dtype_aggressor_str": true,
+      "sanity_price_positive": true,
+      "sanity_qty_positive": true,
+      "sanity_ticker_normalized": true,
+      "sanity_aggressor_distribution": true,
+      "sanity_ts_monotonic_nondec": true,
+      "sanity_in_window": true,
+      "pass_overall": true
+    }
+  },
+  "watchdogs": {
+    "watchdog_idle_triggered": false,
+    "watchdog_idle_at_progress": null,
+    "timeout_hit": false
+  },
+  "anti_patterns_audit": {
+    "AP-D-01": "PASS",
+    "AP-D-02": "PASS",
+    "AP-D-03": "PASS",
+    "AP-D-04": "PASS",
+    "AP-D-05": "PASS",
+    "AP-D-06": "CHECK",
+    "AP-D-07": "N/A",
+    "AP-D-08": "N/A",
+    "AP-D-09": "N/A",
+    "AP-D-10": "N/A",
+    "AP-D-11": "PASS",
+    "AP-D-12": "PASS",
+    "AP-D-13": "N/A"
+  },
+  "outcome_classification": "partial_coverage",
+  "outcome_decision_tree_branch": "R4(b)",
+  "outcome_rationale": "trades=734,902 schema_pass=True reached_100=True watchdog_idle=False timeout_hit=False",
+  "error": null,
+  "artifacts": {
+    "parquet": "data\\dll-probes\\SPIKE-NELO\\S1-2023-01-16\\wdofut-2023-12-ae03dec6b8d3.parquet",
+    "progress_timeline_csv": "data\\dll-probes\\SPIKE-NELO\\S1-2023-01-16\\progress-timeline-ae03dec6b8d3.csv",
+    "telemetry_json": "data\\dll-probes\\SPIKE-NELO\\S1-2023-01-16\\probe-telemetry-ae03dec6b8d3.json"
+  }
+}

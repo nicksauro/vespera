@@ -1,0 +1,21 @@
+{
+  "batch": "parity-test-2023-12-26_29",
+  "spikes": [
+    {
+      "label": "PARITY-2023-12-26_29",
+      "start_date": "2023-12-26",
+      "end_date": "2023-12-29",
+      "ticker": "WDOFUT",
+      "exit_code": 1,
+      "wall_clock_s": 136.9,
+      "return_code": 0,
+      "return_code_name": "NL_OK",
+      "trades_total": 1038126,
+      "trades_persisted": 1038126,
+      "queue_full_drops": 431758,
+      "reached_100": true,
+      "outcome": "partial_coverage",
+      "telemetry_path": "data\\dll-probes\\SPIKE-NELO\\PARITY-2023-12-26_29\\probe-telemetry-128dda9eba70.json"
+    }
+  ]
+}

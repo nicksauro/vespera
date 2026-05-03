@@ -1,0 +1,53 @@
+{
+  "batch": "S1a",
+  "spikes": [
+    {
+      "label": "S1-2023-01-16",
+      "start_date": "2023-01-16",
+      "end_date": "2023-01-16",
+      "ticker": "WDOFUT",
+      "exit_code": 1,
+      "wall_clock_s": 81.4,
+      "return_code": 0,
+      "return_code_name": "NL_OK",
+      "trades_total": 734902,
+      "trades_persisted": 734902,
+      "queue_full_drops": 0,
+      "reached_100": true,
+      "outcome": "partial_coverage",
+      "telemetry_path": "data\\dll-probes\\SPIKE-NELO\\S1-2023-01-16\\probe-telemetry-ae03dec6b8d3.json"
+    },
+    {
+      "label": "S1-2023-03-15",
+      "start_date": "2023-03-15",
+      "end_date": "2023-03-15",
+      "ticker": "WDOFUT",
+      "exit_code": 3,
+      "wall_clock_s": 90.2,
+      "return_code": null,
+      "return_code_name": "NL_None",
+      "trades_total": 0,
+      "trades_persisted": 0,
+      "queue_full_drops": 0,
+      "reached_100": false,
+      "outcome": "error",
+      "telemetry_path": "data\\dll-probes\\SPIKE-NELO\\S1-2023-03-15\\probe-telemetry-affcbbe65764.json"
+    },
+    {
+      "label": "S1-2023-05-15",
+      "start_date": "2023-05-15",
+      "end_date": "2023-05-15",
+      "ticker": "WDOFUT",
+      "exit_code": 1,
+      "wall_clock_s": 82.1,
+      "return_code": 0,
+      "return_code_name": "NL_OK",
+      "trades_total": 772038,
+      "trades_persisted": 772038,
+      "queue_full_drops": 0,
+      "reached_100": true,
+      "outcome": "partial_coverage",
+      "telemetry_path": "data\\dll-probes\\SPIKE-NELO\\S1-2023-05-15\\probe-telemetry-a2c8b891a65c.json"
+    }
+  ]
+}

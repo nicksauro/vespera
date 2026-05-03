@@ -1,0 +1,14 @@
+2026-05-02 13:07:32 [INFO] ==============================================================================
+2026-05-02 13:07:32 [INFO] A1 DLL probe started — run_id=9fa42ad9da4a
+2026-05-02 13:07:32 [INFO] Spec: A1-spec-2023-12-WDOFUT-v1.0
+2026-05-02 13:07:32 [INFO] Council: COUNCIL-2026-05-01-DATA-resolution.md
+2026-05-02 13:07:32 [INFO] Window: 2023-12-01..2023-12-20 ticker=WDOFUT
+2026-05-02 13:07:32 [INFO] ==============================================================================
+2026-05-02 13:07:32 [INFO] Loading DLL: C:\Users\Pichau\Desktop\profitdll\DLLs\Win64\ProfitDLL.dll
+2026-05-02 13:07:33 [INFO] Calling DLLInitializeMarketLogin (market-only mode)...
+2026-05-02 13:07:33 [INFO] DLLInitializeMarketLogin OK; awaiting login event (timeout=60s)...
+2026-05-02 13:07:34 [INFO] Login ready after 1.2s (condition: result==2 and conn_type==2)
+2026-05-02 13:07:34 [INFO] Dispatching GetHistoryTrades(ticker='WDOFUT', bolsa='F', start='01/12/2023 09:00:00', end='20/12/2023 18:00:00')
+2026-05-02 13:07:34 [INFO] GetHistoryTrades returned: -2147483645 (0=NL_OK)
+2026-05-02 13:07:34 [WARNING] Non-zero return; expecting 0 trades / retention_exhausted classification
+2026-05-02 13:07:34 [INFO] Engine consumer draining queue...

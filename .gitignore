@@ -27,6 +27,10 @@ config_local.py
 *.pem
 *.key
 
+# Claude Code runtime state (per-machine, never commit)
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
+
 # Vespera materialized data (parquet cache — regenerable from Sentinel DB)
 # manifest.csv is committed separately (source of truth for hashes)
 data/in_sample/
@@ -62,3 +66,14 @@ Thumbs.db
 
 # AIOX runtime
 .aiox/handoffs/
+
+# DLL probe diagnostic outputs (telemetry/logs preserved; parquets are large + regenerable)
+data/dll-probes/**/*.parquet
+data/dll-probes/**/*.jsonl
+data/dll-probes/**/*.jsonl.gz
+data/baseline-run/dll-probe-detached-*.log*
+
+# Phase 2C backfill orchestrator runtime
+data/dll-backfill/
+**/orchestrator.pid
+**/manifest.heartbeat

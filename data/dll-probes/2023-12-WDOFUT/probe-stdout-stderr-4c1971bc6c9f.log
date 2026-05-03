@@ -1,0 +1,29 @@
+2026-05-02 13:04:45 [INFO] ==============================================================================
+2026-05-02 13:04:45 [INFO] A1 DLL probe started — run_id=4c1971bc6c9f
+2026-05-02 13:04:45 [INFO] Spec: A1-spec-2023-12-WDOFUT-v1.0
+2026-05-02 13:04:45 [INFO] Council: COUNCIL-2026-05-01-DATA-resolution.md
+2026-05-02 13:04:45 [INFO] Window: 2023-12-01..2023-12-20 ticker=WDOFUT
+2026-05-02 13:04:45 [INFO] ==============================================================================
+2026-05-02 13:04:45 [INFO] Loading DLL: C:\Users\Pichau\Desktop\profitdll\DLLs\Win64\ProfitDLL.dll
+2026-05-02 13:04:46 [INFO] Calling DLLInitializeMarketLogin (market-only mode)...
+2026-05-02 13:04:46 [INFO] DLLInitializeMarketLogin OK; awaiting login event (timeout=60s)...
+2026-05-02 13:05:46 [ERROR] Probe error: TimeoutError: Login did not become ready within 60.0s (last conn_type=0, result=1)
+2026-05-02 13:05:46 [ERROR] Traceback (most recent call last):
+  File "C:\Users\Pichau\Desktop\Algotrader\scripts\dll_probe_2023_12_wdofut.py", line 791, in run_probe
+    raise TimeoutError(
+    ...<2 lines>...
+    )
+TimeoutError: Login did not become ready within 60.0s (last conn_type=0, result=1)
+
+2026-05-02 13:05:47 [INFO] dll.DLLFinalize() succeeded
+2026-05-02 13:05:47 [WARNING] No records to persist — writing empty parquet anyway for telemetry parity
+2026-05-02 13:05:51 [INFO] ==============================================================================
+2026-05-02 13:05:51 [INFO] Outcome: error (out_of_R4)
+2026-05-02 13:05:51 [INFO] Rationale: uncaught error: TimeoutError: Login did not become ready within 60.0s (last conn_type=0, result=1)
+2026-05-02 13:05:51 [INFO] Total trades: 0
+2026-05-02 13:05:51 [INFO] Schema pass: False
+2026-05-02 13:05:51 [INFO] Reached 100%: False
+2026-05-02 13:05:51 [INFO] Watchdog idle: False; Timeout hit: False
+2026-05-02 13:05:51 [INFO] Telemetry: C:\Users\Pichau\Desktop\Algotrader\data\dll-probes\2023-12-WDOFUT\probe-telemetry-4c1971bc6c9f.json
+2026-05-02 13:05:51 [INFO] Parquet: C:\Users\Pichau\Desktop\Algotrader\data\dll-probes\2023-12-WDOFUT\wdofut-2023-12-4c1971bc6c9f.parquet (0 rows)
+2026-05-02 13:05:51 [INFO] ==============================================================================
