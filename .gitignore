@@ -62,3 +62,14 @@ Thumbs.db
 
 # AIOX runtime
 .aiox/handoffs/
+
+# DLL probe diagnostic outputs (telemetry/logs preserved; parquets are large + regenerable)
+data/dll-probes/**/*.parquet
+data/dll-probes/**/*.jsonl
+data/dll-probes/**/*.jsonl.gz
+data/baseline-run/dll-probe-detached-*.log*
+
+# Phase 2C backfill orchestrator runtime
+data/dll-backfill/
+**/orchestrator.pid
+**/manifest.heartbeat
