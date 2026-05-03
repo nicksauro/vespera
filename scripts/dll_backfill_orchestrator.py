@@ -141,7 +141,7 @@ _SUBPROCESS_TIMEOUT_S = 800.0  # safety margin over hard_timeout
 # — RATIFIED 6/6 + user MWF cosign 2026-05-03 (rename per Aria C1 + Riven C3 +
 # Nelo C3 BLOCKING; previous token misattributed Aria authorship). Placeholder
 # _pending_final_sha replaced with git short-hash of the rename commit.
-_R1_OVERRIDE_TOKEN = "ratified_council_2026_05_03_R1_amendment_quorum_b1802ac_pending_final_sha"
+_R1_OVERRIDE_TOKEN = "ratified_council_2026_05_03_R1_amendment_quorum_1f9500a"
 
 # Phase 2C Riven caps (BLOCKING defaults).
 _DEFAULT_MAX_CONSECUTIVE_FAILURES = 3
