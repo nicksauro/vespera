@@ -35,7 +35,21 @@ downloaded_ts_brt, last_error_msg, dll_return_code, outcome
 
 Status values
 -------------
-pending | ok | partial | failed
+pending | ok | partial | failed |
+quarantined_pre_abort_qfd | quarantined_pre_abort_consec |
+quarantined_pre_abort_wall | quarantined_pre_abort_kill
+
+Quarantine semantics (Council 2026-05-03 R1 Amendment §6.1 item 5 — Riven C2)
+-----------------------------------------------------------------------------
+When an abort trigger fires (qfd_global, consec_fail, wall_time, kill_switch),
+ALL chunks flipped to status=ok during THIS run (since start_wall_time) are
+re-flagged to status=quarantined_pre_abort_<reason> via atomic manifest write
+BEFORE exit code 2 is returned.
+
+Quarantined chunks are NOT auto-retried in resume protocol — operator must
+revoke quarantine via separate mini-Council OR re-run with a new run_id.
+This prevents silent retention of chunks whose data may be tainted by
+pre-abort conditions (e.g. degraded DLL queue, partial DLLFinalize quiesce).
 
 Resume protocol
 ---------------
@@ -123,7 +137,11 @@ _CHUNK_BUSINESS_DAYS = 5
 _PER_CHUNK_HARD_TIMEOUT_S = 600.0
 _PER_CHUNK_IDLE_WATCHDOG_S = 180.0
 _SUBPROCESS_TIMEOUT_S = 800.0  # safety margin over hard_timeout
-_R1_OVERRIDE_TOKEN = "ack_dara_aria_council_2026_05_01"
+# Source: docs/councils/COUNCIL-2026-05-03-R1-AMENDMENT-resolution.md §2.3 R15
+# — RATIFIED 6/6 + user MWF cosign 2026-05-03 (rename per Aria C1 + Riven C3 +
+# Nelo C3 BLOCKING; previous token misattributed Aria authorship). Placeholder
+# _pending_final_sha replaced with git short-hash of the rename commit.
+_R1_OVERRIDE_TOKEN = "ratified_council_2026_05_03_R1_amendment_quorum_b1802ac_pending_final_sha"
 
 # Phase 2C Riven caps (BLOCKING defaults).
 _DEFAULT_MAX_CONSECUTIVE_FAILURES = 3
@@ -137,7 +155,16 @@ _EXIT_PARTIAL = 1
 _EXIT_ABORTED = 2
 _EXIT_ERROR = 3
 
-_MANIFEST_HEADER_LINE = "# backfill-manifest v1 - NOT R10 custodial"
+_MANIFEST_HEADER_LINE = "# backfill-manifest v1.1 - NOT R10 custodial"
+
+# Quarantine reason → status mapping (Council 2026-05-03 R1 Amendment §6.1 item 5).
+# Source: docs/councils/COUNCIL-2026-05-03-R1-AMENDMENT-resolution.md §6.1 item 5 — Riven C2
+_QUARANTINE_REASON_TO_STATUS = {
+    "QFD_PCT_EXCEEDED": "quarantined_pre_abort_qfd",
+    "MAX_CONSECUTIVE_FAILURES": "quarantined_pre_abort_consec",
+    "WALL_TIME_EXCEEDED": "quarantined_pre_abort_wall",
+    "KILL_SWITCH": "quarantined_pre_abort_kill",
+}
 _MANIFEST_COLUMNS = [
     "chunk_id",
     "start_date",
@@ -525,6 +552,10 @@ def run_orchestrator(
     cumulative_trades = 0
     start_wall_time = time.monotonic()
     abort_reason: str | None = None
+    # Council 2026-05-03 R1 Amendment §6.1 item 5 — Riven C2:
+    # Track chunks flipped to status=ok during THIS run. On abort, flag them
+    # quarantined_pre_abort_<reason> BEFORE returning exit code 2.
+    chunks_ok_this_run: list[str] = []
 
     _atomic_write_heartbeat(heartbeat_path, chunk_id="<startup>", status="starting")
 
@@ -604,6 +635,9 @@ def run_orchestrator(
         cumulative_trades += trades_count
         if status == "ok":
             consecutive_failures = 0
+            # Riven C2 quarantine bookkeeping (Council 2026-05-03 R1 Amendment §6.1 item 5):
+            # Record chunks flipped to ok during THIS run for post-abort flagging.
+            chunks_ok_this_run.append(chunk.chunk_id)
         else:
             consecutive_failures += 1
 
@@ -652,6 +686,36 @@ def run_orchestrator(
             time.sleep(cooldown_s)
 
     if abort_reason is not None:
+        # Council 2026-05-03 R1 Amendment §6.1 item 5 — Riven C2 quarantine fix.
+        # Source: docs/councils/COUNCIL-2026-05-03-R1-AMENDMENT-resolution.md §6.1 item 5
+        # Flag every chunk flipped to status=ok during THIS run as
+        # quarantined_pre_abort_<reason> BEFORE returning exit code 2. Recovery
+        # semantics: quarantined chunks are NOT auto-retried; operator-driven
+        # decision (mini-Council revoke OR new run_id re-run).
+        quarantine_status = _QUARANTINE_REASON_TO_STATUS.get(abort_reason)
+        if quarantine_status is not None and chunks_ok_this_run:
+            quarantined_ids: list[str] = []
+            for cid in chunks_ok_this_run:
+                row = store.rows.get(cid)
+                if row is None or row.status != "ok":
+                    # Defensive: skip if row missing or already mutated.
+                    continue
+                row.status = quarantine_status
+                store.upsert(row)  # atomic tmp+replace per row.
+                quarantined_ids.append(cid)
+            print(
+                f"[QUARANTINE] {len(quarantined_ids)} chunks flagged "
+                f"({quarantine_status}): {quarantined_ids}",
+                file=sys.stderr,
+            )
+        elif chunks_ok_this_run:
+            # Unknown abort_reason → log warning but do not mutate (fail-safe).
+            print(
+                f"[QUARANTINE] WARN: abort_reason={abort_reason!r} not in "
+                f"_QUARANTINE_REASON_TO_STATUS; {len(chunks_ok_this_run)} ok-this-run "
+                f"chunks left untouched (manual review): {chunks_ok_this_run}",
+                file=sys.stderr,
+            )
         _atomic_write_heartbeat(heartbeat_path, chunk_id="<aborted>", status=abort_reason)
         print(f"[orchestrator] FAIL: aborted by trigger {abort_reason}", file=sys.stderr)
         return _EXIT_ABORTED
@@ -705,6 +769,14 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    # Q09-E enforced parse-time per Council 2026-05-03 R1 Amendment Nelo C5:
+    # specific-month contracts (WDOJ26, WDOG26, WDOF26, ...) hit the documented
+    # 19ms zero-trade bug; only WDOFUT continuous returns 100% of trades.
+    if args.ticker != "WDOFUT":
+        raise SystemExit(
+            f"E_TICKER_NON_WDOFUT: only WDOFUT continuous allowed "
+            f"(Q09-E specific contracts hit 19ms bug); got: {args.ticker!r}"
+        )
     start = _dt.date.fromisoformat(args.start_date)
     end = _dt.date.fromisoformat(args.end_date)
     output_root = Path(args.output_root)

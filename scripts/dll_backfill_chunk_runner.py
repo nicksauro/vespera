@@ -12,10 +12,14 @@ Article IV: probe arquivo not modified; monkey-patch is in-process module
 attribute reassignment after import. Orchestrator-level governance.
 
 Audit-trail (R1 bypass):
-    Orchestrator must set DLL_BACKFILL_R1_OVERRIDE=ack_dara_aria_council_2026_05_01
+    Orchestrator must set DLL_BACKFILL_R1_OVERRIDE=ratified_council_2026_05_03_R1_amendment_quorum_<sha>
     before invoking this runner. The probe's _validate_args() is bypassed
     because run_probe() is called directly (no main() flow). The override env
     var documents intent and is logged on stderr.
+
+    Source: docs/councils/COUNCIL-2026-05-03-R1-AMENDMENT-resolution.md §2.3 R15
+    — RATIFIED 6/6 + user MWF cosign 2026-05-03 (token rename per Aria C1 +
+    Riven C3 + Nelo C3 BLOCKING; previous token misattributed Aria authorship).
 
 Args (CLI):
     --start-date YYYY-MM-DD
@@ -46,7 +50,10 @@ if str(_SCRIPTS_DIR) not in sys.path:
 
 import dll_probe_2023_12_wdofut as probe  # noqa: E402
 
-_R1_OVERRIDE_TOKEN = "ack_dara_aria_council_2026_05_01"
+# Source: docs/councils/COUNCIL-2026-05-03-R1-AMENDMENT-resolution.md §2.3 R15
+# — RATIFIED 6/6 + user MWF cosign 2026-05-03. Placeholder _pending_final_sha
+# replaced with git short-hash of the commit landing this rename.
+_R1_OVERRIDE_TOKEN = "ratified_council_2026_05_03_R1_amendment_quorum_b1802ac_pending_final_sha"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -57,7 +64,16 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--output-dir", required=True, help="Absolute path; redirects probe._OUTPUT_DIR")
     p.add_argument("--hard-timeout-s", type=float, required=True)
     p.add_argument("--idle-watchdog-s", type=float, required=True)
-    return p.parse_args()
+    args = p.parse_args()
+    # Q09-E enforced parse-time per Council 2026-05-03 R1 Amendment Nelo C5:
+    # specific-month contracts (WDOJ26, WDOG26, WDOF26, ...) hit the documented
+    # 19ms zero-trade bug; only WDOFUT continuous returns 100% of trades.
+    if args.ticker != "WDOFUT":
+        raise SystemExit(
+            f"E_TICKER_NON_WDOFUT: only WDOFUT continuous allowed "
+            f"(Q09-E specific contracts hit 19ms bug); got: {args.ticker!r}"
+        )
+    return args
 
 
 def main() -> int:

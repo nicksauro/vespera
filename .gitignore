@@ -27,6 +27,10 @@ config_local.py
 *.pem
 *.key
 
+# Claude Code runtime state (per-machine, never commit)
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
+
 # Vespera materialized data (parquet cache — regenerable from Sentinel DB)
 # manifest.csv is committed separately (source of truth for hashes)
 data/in_sample/
