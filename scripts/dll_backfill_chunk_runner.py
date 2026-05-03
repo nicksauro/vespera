@@ -53,7 +53,7 @@ import dll_probe_2023_12_wdofut as probe  # noqa: E402
 # Source: docs/councils/COUNCIL-2026-05-03-R1-AMENDMENT-resolution.md §2.3 R15
 # — RATIFIED 6/6 + user MWF cosign 2026-05-03. Placeholder _pending_final_sha
 # replaced with git short-hash of the commit landing this rename.
-_R1_OVERRIDE_TOKEN = "ratified_council_2026_05_03_R1_amendment_quorum_b1802ac_pending_final_sha"
+_R1_OVERRIDE_TOKEN = "ratified_council_2026_05_03_R1_amendment_quorum_1f9500a"
 
 
 def _parse_args() -> argparse.Namespace:
