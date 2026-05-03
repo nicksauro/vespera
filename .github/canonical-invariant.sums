@@ -1,4 +1,4 @@
-78c9adb35851bab4450c209d7afe6fc9b51e76351e2f069125785660822dee72  data/manifest.csv
+3e27c955b3cd9cb6a6fbb67c77c07ce55d37cd2223dc41796d6af24da76d0ba4  data/manifest.csv
 1d6ed8498630acab6946089d9d92f3a71b64cebbbc0cd8442193dc20fb9f287d  core/memory_budget.py
 # T002.0g-orchestrator warmup-state-manifest schema marker (Story T002.0g AC9 + Riven T8 cosign 2026-04-26).
 # Schema reference: state/T002/manifest.json — append-only JSONL; per-line keys =
